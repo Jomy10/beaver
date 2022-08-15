@@ -10,7 +10,7 @@ Beaver is an easy to understand build tool with a lot of capabilities.
 ### Basics
 
 Beaver is a ruby gem library, meaning that it can be imported in any ruby file.
-To start, lets create a file called `make.rb` (can be name anything), containing the following:
+To start, lets create a file called `make.rb` (can be named anything), containing the following:
 
 ```ruby
 #!/usr/bin/env ruby
@@ -74,11 +74,11 @@ $beaver.end
 ```
 
 The above command will execute if any of the `src` files changed, and it will pass those files as
-a space separated string to the command using the first argument after the `do` keyword (e.g. `sources`).
+a space separated string to the command using the first argument after the `do` keyword (i.e. `sources`).
 This means that the `sources` variable contains the string "src/main.c src/util.c". The `target`
 variable will contain "build/a.out".
 
-This is a very simple example, but what if added another source file, we don't want to add
+This is a very simple example, but what if we added another source file, we don't want to add
 another file to the list of sources. Instead, we can do `src/*.c`. If we later on decide to
 change the source directory to something else, it would be better to store "src" in a constant,
 same goes for the build directory, or the c compiler. Let's add those as well.
@@ -145,11 +145,12 @@ Then, in *build_src_to_objects*, we compile C files to object files. The source 
 all C files located in our source directory. We want to compile them to our build directory, 
 and they will have the `.o` extension. Next to the `do` keyword, we find `source`, 
 which is a variable with only one source file this time. The `target` variable contains 
-its corresponding object file. This command will be called for each C file that changed since
-the last time you ran the beaver script, passing in the changed C file location to the command.
+its corresponding object file (e.g. source would contain `src/util.c` and target would contain `build/src/util.o`). 
+This command will be called for each C file that changed since the last time you ran the beaver script, 
+passing in the changed C file location to the command.
 
 Lastly, the *build_objects_to_exec* command will build the object files to an executable.
-This is the same as the `build` command in our previous examples, but the source files area now
+This is the same as the `build` command in our previous examples, but the source files are now
 all object files in our build directory instead of our C files, and the `-o` flag is passed to
 the compiler.
 
@@ -186,7 +187,7 @@ cd beaver
 ./build.sh build install
 ```
 
-I advice buildin from source or downloading from the github registry for convenience.
+I advice building from source or downloading from the github registry for convenience.
 
 ## Contributing
 
@@ -194,7 +195,12 @@ Feel free to open an issue regarding bugs or improvements. If you want to work o
 you can do so by commenting on its issue and opening a pull request. Your help is much appreciated!
 
 To test out the library, use `./build.sh build install` to build and install it as a gem.
-You can use `./build.sh clean` to remove the gem.
+You can use `./build.sh uninstall` to remove the gem and `./build.sh clean` to clean the project
+of gem files.
+
+## Questions
+
+Feel free to ask any questions you may have by opening an issue.
 
 ## License
 
