@@ -34,6 +34,9 @@ end
 $beaver.end
 ```
 
+**NOTE**: When installing from RubyGems, you need to put `require 'beaver-build'` at the top of
+your beaver scripts instead of `require 'beaver'`.
+
 Run the above by either doing `ruby make.rb` or 
 ```bash
 chmod +x make.rb
@@ -158,11 +161,22 @@ in your scripts, since Beaver is just a Ruby script that imports the Beaver libr
 
 ## Installation
 
-### From RubgyGems
+### From GitHub Package Registry
 
 ```bash
-gem install beaver
+gem install beaver --source "https://rubygems.pkg.github.com/jomy10"
 ```
+
+[more info](https://github.com/Jomy10/beaver/packages/1597405).
+
+### From RubyGems
+
+```bash
+gem install beaver-build
+```
+
+**NOTE**: When installing from RubyGems, you need to put `require 'beaver-build'` at the top of
+your beaver scripts instead of `require 'beaver'`.
 
 ### Build from source
 
@@ -171,6 +185,8 @@ git clone https://github.com/jomy10/beaver
 cd beaver
 ./build.sh build install
 ```
+
+I advice buildin from source or downloading from the github registry for convenience.
 
 ## Contributing
 

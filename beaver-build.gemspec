@@ -1,7 +1,9 @@
+# Gemfile for RubyGems
+  
 require 'rake'
 
 Gem::Specification.new do |s|
-  s.name = 'beaver'
+  s.name = 'beaver-build'
   s.version = '0.1.0'
   s.summary = 'Ruby-powered build tool'
   s.description = %{Beaver is an easy to understand build tool with a lot of capabilities.
