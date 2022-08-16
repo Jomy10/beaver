@@ -54,6 +54,10 @@ use the alias `sys`, which will first print out the command passed in and then e
 This is the preferred way for things like C compilation commands, which are constructed in
 the script.
 
+If you want to make your life a little easier, you can use the beaver CLI that ships with beaver.
+use `beaver init` to initialize the current directory to be a project using beaver. This will
+create a beaver script file and will either create a `.gitignore`, or append to an existing one.
+
 ### Dependencies
 
 #### Many files to one
@@ -188,6 +192,11 @@ cd beaver
 ```
 
 I advice building from source or downloading from the github registry for convenience.
+
+## Tips
+
+Want to put(s) some more color into your build scripts? Use the [`colorize`](https://rubygems.org/gems/colorize) gem
+to give color to your print statemets. Example: `puts "Failed to compile".red`, `puts "Compilation finished".green`.
 
 ## Contributing
 
