@@ -33,13 +33,11 @@ do
 
   # Uninstall local gem
   if [[ $arg == "uninstall" ]]; then
-    echo "uninstalling"
     gem uninstall beaver
   fi
 
   # Clean gem files
   if [[ $arg == "clean" ]]; then
-    echo "cleaning"
     rm beaver-*.gem
     rm beaver-build-*.gem
   fi

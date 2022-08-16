@@ -56,5 +56,5 @@ class Beaver
   end
 end
 
-# Global beaverr object@
+# Global beaver object
 $beaver = Beaver.new
