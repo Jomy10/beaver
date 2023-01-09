@@ -5,6 +5,18 @@ Beaver is an easy to understand build tool with a lot of capabilities.
 - [How to use](#how-to-use)
 - [Installation](#installation)
 
+```ruby
+requre 'beaver'
+
+OUT="build/"
+
+cmd :build, each("src/*.c") do
+  sh %(clang #{$file} -c -o #{File.join(OUT, $file.name)}.o)
+end
+
+$beaver.end
+```
+
 ## How to use
 
 ### Basics
@@ -27,8 +39,8 @@ Let's add a new command called `hello`.
 #!/usr/bin/env ruby
 require 'beaver'
 
-command :hello do
-  system "echo 'Hello world!'"
+cmd :hello do
+  sh %(echo 'Hello world!')
 end
 
 $beaver.end
@@ -49,18 +61,16 @@ script, we should see `Hello world!` in the console.
 The command that beaver executed was the first defined command, this is the main command.
 We can also explicitly call it using `./make.rb hello`.
 
-In the example above, we used the `system` function to call a shell command. We can also
-use the alias `sys`, which will first print out the command passed in and then execute it.
-This is the preferred way for things like C compilation commands, which are constructed in
-the script.
-
 If you want to make your life a little easier, you can use the beaver CLI that ships with beaver.
 use `beaver init` to initialize the current directory to be a project using beaver. This will
 create a beaver script file and will either create a `.gitignore`, or append to an existing one.
 
-### Dependencies
+### File dependencies
 
-#### Many files to one
+Commands can depend on files. If any of those files were changed since the last run of the command,
+the command will be run again, otherwise it is ignored.
+
+#### `all`
 
 Let's say we have a C project, it contains 2 source files called `src/main.c` and `src/util.c`.
 We want to recompile our project if any of those files changed.
@@ -69,21 +79,19 @@ We want to recompile our project if any of those files changed.
 #!/usr/bin/env ruby
 require 'beaver'
 
-command :build, src: ["src/main.c", "src/util.c"], target: "build/a.out" do |sources, target|
-  system "mkdir -p #{target.dirname}" # Make the build directory if it doesn't exist
-  sys "clang #{sources} -o #{target}"
+cmd :build, all(["src/main.c", "src/util.c"]) do
+  sh %(clang #{$files} -o build/a.out)
 end
 
 $beaver.end
 ```
 
-The above command will execute if any of the `src` files changed, and it will pass those files as
-a space separated string to the command using the first argument after the `do` keyword (i.e. `sources`).
-This means that the `sources` variable contains the string "src/main.c src/util.c". The `target`
-variable will contain "build/a.out".
+The above `build` command will execute if any of the `src` files changed. The `$files` variable
+will contain the files defined inside of `all`. When you print files, it will give you a
+comma separated list of the files (e.g. `"src/main.c" "src/util.c"`).
 
 This is a very simple example, but what if we added another source file, we don't want to add
-another file to the list of sources. Instead, we can do `src/*.c`. If we later on decide to
+another file to the list of sources. Instead, we can do `all("src/*.c")`. If we later on decide to
 change the source directory to something else, it would be better to store "src" in a constant,
 same goes for the build directory, or the c compiler. Let's add those as well.
 
@@ -96,18 +104,21 @@ BUILD_DIR = "./build"
 SRC_DIR = "./src"
 CC = "clang"
 
-command :build, src: "#{SRC_DIR}/*.c", target: "#{BUILD_DIR}/a.out" do |sources, target|
-  system "mkdir -p #{target.dirname}" # Make the build directory if it doesn't exist
-  sys "#{CC} #{sources} -o #{target}"
+cmd :build, all("#{SRC_DIR}/*.c") do
+  sh %(#{CC} #{$files} -o #{File.join(BUILD_DIR, "a.out")})
 end
 
 $beaver.end
 ```
 
-That's much better, and easier to maintain. One note here is that instead of `"#{SRC_DIR}/*.c"`,
-we could have also typed `File.join(SRC_DIR, "*.c")`. This will take care of file separators for us.
+That's much better, and easier to maintain. `File.join` will take care of adding the file
+separators for us. In this case it is equivalent to `"#{BUILD_DIR}/#{a.out}"`
 
-#### Many files to many files
+#### `each`
+
+When we replace `all` with `each` in the above examle, the command will no longer run
+once with all files passed to a `$files` variable, instead the command will run for each
+file in the list, and the file will be passed to the `$file` variable.
 
 Now, let's say our C project grows bigger and bigger. Recompiling all source files everytime one
 of them changes might be a little overkill. So, why don't we compile every source file to an
@@ -122,49 +133,75 @@ BUILD_DIR = "./build"
 SRC_DIR = "./src"
 CC = "clang"
 
-command :build do
-  $beaver.call :build_src_to_objects
-  $beaver.call :build_objects_to_exec
+cmd :build do
+  call :build_src_to_objects
+  call :build_objects_to_exec
 end
 
-# Many files to many files
-command :build_src_to_objects, src: "#{SRC_DIR}/**/*.c", target_dir: "#{BUILD_DIR}", target_ext: ".o" do |source, target|
-  system "mkdir -p #{target.dirname}"
-  sys "#{CC} #{source} -c -o #{target}"
+# Ran for each .c file in SRC_DIR
+cmd :build_src_to_objects, each(File.join(SRC_DIR, "/**/*.c"))
+  sh %(#{CC} #{$file} -c -o #{File.join(BUILD_DIR, "#{$file.name}.o")})
 end
 
-# Many files to one
-command :build_objects_to_exec, src: "#{BUILD_DIR}/**/*.o", target: "#{BUILD_DIR}/a.out" do |sources, target|
-  system "mkdir -p #{target.dirname}" # Make the build directory if it doesn't exist
-  sys "#{CC} #{sources} -o #{target}"
+# Ran once for all .o files
+cmd :build_objects_to_exec, all(File.join(BUILD_DIR, "**/*.o"))
+  sh %(#{CC} #{$files} -o #{File.join(BUILD_DIR, "a.out")})
 end
 
 $beaver.end
 ```
 
 Let's break down the above code. Our new main command combines the 2 commands below it using
-`$beaver.call`. This will execute the command you pass to it. 
+`call`. This will execute the command you pass to it, taking into account the file dependencies.
 
-Then, in *build_src_to_objects*, we compile C files to object files. The source files are 
-all C files located in our source directory. We want to compile them to our build directory, 
-and they will have the `.o` extension. Next to the `do` keyword, we find `source`, 
-which is a variable with only one source file this time. The `target` variable contains 
-its corresponding object file (e.g. source would contain `src/util.c` and target would contain `build/src/util.o`). 
-This command will be called for each C file that changed since the last time you ran the beaver script, 
-passing in the changed C file location to the command.
+Then, in *build_src_to_objects*, we run the body of our command  for each C source file and
+compile it into an object file, which is put in the `BUILD_DIR`. `$file.name` is a method to
+get the filename (e.g. `main.c` -> `main`). There are more of these [methods](lib/file_obj.rb).
 
 Lastly, the *build_objects_to_exec* command will build the object files to an executable.
-This is the same as the `build` command in our previous examples, but the source files are now
-all object files in our build directory instead of our C files, and the `-o` flag is passed to
-the compiler.
-
 
 Now, let's say we want to only compile our object files. We can do this with `./make.rb build_src_to_objects`.
 
 That's it. This is what Beaver offers. An added bonus is that you can use all of Ruby's capabilities
 in your scripts, since Beaver is just a Ruby script that imports the Beaver library.
+You can keep on reading for some more features.
+
+## Silent
+
+When a shell command is called using `sh`, the command and its output are printed to the stdout.
+You can override this behaviour.
+
+For example, `sh %(echo "Hello world")` will output:
+```
+echo "Hello world"
+Hello world
+```
+
+`sh silent %(echo "Hello world")` will output:
+```
+Hello world
+```
+
+and `sh full_silent %(echo "Hello world")` will output nothing.
+
+## More on the argument of a `sh` command
+
+In all of the examples above, I have used the following:
+
+```ruby
+sh %(some_shell_command)
+```
+
+However, a regular string, or any string literal in ruby will work as well.
+
+
+```ruby
+sh %(some_shell_command)
+```
 
 ## Installation
+
+For Beaver to work, you must install [Ruby](https://www.ruby-lang.org/en/).
 
 ### From GitHub Package Registry
 

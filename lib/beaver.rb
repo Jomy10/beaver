@@ -1,38 +1,61 @@
 require 'fileutils'
 
-# Export functions
-require 'file_change'
-require 'file_exists'
-require 'command'
-require 'alias'
-
 class Beaver
-  # The location where Beaver caches
+  # The location where beaver stores its info about files, etc
   attr_accessor :cache_loc
-  
-  # Initializer should not be used outside of this module
+  # whether the current terminal supports 256 color support
+  attr_accessor :term_256_color
+  attr_accessor :opts
+
+  # Initialize functon should not be used by build scripts
   def initialize
     # Contains all commands
-    # [commandName: String => command: Function]
+    # { CommandName: Symbol => command: Command }
     @commands = Hash.new
-    # Contains the main command name
+    # Name of the main command
     @mainCommand = nil
     @cache_loc = "./.beaver"
-  end
-  
-  # Appends a command to the global beaver
-  def __appendCommand(name, func)
-    if @commands.size == 0
-      @mainCommand = name.to_sym
+    unless Dir.exist? @cache_loc
+      Dir.mkdir @cache_loc
     end
-    
-    @commands[name.to_sym] = func
+    @term_256_color = `echo $TERM`.include? "256color"
+    @opts = []
   end
-  
-  def __appendCommandCB(name, &func)
-    self.__appendCommand(name, func)
+
+  def file_cache_file
+    file_loc = File.join(@cache_loc, "files.info")
+    unless File.exist? file_loc
+      FileUtils.touch file_loc
+    end
+    return file_loc
   end
-  
+
+  # Set an option
+  # :e = exit on non-zero exit code of `sh` execution
+  def set(opt)
+    @opts << opt.to_sym
+  end
+
+  # Check if an option is present
+  def has(opt)
+    @opts.include? opt
+  end
+
+  # Remove an option
+  def rm(opt)
+    @opts.delete opt
+  end
+
+  # Append a command to the global beaver object
+  # - cmd: Command
+  def __appendCommand(cmd)
+    if @commands.size == 0
+      @mainCommand = cmd.name
+    end
+
+    @commands[cmd.name] = cmd
+  end
+
   # Call a command
   def call(cmd)
     _cmd = @commands[cmd.to_sym]
@@ -40,21 +63,35 @@ class Beaver
       puts "No command called #{cmd} found"
       exit 1
     end
-    
+
     _cmd.call
   end
-  
+
   # Put this at the end of a file
   def end
+    $cache = CacheManager.new # load cache file
+    
     command = ARGV[0] || @mainCommand
     self.call command
+
+    $cache.save # save cache file
   end
-  
-  # Clean beaver
+
+  # Clean cache
   def clean
     FileUtils.rm_r @cache_loc
   end
 end
 
-# Global beaver object
 $beaver = Beaver.new
+
+# Export functions
+require 'command'
+require 'file'
+require 'file_dep'
+require 'sh'
+
+# Call a command
+def call(cmd)
+  $beaver.call cmd
+end
