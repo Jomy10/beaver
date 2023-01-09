@@ -1,3 +1,7 @@
 beaver-*.gem
 beaver-build-*.gem
 **/.DS_Store
+/next
+# Test/example
+.beaver
+/src

@@ -46,4 +46,9 @@ do
   if [[ $arg == "publish" ]]; then
     gem push beaver-build-*.gem
   fi
+
+  # Generate the gemspecs
+  if [[ $arg == "gemspec" ]]; then
+    ruby -e 'gemspec = File.read("template_gemspec"); File.open("beaver.gemspec", "w") {|f| f.write gemspec.gsub("%%%", "beaver")}; File.open("beaver-build.gemspec", "w") {|f| f.write gemspec.gsub("%%%", "beaver-build")}'
+  fi
 done
