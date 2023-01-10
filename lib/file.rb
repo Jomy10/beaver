@@ -78,6 +78,9 @@ class CacheManager
 
   def save
     packed = MessagePack.pack(@files)
+    unless Dir.exist? $beaver.cache_loc
+      Dir.mkdir $beaver.cache_loc
+    end
     File.binwrite($beaver.file_cache_file, packed)
   end
 end

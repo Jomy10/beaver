@@ -16,8 +16,8 @@ def sh(strcmd)
     puts `#{strcmd}`
   end
 
-  if $beaver.has(:e)
-    exit($?.exitstatus) if $?.exitstatus != 0
+  if $beaver.has(:e) && ($?.exitstatus || 0) != 0
+    exit($?.exitstatus)
   end
 end
 

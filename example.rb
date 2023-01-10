@@ -7,4 +7,8 @@ cmd :build, each("src/*.c") do
     sh %(clang #{$file} -c -o src/#{$file.name}.o)
 end
 
+cmd :clean do
+    $beaver.clean
+end
+
 $beaver.end

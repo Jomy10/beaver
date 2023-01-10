@@ -23,6 +23,12 @@ class Command
   def call_now
     $file = nil
     $files = nil
+
+    if @file_deps.nil?
+      @fn.call()
+      return
+    end
+    
     if @file_deps.type == :each
       @file_deps.files.each do |file_obj|
         $file = file_obj
