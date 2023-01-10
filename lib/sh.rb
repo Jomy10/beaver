@@ -16,11 +16,15 @@ def sh(strcmd)
     puts `#{strcmd}`
   end
 
-  if $beaver.has(:e) && $?.to_i != 0
-    if $?.exitstatus.nil?
-      puts $?
+  if $beaver.has(:e)
+    if $?.to_i != 0
+      if $?.exitstatus.nil?
+        puts $?
+      end
+      exit($?.exitstatus || -1)
     end
-    exit($?.exitstatus || -1)
+  elsif $?.to_i != 0 && $?.exitstatus.nil?
+    puts $?
   end
 end
 
