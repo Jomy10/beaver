@@ -72,6 +72,7 @@ class Beaver
     $cache = CacheManager.new # load cache file
     
     command = ARGV[0] || @mainCommand
+    puts command
     self.call command
 
     $cache.save # save cache file
@@ -80,6 +81,7 @@ class Beaver
   # Clean cache
   def clean
     FileUtils.rm_r @cache_loc
+    reset_cache
   end
 end
 

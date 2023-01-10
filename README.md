@@ -166,6 +166,14 @@ That's it. This is what Beaver offers. An added bonus is that you can use all of
 in your scripts, since Beaver is just a Ruby script that imports the Beaver library.
 You can keep on reading for some more features.
 
+## Options
+
+You can `set`, `rm` and check if beaver `has` an option.
+
+```ruby
+$beaver.set(:e) # when set, the script will exit on errors
+```
+
 ## Silent
 
 When a shell command is called using `sh`, the command and its output are printed to the stdout.
@@ -184,6 +192,24 @@ Hello world
 
 and `sh full_silent %(echo "Hello world")` will output nothing.
 
+## Clean
+
+When you want to clean the beaver cache, you can do the following:
+
+```ruby
+require 'beaver'
+
+cmd :clean do
+  $beaver.clean # cleans the cache
+end
+
+$beaver.end
+```
+
+## Overrides
+
+You can override where beaver stores its file info using `$beaver.cache_loc = "..."`
+
 ## More on the argument of a `sh` command
 
 In all of the examples above, I have used the following:
@@ -196,7 +222,7 @@ However, a regular string, or any string literal in ruby will work as well.
 
 
 ```ruby
-sh %(some_shell_command)
+sh "some_shell_command"
 ```
 
 ## Installation
