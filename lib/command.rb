@@ -3,6 +3,7 @@ require 'file.rb'
 class Command
   attr_accessor :name
   attr_accessor :fn
+  attr_accessor :overwrite_should_run
 
   def initialize(name, file_deps, fn)
     @name = name
@@ -10,6 +11,7 @@ class Command
     # Type: FileDep, or nil
     @file_deps = file_deps
     @fn = fn
+    @overwrite_should_run = false
   end
 
   # Execute the command if needed (dependency files changed)
@@ -43,6 +45,8 @@ class Command
   # Returns wheter the command should run, meaning if any of the depency
   # files changed
   def should_run?
+    return true if @overwrite_should_run
+    
     if changed? "__BEAVER__CONFIG__", $PROGRAM_NAME
       # Ruby script itself changed
       # TODO: does not account for dependencies of the script (probably uncommon though)
