@@ -67,12 +67,23 @@ class Beaver
     _cmd.call
   end
 
+  # Run this command when it is called, no matter if its dependencies did not change
+  def must_run cmd
+    cmd = @commands[cmd.to_sym]
+    if cmd.nil?
+      puts "\001b[31mNON-FATAL ERROR\001b[0m: Command #{cmd} does not exist, so `must_run` has not effect"
+    end
+    cmd.overwrite_should_run = true
+  end
+
   # Put this at the end of a file
   def end
     $cache = CacheManager.new # load cache file
     
     command = ARGV[0] || @mainCommand
-    puts command
+    if command == "--" # passing arguments to be processed by the builld file -> pass "--" as the command to specify the default
+      command = @mainCommand
+    end
     self.call command
 
     $cache.save # save cache file

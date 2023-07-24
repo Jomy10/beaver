@@ -6,7 +6,7 @@ Beaver is an easy to understand build tool with a lot of capabilities.
 - [Installation](#installation)
 
 ```ruby
-requre 'beaver'
+require 'beaver'
 
 OUT="build/"
 
@@ -112,11 +112,11 @@ $beaver.end
 ```
 
 That's much better, and easier to maintain. `File.join` will take care of adding the file
-separators for us. In this case it is equivalent to `"#{BUILD_DIR}/#{a.out}"`
+separators for us. In this case it is equivalent to `"#{BUILD_DIR}/a.out"`
 
 #### `each`
 
-When we replace `all` with `each` in the above examle, the command will no longer run
+When we replace `all` with `each` in the above example, the command will no longer run
 once with all files passed to a `$files` variable, instead the command will run for each
 file in the list, and the file will be passed to the `$file` variable.
 
@@ -188,6 +188,11 @@ Hello world
 `sh silent %(echo "Hello world")` will output:
 ```
 Hello world
+```
+
+`sh output_silent %(echo "Hello world")` will output:
+```
+echo "Hello world"
 ```
 
 and `sh full_silent %(echo "Hello world")` will output nothing.

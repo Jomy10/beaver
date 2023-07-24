@@ -10,7 +10,7 @@ def sh(strcmd)
     end
   end
 
-  if strcmd.is_a? SilentAll
+  if strcmd.is_a?(SilentAll) || strcmd.is_a?(SilentOutput)
     `#{strcmd}`
   else
     puts `#{strcmd}`
@@ -38,6 +38,11 @@ SilentAll = Struct.new(:strcmd) do
     strcmd
   end
 end
+SilentOutput = Struct.new(:strcmd) do
+  def to_s
+    strcmd
+  end
+end
 
 # Do not print the command
 def silent(strcmd)
@@ -47,4 +52,9 @@ end
 # Do not print the command, or the output of the command
 def full_silent(strcmd)
   return SilentAll.new(strcmd)
+end
+
+# Do not print out the output of the command
+def output_silent(strcmd)
+  return SilentOutput.new(strcmd)
 end
