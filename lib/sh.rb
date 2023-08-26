@@ -13,7 +13,7 @@ def sh(strcmd)
   if strcmd.is_a?(SilentAll) || strcmd.is_a?(SilentOutput)
     `#{strcmd}`
   else
-    puts `#{strcmd}`
+    system "#{strcmd}"
   end
 
   if $beaver.has(:e)

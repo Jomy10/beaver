@@ -28,7 +28,7 @@ do
 
   # Install beaver locally
   if [[ $arg == "install" ]]; then
-    gem install beaver-*.gem
+    gem install beaver-*.gem # TODO: exclude beaver-build
   fi
 
   # Uninstall local gem

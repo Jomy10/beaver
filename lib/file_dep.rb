@@ -43,7 +43,7 @@ class FileDep
     globs = nil
     if @glob.respond_to? :each
       # array
-      globs = glob
+      globs = @glob
     else
       # string
       globs = [@glob]
