@@ -60,7 +60,7 @@ class Beaver
   def call(cmd)
     _cmd = @commands[cmd.to_sym]
     if _cmd.nil?
-      puts "No command called #{cmd} found"
+      STDERR.puts "No command called #{cmd} found"
       exit 1
     end
 
@@ -69,11 +69,18 @@ class Beaver
 
   # Run this command when it is called, no matter if its dependencies did not change
   def must_run cmd
-    cmd = @commands[cmd.to_sym]
-    if cmd.nil?
-      puts "\001b[31mNON-FATAL ERROR\001b[0m: Command #{cmd} does not exist, so `must_run` has not effect"
+    _cmd = @commands[cmd.to_sym]
+    if _cmd.nil?
+      STDERR.puts "\001b[31mNON-FATAL ERROR\001b[0m: Command #{cmd} does not exist, so `must_run` has not effect"
+      exit 1
     end
-    cmd.overwrite_should_run = true
+    _cmd.overwrite_should_run = true
+
+    _cmd.call
+  end
+
+  def set_main(cmd)
+    @mainCommand = cmd.to_sym
   end
 
   # Put this at the end of a file
@@ -87,6 +94,11 @@ class Beaver
     self.call command
 
     $cache.save # save cache file
+  end
+
+  # Returns all available commands as an array
+  def list_commands
+    return @commands.map { |k, v| k }
   end
 
   # Clean cache
@@ -107,4 +119,8 @@ require 'sh'
 # Call a command
 def call(cmd)
   $beaver.call cmd
+end
+
+def must_run(cmd)
+  $beaver.musts_run cmd
 end

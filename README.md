@@ -230,6 +230,11 @@ However, a regular string, or any string literal in ruby will work as well.
 sh "some_shell_command"
 ```
 
+## More on te `call` command
+
+Apart from `call`, there is also a `must_run`, which will ignore dependencies when running the command,
+as wel as any of its sub-commands.
+
 ## Installation
 
 For Beaver to work, you must install [Ruby](https://www.ruby-lang.org/en/).

@@ -1,5 +1,7 @@
 require 'file.rb'
 
+$__BEAVER_SHOULD_RUN_SCOPE = false
+
 class Command
   attr_accessor :name
   attr_accessor :fn
@@ -16,8 +18,20 @@ class Command
 
   # Execute the command if needed (dependency files changed)
   def call
+    global_alread_defined = $__BEAVER_SHOULD_RUN_SCOPE
+    if self.overwrite_should_run
+      $__BEAVER_SHOULD_RUN_SCOPE  = true
+    end
+    if $__BEAVER_SHOULD_RUN_SCOPE 
+      self.overwrite_should_run = true
+    end
+    
     if self.should_run?
       self.call_now()
+    end
+
+    if !global_alread_defined && $__BEAVER_SHOULD_RUN_SCOPE 
+      $__BEAVER_SHOULD_RUN_SCOPE  = false
     end
   end
 
@@ -81,6 +95,6 @@ class Command
 end
 
 def cmd(name, deps = nil, &fn)
-  cmd = Command.new name, deps, fn
+  cmd = Command.new name.to_sym, deps, fn
   $beaver.__appendCommand cmd
 end
