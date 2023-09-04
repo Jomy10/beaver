@@ -56,6 +56,10 @@ class Beaver
     @commands[cmd.name] = cmd
   end
 
+  def command_exists?(cmd)
+    return @commands[cmd.to_sym] != nil
+  end
+
   # Call a command
   def call(cmd)
     _cmd = @commands[cmd.to_sym]
@@ -122,5 +126,5 @@ def call(cmd)
 end
 
 def must_run(cmd)
-  $beaver.musts_run cmd
+  $beaver.must_run cmd
 end
