@@ -1,8 +1,6 @@
-beaver-*.gem
-beaver-build-*.gem
+*.gem
 **/.DS_Store
-/next
-# Test/example
 .beaver
-/src
-TODO.md
+/private
+Gemfile.lock
+
