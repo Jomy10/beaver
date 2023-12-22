@@ -7,6 +7,8 @@ module Beaver
     class CacheManager
       # { project => elements }
       attr_accessor :cache
+
+      DEFAULT_PROJECT = "__BEAVER_BASE"
       
       def initialize
         @cache = Hash.new
@@ -21,7 +23,7 @@ module Beaver
       def get_project_cache(_project_name)
         project_name = _project_name
         if _project_name.nil?
-          project_name = "__BEAVER__BASE"
+          project_name = DEFAULT_PROJECT
         end
         if @cache[project_name].nil?
           project_cache_file = self.project_cache_location(project_name)
@@ -48,7 +50,7 @@ module Beaver
       def add_project_cache_if_needed(_project_name)
         project_name = _project_name
         if _project_name.nil?
-          project_name = "__BEAVER__BASE"
+          project_name = DEFAULT_PROJECT
         end
         if @cache[project_name].nil?
           project_cache_file = self.project_cache_location(project_name)
@@ -111,7 +113,7 @@ module Beaver
       def add_command_cache_if_needed(_project_name, command_name)
         project_name = _project_name
         if _project_name.nil?
-          project_name = "__BEAVER_BASE"
+          project_name = DEFAULT_PROJECT
         end
         if @cache[project_name][command_name].nil?
           @cache[project_name][command_name] = Hash.new
@@ -142,7 +144,7 @@ module Beaver
       end
       
       def add_config_cache
-        base_file = $1
+        base_file = File.basename($0)
         self.add_project_cache_if_needed(nil)
         self.add_command_cache_if_needed(nil, CONFIG_BASE)
         command_cache = self.get_config_cache
