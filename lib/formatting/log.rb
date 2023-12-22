@@ -4,9 +4,9 @@ module Beaver
   module Log
     using Rainbow
 
-    def self.err(message)
+    def self.err(message, exit_status = 1)
       STDERR.puts "[ERR] #{message}".red
-      exit 1
+      exit exit_status
     end
 
     def self.warn(message)
@@ -19,11 +19,11 @@ module Beaver
     end
 
     def self.command_start(command_name)
-      STDERR.puts "> #{command_name}".black.bright
+      STDERR.puts "> #{command_name}".color(:dimgray)
     end
     
     def self.shell_execute(shell_command)
-      STDERR.puts shel_command.color(:lightgray) # or :dimgray
+      STDERR.puts shell_command.color(:darkgray)
     end
   end
 end
