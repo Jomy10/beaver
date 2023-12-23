@@ -4,9 +4,9 @@
 
 # Tutorials
 
--  [Building a C project](./0-getting-started.md)
-    - [Using commands](./1-using-commands-to-build-a-c-project.md)
-    - [Using a project](./2-using-project-to-build-a-c-project.md)
+-  [Building a C project](./1-Building a C project.md)
+    - [Using commands](./1-1-using-commands-to-build-a-c-project.md)
+    - [Using a project](./1-2-using-project-to-build-a-c-project.md)
 
 # API documentation
 
@@ -22,5 +22,4 @@
     - [Target]()
         - [C::Library]()
         - [C::Executable]()
-
 
