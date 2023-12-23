@@ -81,10 +81,6 @@ We can make our script executable;
 - Add this to the top of the script:
 ```ruby
 #!/usr/bin/env ruby
-
-cmd :build do
-    
-end
 ```
 
 - Execute the following:
@@ -170,9 +166,14 @@ end
 You'll notice:
 - Inside of the :build command
     - `call :command_name`: this will call the command with the specified name
-- In the :link_objects command
+- In the :link\_objects command
     - `all(...)`: this defines an `all` dependency as I previously stated
     - `out: "main"`: an `all` dependency only has 1 output file
 
 Try running the script and see what happens now!
+
+We now have succesfully built a C project; we built the sources into object files
+using an `each` dependency, then linked the object files together with an `all`
+dependency and we called both of these commands from our main "build" command,
+which we can call using `./make.rb` or `./make.rb build`.
 
