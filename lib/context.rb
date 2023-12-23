@@ -102,9 +102,11 @@ module Beaver
     
     # TODO: option parser (see notes in Project) (-f, command runner)
   end
-  
-  $beaver = Beaver::BeaverContext.new
-  $beaver.initialize_cache_manager
+ 
+  if $beaver.nil?
+    $beaver = Beaver::BeaverContext.new
+    $beaver.initialize_cache_manager
+  end
   
   def call(command_name)
     $beaver.run(command_name)

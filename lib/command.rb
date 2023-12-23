@@ -103,7 +103,7 @@ module Beaver
               }
             }.filter { |files|
               # Don't re-run of the input file hasn't changed and the output file exists
-              !input_list_ignore.include?(files[:input]) && File.exists?(files[:output])
+              !(input_list_ignore.include?(files[:input]) && File.exist?(files[:output]))
             }
         end
         case self.fn.arity
