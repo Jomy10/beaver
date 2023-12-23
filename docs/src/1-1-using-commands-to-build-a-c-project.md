@@ -112,8 +112,6 @@ $ ./main
 Hello world
 ```
 
-<!-- TODO: move to separate chapter? -->
-
 ### Caching with `each`
 
 Since we don't want to recompile everything every time, we can compile our source
@@ -123,7 +121,7 @@ To do this, use the `each` dependency:
 ```ruby
 BUILD_DIR = "build"
 
-cmd :build, each("src/*.c") out: proc { |f| File.join(BUILD_DIR, f.basename + ".o") } do |file, outfile|
+cmd :build, each("src/*.c"), out: proc { |f| File.join(BUILD_DIR, f.basename + ".o") } do |file, outfile|
     sh %(clang -c #{file} -o #{outfile})
 end
 ```
@@ -137,6 +135,9 @@ Let's break it down:
 
 Try to run the script now and you'll see it gets executed for each file. Run it
 again and you'll see it won't compile anything anymore.
+
+Try changing one of the source files or deleting one of the output files, you'll see the
+command runs again for those files.
 
 ### Caching with `all`
 
