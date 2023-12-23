@@ -2,7 +2,7 @@
 
 
 module Beaver
-  $beaver = nil
+  $beaver = nil if !$beaver.nil?
 end
 
 require 'files/file_utils'
