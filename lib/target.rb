@@ -18,6 +18,7 @@ module Beaver
     end
     
     module TargetPostInit
+      # Assign project and add target to project
       def after_init
         self.project = (self.project || $beaver.current_project)
         if self.project.nil?
@@ -27,6 +28,10 @@ module Beaver
           Beaver::Log::warn "Target with name #{self.name} specified multiple times"
         end
         self.project.targets[self.name] = self
+        p self.class
+        if self.class.private_method_defined? :_custom_after_init
+          self._custom_after_init()
+        end
       end
     end
   end

@@ -22,12 +22,14 @@ module C
 
     # Get the additional cflags from the project
     def cflags
-      c_config = self.config[C::ID]
       cflags = ""
-      if !c_config.nil? && !c_config.cflags.nil?
-        cflags << " " + Beaver::Project::_parse_flags(c_config.cflags)
+      if !self.config.nil?
+        c_config = self.config[C::ID]
+        if !c_config.nil? && !c_config.cflags.nil?
+          cflags << " " + Beaver::Project::_parse_flags(c_config.cflags)
+        end
       end
-      if !@options[:cflags].nil?
+      if !$beaver.options[:cflags].nil?
         cflags << " " + Beaver::Project::_parse_flags(@options[:cflags])
       end
       return cflags.strip
