@@ -18,7 +18,7 @@ cmd :build do
     call :create_library
 end
 
-cmd :build_objects, each("src/*.c"), out: proc { |f| File.join(OUT, f + ".o") } do |file, outfile|
+cmd :build_objects, each("src/*.c"), out: proc { |f| File.join(OUT, f.path + ".o") } do |file, outfile|
     sh "#{CC} -c #{file} $(pkg-config sdl2 --cflags) -o #{outfile}"
 end
 

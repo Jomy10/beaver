@@ -84,7 +84,7 @@ module C
         deps = []
         for dependency_name in self.dependencies
           dependency = self.project.get_target(dependency_name)
-          if dependency.type == LibraryType::SYSTEM
+          if dependency.library_type == LibraryType::SYSTEM
             deps << dependency
           end
           sub_dependencies = dependency._all_system_deps
@@ -176,8 +176,12 @@ module C
   class Library < Internal::Target
     include Beaver::Internal::PostInitable
     include Beaver::Internal::TargetPostInit
+
+    def executable?
+      false
+    end
     
-    def type
+    def library_type
       if self._type.nil?
         return LibraryType::USER
       else
@@ -224,10 +228,22 @@ module C
         ldflags: `pkg-config #{pkg_config_name || name} --libs`.gsub("\n", "")
       )
     end
+    
+    def build_static_cmd_name
+      "__build_#{self.project.name}/#{self.name}_static"
+    end
+    
+    def build_dynamic_cmd_name
+      "__build_#{self.name}_dynamic"
+    end
 
+    def build
+      Beaver::call self.build_static_cmd_name
+      Beaver::call self.build_dynamic_cmd_name
+    end
+    
     private
     def _custom_after_init
-      puts "after init #{self}"
       out_dir = self.out_dir
       obj_dir = self.obj_dir
       static_obj_dir = File.join(obj_dir, "static")
@@ -237,16 +253,18 @@ module C
       Beaver::def_dir(obj_dir)
       cflags = self._cflags
       include_flags = self._include_flags
-       
-      Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj_static", Beaver::each(self.sources), out: proc { |f| File.join(static_obj_dir, f.gsub("/", "_") + ".o") } do |file, outfile|
+      
+      static_obj_proc = proc { |f| File.join(static_obj_dir, f.path.gsub("/", "_") + ".o") }
+      Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj_static", Beaver::each(self.sources), out: static_obj_proc do |file, outfile|
         Beaver::sh "#{cc} " +
           "-c #{file} " +
           "#{cflags} " +
           "#{include_flags} " +
           "-o #{outfile}"
       end
-      
-      Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj_dyn", Beaver::each(self.sources), out: proc { |f| File.join(dynamic_obj_dir, f.gsub("/","_") + ".o") } do |file, outfile|
+     
+      dyn_obj_proc = proc { |f| File.join(dynamic_obj_dir, f.path.gsub("/","_") + ".o") }
+      Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj_dyn", Beaver::each(self.sources), out: dyn_obj_proc do |file, outfile|
         Beaver::sh "#{cc} " +
           "-c #{file} " +
           "-fPIC " +
@@ -255,40 +273,56 @@ module C
           "-o #{outfile}"
       end
       
-      outfiles = Beaver::eval_filelist(self.sources).map { |f| File.join(obj_dir, f.gsub("/", "_") + ".o") }
+      outfiles = Beaver::eval_filelist(self.sources).map { |f| static_obj_proc.(SingleFile.new(f)) }
       Beaver::cmd "__build_#{self.project.name}/#{self.name}_static_lib", Beaver::all(outfiles), out: self.static_lib_path do |files, outfile|
         Beaver::sh "#{ar} -crs #{outfile} #{files}"
       end
       
+      outfiles = Beaver::eval_filelist(self.sources).map { |f| dyn_obj_proc.(SingleFile.new(f)) }
       Beaver::cmd "__build_#{self.project.name}/#{self.name}_dynamic_lib", Beaver::all(outfiles), out: self.dynamic_lib_path do |files, outfile|
         Beaver::sh "#{cc} #{files} -shared -o #{outfile}"
       end
       
-      Beaver::cmd "__build_#{self.project.name}/#{self.name}_static" do
+      Beaver::cmd self.build_static_cmd_name do
         Beaver::def_dir static_obj_dir
         Beaver::call "__build_#{self.project.name}/#{self.name}_obj_static"
         Beaver::call "__build_#{self.project.name}/#{self.name}_static_lib"
       end
       
-      Beaver::cmd "__build_#{self.name}_dynamic" do
+      Beaver::cmd self.build_dynamic_cmd_name do
         Beaver::def_dir dynamic_obj_dir
         Beaver::call "__build_#{self.project.name}/#{self.name}_obj_dyn"
         Beaver::call "__build_#{self.project.name}/#{self.name}_dynamic_lib"
       end
     end
   end
-
+  
   class Executable < Internal::Target
     include Beaver::Internal::PostInitable
     include Beaver::Internal::TargetPostInit
+    
+    def executable?
+      true
+    end
     
     def executable_path
       File.join(self.out_dir, self.name)
     end
     
+    def build_cmd_name
+      "_build_#{self.project.name}/#{self.name}"
+    end
+    
+    def build
+      Beaver::call self.build_cmd_name
+    end
+    
+    def run
+      system self.executable_path
+    end
+    
     private
     def _custom_after_init
-      puts "after init #{self}"
       out_dir = self.out_dir
       obj_dir = self.obj_dir
       cc = $beaver.tools[:cc]
@@ -296,7 +330,7 @@ module C
       ldflags = self._ldflags
       include_flags = self._include_flags
       
-      Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj", Beaver::each(self.sources), out: proc { |f| File.join(obj_dir, f.gsub("/", "_") + ".o") } do |file, outfile|
+      Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj", Beaver::each(self.sources), out: proc { |f| File.join(obj_dir, f.path.gsub("/", "_") + ".o") } do |file, outfile|
         Beaver::sh "#{cc} " +
           "-c #{file} " +
           "#{cflags} " +
@@ -305,11 +339,11 @@ module C
       end
       
       outfiles = Beaver::eval_filelist(self.sources).map { |f| File.join(obj_dir, f.gsub("/", "_") + ".o") }
-      Beaver::cmd "__build_#{self.project.name}/#{self.name}_link", Beaver::all(outfiles), out: self.executable_path do |file, outfile|
+      Beaver::cmd "__build_#{self.project.name}/#{self.name}_link", Beaver::all(outfiles), out: self.executable_path do |files, outfile|
         Beaver::sh "#{cc} #{files} #{ldflags} -o #{outfile}"
       end
       
-      Beaver::cmd "_build_#{self.project.name}/#{self.name}" do
+      Beaver::cmd self.build_cmd_name do
         Beaver::def_dir obj_dir
         Beaver::call "__build_#{self.project.name}/#{self.name}_obj"
         Beaver::call "__build_#{self.project.name}/#{self.name}_link"

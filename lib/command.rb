@@ -133,6 +133,7 @@ module Beaver
           inputs = MultipleFiles.new(self.input_files)
           case self.fn.arity
           when 1
+          :q
             self.fn.call(inputs)
           when 2
             self.fn.call(
@@ -161,14 +162,14 @@ module Beaver
   
   def each(*filelist)
     return Dependency.new(
-      filelist,
+      filelist.flatten,
       DependencyType::EACH
     )
   end
   
   def all(*filelist)
     return Dependency.new(
-      filelist,
+      filelist.flatten,
       DependencyType::ALL
     )
   end
