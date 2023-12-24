@@ -20,6 +20,7 @@ module Beaver
     #       right before commands are executed!
     attr_reader :options
     attr_reader :postponed_callbacks
+    attr_reader :tools
     
     def initialize
       @projects = Hash.new
@@ -38,8 +39,13 @@ module Beaver
       end
       @options = {}
       self.default_option :verbose
-
+      
       @postponed_callbacks = []
+      @tools = {
+        cc: ENV["CC"] || "clang",
+        cxx: ENV["CXX"] || "clang++",
+        ar: ENV["AR"] || "ar",
+      }
     end
 
     def default_option(option_name, value = true)
@@ -68,7 +74,7 @@ module Beaver
     # Commands #
     def register(command)
       if !@commands[command.name].nil?
-        Beaver::Logger::warn("Redefined command #{command}")
+        Beaver::Log::warn("Redefined command #{command.name}")
       end
 
       @commands[command.name] = command

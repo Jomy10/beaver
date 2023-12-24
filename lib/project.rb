@@ -28,35 +28,11 @@ module Beaver
       @current_config = nil # TODO: params
       @targets = Hash.new
       @_options_callback = options
-   
-      # TODO: in beave option parser which decides what poject to be run (in the Beaver.new method)
-      # @options = {}
-      # opt_parser = OptionParser.new do |opts|
-      #   opts.banner = "Usage: #{$0} command [options]"
-      #
-      #   options.call(opts)
-      #   opts.on("--cflags=FLAGS", Array, "Additional C flags")
-      #   opts.on("--ldflags=FLAGS", Array, "Additional Linker flags")
-      #   opts.on("-f", "--force", "Force rebuild the project")
-      #   opts.on("-v", "--[no-]verbose", "Print all compiler commands")
-      #   opts.on("-h", "--help", "Prints this help message") do
-      #     # TODO: separate
-      #     puts opts
-      #     exit 1
-      #   end
-      # end
-      # @options[:args] = opt_parser.parse!(ARGV, into: @options)
       
       $beaver.current_project = self
       $beaver.add_project(self)
     end
 
-    # def default_option(option_name, value = true)
-    #   if @options[option_name].nil?
-    #     @options[option_name] = value
-    #   end
-    # end
-   
     # TODO: different for non-selected projects
     def options
       return $beaver.options
@@ -81,7 +57,7 @@ module Beaver
 
     # Get the current config's name or the default config
     def config_name
-      return @current_config || self.default_config
+      return @current_config || @default_config
     end
 
     # Get the current configuration for each language
