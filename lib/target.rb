@@ -28,7 +28,6 @@ module Beaver
           Beaver::Log::warn "Target with name #{self.name} specified multiple times"
         end
         self.project.targets[self.name] = self
-        p self.class
         if self.class.private_method_defined? :_custom_after_init
           self._custom_after_init()
         end
