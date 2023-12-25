@@ -24,6 +24,8 @@ module Beaver
     attr_reader :tools
     attr_accessor :debug
     attr_accessor :verbose
+    # True if exit with an error
+    attr_accessor :exit_error
     
     def initialize 
       @projects = Hash.new
@@ -99,8 +101,12 @@ run [target]      Build and run the specified executable target
       return @commands[command_name.to_s]
     end
 
+    def default_command=(cmd)
+      @_default_command = cmd
+    end
+
     def default_command
-      return @commands.filter { |name,_| !name.start_with? "_" }.map { |k,_| k }.first
+      return @_default_command || @commands.filter { |name,_| !name.start_with? "_" }.map { |k,_| k }.first
     end
     
     def run(command_name)
@@ -162,7 +168,7 @@ run [target]      Build and run the specified executable target
       # TODO: allow build all
       when "build"
         if args.count == 1
-          targets = self.current_project.targets.filter { |t| !t.is_a? SystemLibrary }
+          targets = self.current_project.targets.filter { |_,t| t.buildable? }
           if targets.count == 1
             self.arg_build(targets.map { |_,v| v }.first)
             return true
@@ -170,11 +176,16 @@ run [target]      Build and run the specified executable target
             Beaver::Log::err("Multiple targets found, please specify one #{targets.map { |t,_| "`#{t}`" }.join(" ")}")
           end
         else
-          self.arg_build(self.current_project.get_target(args[1]))
+          target = self.current_project.get_target(args[1])
+          if target.nil?
+            Beaver::Log::err("Target #{args[1]} does not exist, valid targets are #{self.current_project.targets.map { |k,_| "`#{k}`" }.join(" ") }")
+          end
+          self.arg_build(target)
           return true
         end
       else
-        Beaver::Log::err("Unknown command #{args[0]}\n#{Rainbow(@option_parser).white}")
+        return false
+        # Beaver::Log::err("Unknown command #{args[0]}\n#{Rainbow(@option_parser).white}")
       end
     end
   end
@@ -187,8 +198,12 @@ run [target]      Build and run the specified executable target
   def call(command_name)
     $beaver.run(command_name)
   end
-  
+ 
+  # TODO: when config file changed, remove cache files and set to force_
   at_exit {
+    if $beaver.exit_error
+      next
+    end
     if !$beaver.current_project.nil? && !$beaver.current_project._options_callback.nil?
       $beaver.current_project._options_callback.call($beaver.option_parser)
     end
@@ -215,7 +230,6 @@ run [target]      Build and run the specified executable target
     $beaver.force_run = $beaver.options[:force] || false
     $beaver.debug = $beaver.options[:"beaver-debug"] || false
     $beaver.verbose = $beaver.options[:verbose] || false
-    p $beaver.options
     if !$beaver.options[:config].nil?
       $beaver.current_project.current_config = $beaver.options[:config]
     end
@@ -236,7 +250,8 @@ run [target]      Build and run the specified executable target
         $beaver.call_command_at_exit
       end
     end
-    
+  
+    def_dir $beaver.cache_dir
     $beaver.save_cache
   }
 end
