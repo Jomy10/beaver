@@ -43,9 +43,13 @@ module C
         include_flags = if self.include.nil?
           ""
         else
-          Target._parse_include(self.include)
+          (Target._parse_private_include(self.include) || "")
+            + (Target._parse_public_include(self.include) || "")
         end
         include_flags << " " + self.project.include_flags
+        for dependency in self.dependencies
+          include_flags << " " + self.project.get_target(dependency)._public_include_flags
+        end
         include_flags.strip!
         # TODO: public include flags of dependencies
         return include_flags
@@ -58,6 +62,9 @@ module C
           Target._parse_public_include(self.include)
         end
         include_flags << " " + self.project.include_flags
+        for dependency in self.dependencies
+          include_flags << " " + self.project.get_target(dependency)._public_include_flags
+        end
         include_flags.strip!
         return include_flags
       end
@@ -147,16 +154,19 @@ module C
       # - String
       # - String[]
       # - { :internal => String | String[], :public => String | String[] }
-      def self._parse_include(include)
-        if include.is_a? String
-          return "-I#{include}"
-        elsif include.is_a? Hash
-          return include.map { |k, v| Target._parse_include(v) }.join(" ")
-        elsif include.respond_to? :each
-          return include.map { |folder| "-I#{folder} " }.join(" ")
-        else
-          Beaver::Log::err("Invalid include #{include.describe}")
+      def self._parse_private_include(include)
+        if include.is_a? Hash
+          Target._parse_public_include(include[:private])
         end
+        # if include.is_a? String
+        #   return "-I#{include}"
+        # elsif include.is_a? Hash
+        #   return include.map { |k, v| Target._parse_include(v) }.join(" ")
+        # elsif include.respond_to? :each
+        #   return include.map { |folder| "-I#{folder} " }.join(" ")
+        # else
+        #   Beaver::Log::err("Invalid include #{include.describe}")
+        # end
       end
 
       def self._parse_public_include(include)
@@ -247,7 +257,6 @@ module C
       "__build_#{self.name}_dynamic"
     end
 
-    # TODO: not for system libraries!! (C::SystemLibrary < C::Library)
     def build
       self.dependencies.each do |dependency|
         self.project.get_target(dependency).build
