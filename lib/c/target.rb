@@ -70,12 +70,17 @@ module C
         end
         if !self.dependencies.nil?
           deps = self.dependencies.map { |d| self.project.get_target(d) }
-          ldflags << " " +  deps.map { |d| d._ldflags }.join(" ")
-          ldflags << " " + deps.map { |d|
+          ldflags << deps.map { |d| flags = d._ldflags; flags.nil? ? "" : " " + flags }.join(" ")
+          ldflags << deps.map { |d|
             # TODO: forcing static, dynamic
-            "-L#{d.out_dir} -l#{d.name}"
+            if d.is_a? SystemLibrary
+              ""
+            else
+              " -L#{d.out_dir} -l#{d.name}"
+            end
           }.join(" ")
         end
+        return ldflags.strip
       end
       
       # recursively search for dependencies
@@ -173,6 +178,7 @@ module C
     SYSTEM = 1
   end
 
+  # TODO: allow to specify dyn/static lib
   class Library < Internal::Target
     include Beaver::Internal::PostInitable
     include Beaver::Internal::TargetPostInit
@@ -208,7 +214,7 @@ module C
           _ldflags << ldflags
         end
       end
-      return Library.new(
+      return SystemLibrary.new(
         name: name,
         _type: LibraryType::SYSTEM,
         cflags: cflags,
@@ -237,7 +243,11 @@ module C
       "__build_#{self.name}_dynamic"
     end
 
+    # TODO: not for system libraries!! (C::SystemLibrary < C::Library)
     def build
+      self.dependencies.each do |dependency|
+        self.project.get_target(dependency).build
+      end
       Beaver::call self.build_static_cmd_name
       Beaver::call self.build_dynamic_cmd_name
     end
@@ -296,6 +306,18 @@ module C
       end
     end
   end
+
+  class SystemLibrary < Library
+    def build
+      self.dependencies.each do |dependency|
+        self.project.get_target(dependency).build
+      end
+    end
+    
+    private
+    def _custom_after_init
+    end
+  end
   
   class Executable < Internal::Target
     include Beaver::Internal::PostInitable
@@ -310,10 +332,13 @@ module C
     end
     
     def build_cmd_name
-      "_build_#{self.project.name}/#{self.name}"
+      "__build_#{self.project.name}/#{self.name}"
     end
     
     def build
+      self.dependencies.each do |dependency|
+        self.project.get_target(dependency).build
+      end
       Beaver::call self.build_cmd_name
     end
     
