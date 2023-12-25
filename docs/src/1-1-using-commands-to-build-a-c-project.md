@@ -7,7 +7,6 @@ Let's get hands-on and learn the fundamentals by building a C project.
 Let's say we have the following working directory:
 
 ```
-.
 ├── make.rb
 └── src
     ├── greeter.c

@@ -1,0 +1,190 @@
+# Using a project to build a C project
+
+We are going to build a C project using a Beaver C project. We will be making
+the same project as in the [previous chapter](./1-1-using-commands-to-build-a-c-project.md),
+but instead of using commands, we will use a project.
+
+## Our project
+
+Let's say we have the following working directory:
+
+```
+.
+├── make.rb
+└── src
+    ├── greeter.c
+    ├── greeter.h
+    └── main.c
+```
+
+contents of `main.c`:
+```c
+#include <stdio.h>
+#include "greeter.h"
+
+int main(void) {
+	printf("%s\n", greet_message());
+}
+```
+
+contents of `greeter.h`:
+```c
+char* greet_message(void);
+```
+
+contents of `greeter.c`:
+```c
+char* greet_message(void) {
+	return "Hello world";
+}
+```
+
+## Our build script
+
+### Setup
+
+Let's create a new file called `make.rb` and include the beaver library:
+```ruby
+require 'beaver'
+```
+
+We can call our script like this:
+
+```ruby
+ruby make.rb
+```
+
+It will tell us we specified an invalid command.
+
+#### Quality of life
+
+To make it easier to call our script, we can make it executable:
+
+- Add this to the top of the script:
+```ruby
+#!/usr/bin/env ruby
+```
+
+- Execute the following:
+```sh
+chmod +x make.rb
+```
+
+We can now call our script like this:
+```sh
+./make.rb
+```
+
+### Compiling our C code
+
+Let's create a project. In our `make.rb` file:
+
+```ruby
+Project.new("MyProject", build_dir: "build")
+```
+
+We create a project called "MyProject" and defined a build directory.
+
+We can now define a C executable:
+
+```ruby
+C::Executable.new(
+    name: "myExec",
+    sources: "src/*.c"
+)
+```
+
+We can now build our executable using `./make.rb build myExec`.
+The executable will be located in the `./build/myExec` directory.
+
+Since this is an executable, we can also run it using `./make.rb run myExec`
+
+### Creating a library
+
+Let's extract greeter.c into a separate library.
+
+The new project layout is:
+
+```
+.
+├── lib
+│   ├── greeter.c
+│   └── include
+│       └── greeter.h
+├── make.rb
+└── src
+    └── main.c
+```
+
+in `main.c`, we change the following line:
+
+```diff
+- #include "greeter.h"
++ #include "greeter.h"
+```
+
+Our new build script:
+
+```ruby
+require 'beaver'
+
+Project.new("MyProject", build_dir: "build")
+
+C::Library.new(
+    name: "myLibrary",
+    sources: "lib/*.c",
+    include: "lib/include"
+)
+
+C::Executable.new(
+    name: "myExec",
+    sources: "src/*.c",
+    dependencies: ["myLibrary"]
+)
+```
+
+We can now run our program again using:
+
+```sh
+./make.rb run myExec
+```
+
+This will build our library and the executable and then run it.
+
+We can also build our library separately:
+
+```sh
+./make.rb build myLibrary
+```
+
+### Linking a system library
+
+Let's link pthread and sdl2 to our executable. We can use this by:
+
+1. Defining the libraries
+
+```ruby
+# A system library; will get linked using -lpthread
+C::Library.system("pthread")
+
+# A system library that supports pkg-config
+C::Library.pkg_config("sdl2")
+```
+
+2. Linking to our main executable.
+
+We can do this by declaring them as dependencies:
+
+```ruby
+C::Executable(
+    name: "myExec",
+    sources: "src/*.c",
+    dependencies: ["myLibrary", "pthread", "sdl2"]
+)
+```
+
+### Final notes
+
+We can still define commands like we did in the previous chapter and call them
+in the same way.
+
