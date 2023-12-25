@@ -37,6 +37,8 @@ C::Library.new(
     sources: ["lib/*.c"]
 )
 
+C::Library.pkg_config("SDL2")
+
 C::Executable.new(
     name: "my_exec",
     sources: "src/*.c",
