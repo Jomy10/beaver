@@ -13,6 +13,7 @@ require 'context'
 require 'project'
 require 'target'
 require 'sh'
+require 'envvar'
 
 require 'formatting/log'
 
