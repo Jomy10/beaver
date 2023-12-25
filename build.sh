@@ -36,6 +36,15 @@ do
   # Clean gem files
   if [[ $arg == "clean" ]]; then
     rm beaver-*.gem
+    pushd docs
+    mdbook clean
+    popd
+  fi
+
+  if [[ $arg == "docs" ]]; then
+    pushd docs
+    mdbook build
+    popd
   fi
 
   # Publish gem to ruby gems
