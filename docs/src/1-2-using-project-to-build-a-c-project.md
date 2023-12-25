@@ -4,6 +4,8 @@ We are going to build a C project using a Beaver C project. We will be making
 the same project as in the [previous chapter](./1-1-using-commands-to-build-a-c-project.md),
 but instead of using commands, we will use a project.
 
+<!-- toc -->
+
 ## Our project
 
 Let's say we have the following working directory:
@@ -171,7 +173,7 @@ C::Library.system("pthread")
 C::Library.pkg_config("sdl2")
 ```
 
-2. Linking to our main executable.
+2. Linking the libraries to our main executable.
 
 We can do this by declaring them as dependencies:
 
@@ -180,6 +182,21 @@ C::Executable(
     name: "myExec",
     sources: "src/*.c",
     dependencies: ["myLibrary", "pthread", "sdl2"]
+)
+```
+
+### Private include flags
+
+A target's include flags are passed to the targets that depend on it. We can also
+declare private include paths.
+
+
+```ruby
+C::Library(
+    name: "MyLibrary",
+    # -Iinclude will get passed to the dependants, -Isrc will not
+    include: { private: "src", public: "include" },
+    sources: ["src/a.c", "src/b.c"]
 )
 ```
 
