@@ -186,6 +186,10 @@ module C
     def executable?
       false
     end
+
+    def buildable?
+      true
+    end
     
     def library_type
       if self._type.nil?
@@ -227,7 +231,7 @@ module C
     # @param pkg_config_name [String] the name of the package config package, default is `name` 
     def self.pkg_config(name, pkg_config_name: nil)
       # TODO: error handling
-      return Library.new(
+      return SystemLibrary.new(
         name: name,
         _type: LibraryType::SYSTEM,
         cflags:  `pkg-config #{pkg_config_name || name} --cflags`.gsub("\n", ""),
@@ -254,6 +258,9 @@ module C
     
     private
     def _custom_after_init
+      if self.sources.nil?
+        Beaver::Log::err("#{self.name} has no source files defined")
+      end
       out_dir = self.out_dir
       obj_dir = self.obj_dir
       static_obj_dir = File.join(obj_dir, "static")
@@ -282,7 +289,7 @@ module C
           "#{self._include_flags} " +
           "-o #{outfile}"
       end
-      
+     
       outfiles = Beaver::eval_filelist(self.sources).map { |f| static_obj_proc.(SingleFile.new(f)) }
       Beaver::cmd "__build_#{self.project.name}/#{self.name}_static_lib", Beaver::all(outfiles), out: self.static_lib_path do |files, outfile|
         Beaver::sh "#{ar} -crs #{outfile} #{files}"
@@ -313,6 +320,10 @@ module C
         self.project.get_target(dependency).build
       end
     end
+
+    def buildable?
+      false
+    end
     
     private
     def _custom_after_init
@@ -324,6 +335,10 @@ module C
     include Beaver::Internal::TargetPostInit
     
     def executable?
+      true
+    end
+
+    def buildable?
       true
     end
     
@@ -348,6 +363,9 @@ module C
     
     private
     def _custom_after_init
+      if self.sources.nil?
+        Beaver::Log::err("#{self.name} has no source files defined")
+      end
       out_dir = self.out_dir
       obj_dir = self.obj_dir
       cc = $beaver.tools[:cc]

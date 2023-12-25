@@ -6,6 +6,7 @@ module Beaver
 
     def self.err(message, exit_status = 1)
       STDERR.puts "[ERR] #{message}".red
+      $beaver.exit_error = true
       exit exit_status
     end
 
