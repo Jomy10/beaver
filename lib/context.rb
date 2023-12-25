@@ -22,6 +22,8 @@ module Beaver
     attr_reader :options
     attr_reader :postponed_callbacks
     attr_reader :tools
+    attr_accessor :debug
+    attr_accessor :verbose
     
     def initialize 
       @projects = Hash.new
@@ -42,6 +44,9 @@ run [target]      Build and run the specified executable target
       USAGE
       @option_parser.on("-f", "--force", "Force run commands")
       @option_parser.on("-v", "--[no-]verbose", "Print all shell commands")
+      @option_parser.on("--beaver-debug", "For library authors")
+      @option_parser.on("--list-targets", "List all targets of the current project")
+      @option_parser.on("--project=PROJECT", "Select a project")
       @option_parser.on("-h", "--help", "Prints this help message") do
         puts @option_parser
         exit 0
@@ -94,19 +99,19 @@ run [target]      Build and run the specified executable target
     end
 
     def default_command
-      return @commands.first
+      return @commands.filter { |name,_| !name.start_with? "_" }.map { |k,_| k }.first
     end
     
     def run(command_name)
       command = @commands[command_name.to_s]
       if command.nil?
-        Beaver::Log::err("Invalid command #{command_name}, valid commands are: #{@commands.map { |k,v| "`#{k}`" }.join(" ") }")
+        Beaver::Log::err("Invalid command #{command_name}, valid commands are: #{@commands.filter {|k,_| !k.start_with? "_" }.map { |k,v| "`#{k}`" }.join(" ") }")
       end
       # TODO: context?
       command.execute()
     end
     
-    def call_command_at_exit(args)
+    def call_command_at_exit
       Dir.chdir(File.dirname($0)) do
         args = @options[:args]
         self.run(args.count == 0 ? self.default_command : args[0])
@@ -145,23 +150,27 @@ run [target]      Build and run the specified executable target
             .filter { |_,t| t.executable? }
           if executable.count == 1
             self.arg_run(executables.map { |_,v| v }.first)
+            return true
           else
             Beaver::Log::err("Multiple executable targets found, please specify one #{executables.map { |t,_| "`#{t}`" }.join(" ")}")
           end
         else
           self.arg_run(self.current_project.get_target(args[1]))
+          return true
         end
       # TODO: allow build all
       when "build"
         if args.count == 1
-          targets = self.current_project.targets
+          targets = self.current_project.targets.filter { |t| !t.is_a? SystemLibrary }
           if targets.count == 1
             self.arg_build(targets.map { |_,v| v }.first)
+            return true
           else
             Beaver::Log::err("Multiple targets found, please specify one #{targets.map { |t,_| "`#{t}`" }.join(" ")}")
           end
         else
           self.arg_build(self.current_project.get_target(args[1]))
+          return true
         end
       else
         Beaver::Log::err("Unknown command #{args[0]}\n#{Rainbow(@option_parser).white}")
@@ -183,6 +192,28 @@ run [target]      Build and run the specified executable target
       $beaver.current_project._options_callback.call($beaver.option_parser)
     end
     $beaver.options[:args] = $beaver.option_parser.parse!(ARGV, into: $beaver.options)
+  
+    select_project_option = $beaver.options[:project]
+    if $beaver.options[:project] != nil
+      if $beaver.projects.count == 0
+        puts "No projects"
+        exit 0
+      end
+      proj = $beaver.projects.find { |name,_| name == select_project_option }[1]
+      if proj == nil
+        Beaver::Log::err("Project #{select_project_option} not found. Valid projects are: #{$beaver.projects.map { |name, _| "`#{name}`" }.join(" ")}")
+      end
+      $beaver.current_project = proj
+    end
+    if $beaver.options[:"list-targets"] == true
+      $beaver.current_project.targets.each do |name,target|
+        puts name + "\t" + target.class.to_s
+      end
+      exit 0
+    end
+    $beaver.force_run = $beaver.options[:force] || false
+    $beaver.debug = $beaver.options[:"beaver-debug"] || false
+    $beaver.verbose = $beaver.options[:verbose] || false
     
     $beaver.postponed_callbacks.each do |cb|
       case cb.arity

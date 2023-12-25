@@ -15,15 +15,21 @@ module Beaver
 
     # TODO: verbose settings
     def self.verbose(message)
-      STDERR.puts message
+      if $beaver.verbose
+        STDERR.puts message
+      end
     end
 
     def self.command_start(command_name)
-      STDERR.puts "> #{command_name}".color(:dimgray)
+      if $beaver.debug
+        STDERR.puts "> #{command_name}".color(:dimgray)
+      end
     end
     
     def self.shell_execute(shell_command)
-      STDERR.puts shell_command.color(:darkgray)
+      if $beaver.verbose
+        STDERR.puts shell_command.color(:darkgray)
+      end
     end
   end
 end
