@@ -10,17 +10,15 @@
 
 # API documentation
 
-- [commands]()
-    - [cmd]()
-    - [command dependencies]()
-        - [all]()
-            - [SingleFile]()
-        - [each]()
-            - [MultipleFiles]()
-    - [sh]()
+- [Commands](./2-commands.md)
+    - [cmd](./2-1-cmd.md)
+    - [Command dependencies](./2-2-command-dependencies.md)
+        - [each](./2-2-1-each.md)
+        - [all](./2-2-2-all.md)
+    - [sh](./2-3-sh.md)
 - [Project]()
     - [Target]()
         - [C::Library]()
         - [C::Executable]()
-- [env]()
+- [env](./4-env.md)
 

@@ -5,3 +5,7 @@ multilingual = false
 src = "src"
 title = "Beaver"
 
+[preprocessor.toc]
+command = "mdbook-toc"
+renderer = ["html"]
+

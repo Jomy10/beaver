@@ -2,6 +2,8 @@
 
 Let's get hands-on and learn the fundamentals by building a C project.
 
+<!-- toc -->
+
 ## Our project
 
 Let's say we have the following working directory:
