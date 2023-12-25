@@ -16,7 +16,7 @@ module Beaver
     # [Configuration]
     attr_reader :configurations
     # attr :default_config
-    # attr :current_config
+    attr_accessor :current_config
     attr_reader :targets
     attr_reader :_options_callback
 
@@ -52,12 +52,12 @@ module Beaver
     end
 
     def default_config
-      return @default_config || configurations.first
+      return @default_config || @configurations.first[0]
     end
 
     # Get the current config's name or the default config
     def config_name
-      return @current_config || @default_config
+      return @current_config || self.default_config
     end
 
     # Get the current configuration for each language
