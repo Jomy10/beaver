@@ -148,6 +148,9 @@ run [target]      Build and run the specified executable target
     
     # Return true if the arguments were handled by this function
     def handle_arguments
+      # Only handle build and run when we have a project
+      return false if self.projects.count == 0
+      
       args = @options[:args]
       if args.count == 0 then return false end
       case args[0]
