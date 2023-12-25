@@ -261,15 +261,15 @@ module C
       cc = $beaver.tools[:cc]
       ar = $beaver.tools[:ar]
       Beaver::def_dir(obj_dir)
-      cflags = self._cflags
-      include_flags = self._include_flags
+      # cflags = self._cflags
+      # include_flags = self._include_flags
       
       static_obj_proc = proc { |f| File.join(static_obj_dir, f.path.gsub("/", "_") + ".o") }
       Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj_static", Beaver::each(self.sources), out: static_obj_proc do |file, outfile|
         Beaver::sh "#{cc} " +
           "-c #{file} " +
-          "#{cflags} " +
-          "#{include_flags} " +
+          "#{self._cflags} " +
+          "#{self._include_flags} " +
           "-o #{outfile}"
       end
      
@@ -278,8 +278,8 @@ module C
         Beaver::sh "#{cc} " +
           "-c #{file} " +
           "-fPIC " +
-          "#{cflags} " +
-          "#{include_flags} " +
+          "#{self._cflags} " +
+          "#{self._include_flags} " +
           "-o #{outfile}"
       end
       
@@ -351,21 +351,21 @@ module C
       out_dir = self.out_dir
       obj_dir = self.obj_dir
       cc = $beaver.tools[:cc]
-      cflags = self._cflags
-      ldflags = self._ldflags
-      include_flags = self._include_flags
+      # cflags = self._cflags
+      # ldflags = self._ldflags
+      # include_flags = self._include_flags
       
       Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj", Beaver::each(self.sources), out: proc { |f| File.join(obj_dir, f.path.gsub("/", "_") + ".o") } do |file, outfile|
         Beaver::sh "#{cc} " +
           "-c #{file} " +
-          "#{cflags} " +
-          "#{include_flags} " +
+          "#{self._cflags} " +
+          "#{self._include_flags} " +
           "-o #{outfile}"
       end
       
       outfiles = Beaver::eval_filelist(self.sources).map { |f| File.join(obj_dir, f.gsub("/", "_") + ".o") }
       Beaver::cmd "__build_#{self.project.name}/#{self.name}_link", Beaver::all(outfiles), out: self.executable_path do |files, outfile|
-        Beaver::sh "#{cc} #{files} #{ldflags} -o #{outfile}"
+        Beaver::sh "#{cc} #{files} #{self._ldflags} -o #{outfile}"
       end
       
       Beaver::cmd self.build_cmd_name do

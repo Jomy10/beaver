@@ -47,6 +47,7 @@ run [target]      Build and run the specified executable target
       @option_parser.on("--beaver-debug", "For library authors")
       @option_parser.on("--list-targets", "List all targets of the current project")
       @option_parser.on("--project=PROJECT", "Select a project")
+      @option_parser.on("-cCONFIG", "--config=CONFIG", "Select a project configuration")
       @option_parser.on("-h", "--help", "Prints this help message") do
         puts @option_parser
         exit 0
@@ -214,6 +215,10 @@ run [target]      Build and run the specified executable target
     $beaver.force_run = $beaver.options[:force] || false
     $beaver.debug = $beaver.options[:"beaver-debug"] || false
     $beaver.verbose = $beaver.options[:verbose] || false
+    p $beaver.options
+    if !$beaver.options[:config].nil?
+      $beaver.current_project.current_config = $beaver.options[:config]
+    end
     
     $beaver.postponed_callbacks.each do |cb|
       case cb.arity
