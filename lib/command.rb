@@ -174,7 +174,7 @@ module Beaver
     )
   end
   
-  # @param name [String]
+# @param name [String]
   # @pram project [Project] Optionally assign this command to a project
   # @param in [Dependency] A dependency containing a filelist of source files
   # @param out [Proc | String] A transform function from input to output (when dependency is each) or an output file (when dependency is all)
