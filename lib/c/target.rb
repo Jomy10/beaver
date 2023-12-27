@@ -274,8 +274,8 @@ module C
       obj_dir = self.obj_dir
       static_obj_dir = File.join(obj_dir, "static")
       dynamic_obj_dir = File.join(obj_dir, "dynamic")
-      cc = $beaver.tools[:cc]
-      ar = $beaver.tools[:ar]
+      cc = $beaver.get_tool(:cc)
+      ar = $beaver.get_tool(:ar)
       Beaver::def_dir(obj_dir)
       # cflags = self._cflags
       # include_flags = self._include_flags
@@ -377,7 +377,7 @@ module C
       end
       out_dir = self.out_dir
       obj_dir = self.obj_dir
-      cc = $beaver.tools[:cc]
+      cc = $beaver.get_tool(:cc)
       # cflags = self._cflags
       # ldflags = self._ldflags
       # include_flags = self._include_flags

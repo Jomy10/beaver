@@ -19,6 +19,7 @@ require 'formatting/log'
 
 require 'c/target'
 require 'c/configuration'
+require 'c/tools'
 
 include Beaver
 
