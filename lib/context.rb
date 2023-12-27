@@ -169,9 +169,11 @@ run [target]      Build and run the specified executable target
         if args.count == 1
           executables = self.current_project.targets
             .filter { |_,t| t.executable? }
-          if executable.count == 1
+          if executables.count == 1
             self.arg_run(executables.map { |_,v| v }.first)
             return true
+          elsif executables.count == 0
+            Beaver::Log::err("No executable targets found")
           else
             Beaver::Log::err("Multiple executable targets found, please specify one #{executables.map { |t,_| "`#{t}`" }.join(" ")}")
           end

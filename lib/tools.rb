@@ -1,7 +1,7 @@
 module Beaver
   module Internal
     # Returns the first matching executable
-    def determine_cmd(*cmds)
+    def self.determine_cmd(*cmds)
       exts = ENV["PATHEXT"] ? ENV["PATHEXT"].split(";") : [""]
       paths = ENV["PATH"].split(File::PATH_SEPARATOR)
       cmds.each do |cmd|
