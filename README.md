@@ -83,25 +83,25 @@ Feel free to ask any questions you may have by opening an issue.
 ## FAQ
 
 <details>
-    <summary>Why choose Beaver over make?</summary>
+    <summary><b>Why choose Beaver over make?</b></summary>
     This project started as a more readable make replacement. I was
     getting frustrated by unreadable build tools. Beaver comes with
     all the features you'd expect from a make replacement.
 </details>
 
 <details>
-    <summary>Why choose Beaver over cmake?</summary>
+    <summary><b>Why choose Beaver over cmake?</b></summary>
     Beaver takes an approach to project management that does not abstract
     away all knowledge of the clang/gcc compilers. It's easier to use and
     understand what's going on.
 </details>
 
 <details>
-    <summary>Why Ruby?</summary>
+    <summary><b>Why Ruby?</b></summary>
     I picked ruby as I find it an excellent choice for build scrpts. It comes
     wth a rich standard library for working with files and has a magical syntax.
 
-    Sure, it's "slow", but the compiler is usually the bottleneck anyway.
+Sure, it's "slow", but the compiler is usually the bottleneck anyway in build scripts.
 </details>
 
 ## License

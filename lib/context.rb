@@ -58,13 +58,24 @@ run [target]      Build and run the specified executable target
       self.default_option :verbose
       
       @postponed_callbacks = []
-      @tools = {
-        cc: ENV["CC"] || "clang",
-        cxx: ENV["CXX"] || "clang++",
-        ar: ENV["AR"] || "ar",
-      }
+      @tools = Hash.new
     end
-
+   
+    # Lazily determine tool path
+    def get_tool(tool)
+      if @tools[tool].nil?
+        case tool
+        when :cc
+          @tools[tool] = C::Internal::get_cc
+        when :cxx
+          @tools[tool] = C::Internal::get_cxx
+        when :ar
+          @tools[tool] = C::Internal::get_ar
+        end
+      end
+      return @tools[tool]
+    end
+    
     def default_option(option_name, value = true)
       if @options[option_name].nil?
         @options[option_name] = value
