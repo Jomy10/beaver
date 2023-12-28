@@ -81,7 +81,7 @@ module Beaver
           return nil
         end
         
-        project_cache = self.get_project_cache(command.project.name)
+        project_cache = self.get_project_cache(command.project.nil? ? nil : command.project.name)
         if project_cache.nil? || project_cache[command.name].nil?
           return nil
         end
@@ -95,8 +95,9 @@ module Beaver
           return
         end
         
-        self.add_project_cache_if_needed(command.project.name)
-        self.add_command_cache_if_needed(command.project.name, command.name)
+        project_name = command.project.nil? ? nil : command.project.name
+        self.add_project_cache_if_needed(project_name)
+        self.add_command_cache_if_needed(project_name, command.name)
         command_cache = self.get_command_cache(command)
         case command_type
         when CommandType::EACH
