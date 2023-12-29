@@ -218,12 +218,14 @@ module C
       "__build_#{self.name}_dynamic"
     end
 
-    # TODO!!
     def build_if_not_built_yet
-      self.build
+      if !@built_this_run
+        self.build
+      end
     end
 
     def build
+      @built_this_run = true
       Workers.map(self.dependencies) do |dependency|
         self.project.get_target(dependency).build_if_not_built_yet
       end
@@ -327,7 +329,7 @@ module C
     
     def build
       Workers.map(self.dependencies) do |dependency|
-        self.project.get_target(dependency).build
+        self.project.get_target(dependency).build_if_not_built_yet
       end
       Beaver::call self.build_cmd_name
     end
