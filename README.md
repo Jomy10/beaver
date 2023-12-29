@@ -102,6 +102,8 @@ Feel free to ask any questions you may have by opening an issue.
     wth a rich standard library for working with files and has a magical syntax.
 
 Sure, it's "slow", but the compiler is usually the bottleneck anyway in build scripts.
+Next to the nice syntax, it's also easy to parallelize tasks, which has been taken
+advantage of whe compiling targets.
 </details>
 
 ## License

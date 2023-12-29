@@ -107,49 +107,9 @@ module C
         end
         return deps.uniq
       end
-
-      # TODO: args -> quoted
-      # def _build_obj
-      #   obj_dir = File.join(self.project.build_dir, self.name, "obj")
-      #   Beaver::def_dir(obj_dir)
-      #   cflags = self._cflags || ""
-      #   cflags << " " + self.project.cflags
-      #   cflags.strip!
-      #   include_flags = self._include_flags || ""
-      #   include_flags << " " + self.project.include_flags
-      #   include_flags.strip!
-      #
-      #   # system_deps = self._all_system_deps
-      #   # if !system_deps.nil?
-      #   #   for dependency in self._all_system_deps
-      #   #     dep_cflags = dependency._cflags
-      #   #     dep_include_flags = dependency._public_include_flags
-      #   #     if !dep_cflags.nil?
-      #   #       cflags << (" " + dep_cflags)
-      #   #     end
-      #   #     if !dep_include_flags.nil?
-      #   #       include_flags << (" " + dep_include_flags)
-      #   #     end
-      #   #   end
-      #   # end
-      #
-      #   for file in Beaver::eval_filelist(self.sources)
-      #     puts "clang" + " " + # TODO
-      #       "-c #{file}" + " " +
-      #       cflags + " " +
-      #       include_flags + " " +
-      #       "-o " + File.join(obj_dir, file.gsub("/", "_") + ".o")
-      #   end
-      # end
-
-      # def _cc
-      #   self.project.cc
-      # end
       
-      # def _buid_exe
-      #   
-      # end
-
+      # TODO: args -> quoted
+      
       private
       # Include can be of type:
       # - String
@@ -169,7 +129,7 @@ module C
         #   Beaver::Log::err("Invalid include #{include.describe}")
         # end
       end
-
+      
       def self._parse_public_include(include)
         if include.is_a? String
           return "-I#{include}"
@@ -183,21 +143,21 @@ module C
       end
     end
   end
-
+  
   module LibraryType
     USER = 0
     SYSTEM = 1
   end
-
+  
   # TODO: allow to specify dyn/static lib
   class Library < Internal::Target
     include Beaver::Internal::PostInitable
     include Beaver::Internal::TargetPostInit
-
+    
     def executable?
       false
     end
-
+    
     def buildable?
       true
     end
@@ -258,9 +218,14 @@ module C
       "__build_#{self.name}_dynamic"
     end
 
+    # TODO!!
+    def build_if_not_built_yet
+      self.build
+    end
+
     def build
-      self.dependencies.each do |dependency|
-        self.project.get_target(dependency).build
+      Workers.map(self.dependencies) do |dependency|
+        self.project.get_target(dependency).build_if_not_built_yet
       end
       Beaver::call self.build_static_cmd_name
       Beaver::call self.build_dynamic_cmd_name
@@ -361,7 +326,7 @@ module C
     end
     
     def build
-      self.dependencies.each do |dependency|
+      Workers.map(self.dependencies) do |dependency|
         self.project.get_target(dependency).build
       end
       Beaver::call self.build_cmd_name
