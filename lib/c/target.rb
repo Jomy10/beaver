@@ -27,7 +27,8 @@ module C
       def obj_dir
         File.join(self.out_dir, "obj")
       end
-      
+     
+      # TODO: to lazy variable?
       def _cflags
         cflags = if self.cflags.nil?
           ""
@@ -281,7 +282,7 @@ module C
       # include_flags = self._include_flags
       
       static_obj_proc = proc { |f| File.join(static_obj_dir, f.path.gsub("/", "_") + ".o") }
-      Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj_static", Beaver::each(self.sources), out: static_obj_proc do |file, outfile|
+      Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj_static", Beaver::each(self.sources), out: static_obj_proc, parallel: true do |file, outfile|
         Beaver::sh "#{cc} " +
           "-c #{file} " +
           "#{self._cflags} " +
@@ -290,7 +291,7 @@ module C
       end
      
       dyn_obj_proc = proc { |f| File.join(dynamic_obj_dir, f.path.gsub("/","_") + ".o") }
-      Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj_dyn", Beaver::each(self.sources), out: dyn_obj_proc do |file, outfile|
+      Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj_dyn", Beaver::each(self.sources), out: dyn_obj_proc, parallel: true do |file, outfile|
         Beaver::sh "#{cc} " +
           "-c #{file} " +
           "-fPIC " +
@@ -382,7 +383,7 @@ module C
       # ldflags = self._ldflags
       # include_flags = self._include_flags
       
-      Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj", Beaver::each(self.sources), out: proc { |f| File.join(obj_dir, f.path.gsub("/", "_") + ".o") } do |file, outfile|
+      Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj", Beaver::each(self.sources), out: proc { |f| File.join(obj_dir, f.path.gsub("/", "_") + ".o") }, parallel: true do |file, outfile|
         Beaver::sh "#{cc} " +
           "-c #{file} " +
           "#{self._cflags} " +
