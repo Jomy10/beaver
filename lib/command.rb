@@ -88,46 +88,7 @@ module Beaver
         end
         self.fn.call()
       when CommandType::EACH
-        input_list_ignore = self._each_should_not_run_list
-        output_cb = self.output
-        files = nil
-        if self.output == nil
-          files = self.input_files
-            .filter { |file| !input_list_ignore.include?(file) }
-        else
-          files = self.input_files
-            .map { |input_file|
-              {
-                input: input_file,
-                output: self.output.(SingleFile.new(input_file))
-              }
-            }.filter { |files|
-              # Don't re-run of the input file hasn't changed and the output file exists
-              !(input_list_ignore.include?(files[:input]) && File.exist?(files[:output]))
-            }
-        end
-        case self.fn.arity
-        when 1
-          if self.output == nil
-            for file in files
-              self.fn.call(file)
-            end
-          else
-            for file_tuple in files
-              self.fn.call(file_tuple[:input])
-            end
-          end
-        when 2
-          if self.output == nil
-            Beaver::Log::err("No out: parameter given for command #{self.name}, but its block accepts two arguments (expected only 1)")
-          else
-            for file_tuple in files
-              self.fn.call(file_tuple[:input], file_tuple[:output])
-            end
-          end
-        when 3
-          Beaver::Log::err("Invalid amount of arguments for command #{self.name} (got #{self.fn.arity}, expected: 1..2)")
-        end
+        self._execute_each
       when CommandType::ALL
         if self._all_should_run
           inputs = MultipleFiles.new(self.input_files)
@@ -147,6 +108,69 @@ module Beaver
       end
       
       $beaver.executed_commands << self.name
+    end
+    
+    private
+    def _execute_each
+      input_list_ignore = self._each_should_not_run_list
+      output_cb = self.output
+      files = nil
+      if self.output == nil
+        files = self.input_files
+          .filter { |file| !input_list_ignore.include?(file) }
+      else
+        files = self.input_files
+          .map { |input_file|
+            {
+              input: input_file,
+              output: self.output.(SingleFile.new(input_file))
+            }
+          }.filter { |files|
+            # Don't re-run of the input file hasn't changed and the output file exists
+            !(input_list_ignore.include?(files[:input]) && File.exist?(files[:output]))
+          }
+      end
+
+      case self.fn.arity
+      when 1
+        if self.output == nil
+          if self.parallel
+            Workers.map(files) { |file|
+              self.fn.call(file)
+            }
+          else
+            for file in files
+              self.fn.call(file)
+            end
+          end
+        else
+          if self.parallel
+            Workers.map(files) { |file_tuple|
+              self.fn.call(file_tuple[:input])
+            }
+          else
+            for file_tuple in files
+              self.fn.call(file_tuple[:input])
+            end
+          end
+        end
+      when 2
+        if self.output == nil
+          Beaver::Log::err("No out: parameter given for command #{self.name}, but its block accepts two arguments (expected only 1)")
+        else
+          if self.parallel
+            Workers.map(files) { |file_tuple|
+              self.fn.call(file_tuple[:input], file_tuple[:output])
+            }
+          else
+            for file_tuple in files
+              self.fn.call(file_tuple[:input], file_tuple[:output])
+            end
+          end
+        end
+      when 3
+        Beaver::Log::err("Invalid amount of arguments for command #{self.name} (got #{self.fn.arity}, expected: 1..2)")
+      end
     end
   end
   
