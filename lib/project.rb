@@ -52,7 +52,7 @@ module Beaver
     end
 
     def default_config
-      return @default_config || @configurations.first[0]
+      return @default_config || (@configurations.nil? || @configurations.count == 0) ? nil : @configurations.first[0]
     end
 
     # Get the current config's name or the default config
@@ -62,7 +62,12 @@ module Beaver
 
     # Get the current configuration for each language
     def config
-      return @configurations[self.config_name]
+      cfg_name = self.config_name
+      if cfg_name.nil?
+        return nil
+      else
+        return @configurations[self.config_name]
+      end
     end
 
     def get_target(name)
