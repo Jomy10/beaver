@@ -17,6 +17,8 @@ module C
       # Will always be initialized
       # [String]
       :project,
+      # Either "C", "C++" or "Mixed"
+      :language,
       :_type,
       keyword_init: true
     ) do 
@@ -242,7 +244,17 @@ module C
       obj_dir = self.obj_dir
       static_obj_dir = File.join(obj_dir, "static")
       dynamic_obj_dir = File.join(obj_dir, "dynamic")
-      cc = $beaver.get_tool(:cc)
+      cc = if self.language == "C"
+        $beaver.get_tool(:cc)
+      elsif self.language == "C++"
+        $beaver.get_tool(:cxx)
+      elsif self.language == "Mixed"
+        # TODO
+      else
+        $beaver.get_tool(:cc)
+      end
+      # cc = $beaver.get_tool(:cc)
+      # cxx = $beaver.get_tool(:cxx)
       ar = $beaver.get_tool(:ar)
       Beaver::def_dir(obj_dir)
       # cflags = self._cflags
@@ -345,7 +357,16 @@ module C
       end
       out_dir = self.out_dir
       obj_dir = self.obj_dir
-      cc = $beaver.get_tool(:cc)
+      # cc = $beaver.get_tool(:cc)
+      cc = if self.language == "C"
+        $beaver.get_tool(:cc)
+      elsif self.language == "C++"
+        $beaver.get_tool(:cxx)
+      elsif self.language == "Mixed"
+        # TODO
+      else
+        $beaver.get_tool(:cc)
+      end
       # cflags = self._cflags
       # ldflags = self._ldflags
       # include_flags = self._include_flags

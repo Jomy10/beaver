@@ -7,7 +7,7 @@ module Beaver
       end
       
       def self.get_cxx
-        ENV["CXX"] || Beaver::Internal::determine_cmd("cxx", "clang++", "g++")
+        ENV["CXX"] || Beaver::Internal::determine_cmd("cxx", "c++", "clang++", "g++")
       end
       
       def self.get_ar

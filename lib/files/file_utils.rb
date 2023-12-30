@@ -1,4 +1,4 @@
-require 'FileUtils'
+require 'fileutils'
 
 module Beaver
   # Returns a list of files expanded from the fileexpression(s)
