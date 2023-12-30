@@ -244,10 +244,10 @@ module C
       Workers.map(self.dependencies) do |dependency|
         self.project.get_target(dependency).build_if_not_built_yet
       end
-      if self.type.nil? || (self.type.is_a? Symbol) ? self.type == :dynamic : (self.type.include? :static)
+      if self.type.nil? || ((self.type.is_a? Symbol) ? self.type == :static : (self.type.include? :static))
         Beaver::call self.build_static_cmd_name
       end
-      if self.type.nil? || (self.type.is_a? Symbol) ? self.type == :dynamc : (self.type.include? :dynamic)
+      if self.type.nil? || ((self.type.is_a? Symbol) ? self.type == :dynamc : (self.type.include? :dynamic))
         Beaver::call self.build_dynamic_cmd_name
       end
     end
@@ -277,17 +277,22 @@ module C
       # cflags = self._cflags
       # include_flags = self._include_flags
       
+      cmd_build_obj_static = "__build_#{self.project.name}/#{self.name}_obj_static"
+      cmd_build_obj_dyn = "__build_#{self.project.name}/#{self.name}_obj_dyn"
+      cmd_build_static_lib = "__build_#{self.project.name}/#{self.name}_static_lib"
+      cmd_build_dyn_lib = "__build_#{self.project.name}/#{self.name}_dynamic_lib"
+      
       static_obj_proc = proc { |f| File.join(static_obj_dir, f.path.gsub("/", "_") + ".o") }
-      Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj_static", Beaver::each(self.sources), out: static_obj_proc, parallel: true do |file, outfile|
+      Beaver::cmd cmd_build_obj_static, Beaver::each(self.sources), out: static_obj_proc, parallel: true do |file, outfile|
         Beaver::sh "#{cc || C::Internal::_get_compiler_for_file(file)} " +
           "-c #{file} " +
           "#{self._cflags} " +
           "#{self._include_flags} " +
           "-o #{outfile}"
       end
-     
+      
       dyn_obj_proc = proc { |f| File.join(dynamic_obj_dir, f.path.gsub("/","_") + ".o") }
-      Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj_dyn", Beaver::each(self.sources), out: dyn_obj_proc, parallel: true do |file, outfile|
+      Beaver::cmd cmd_build_obj_dyn, Beaver::each(self.sources), out: dyn_obj_proc, parallel: true do |file, outfile|
         Beaver::sh "#{cc || C::Internal::_get_compiler_for_file(file)} " +
           "-c #{file} " +
           "-fPIC " +
@@ -297,25 +302,25 @@ module C
       end
      
       outfiles = Beaver::eval_filelist(self.sources).map { |f| static_obj_proc.(SingleFile.new(f)) }
-      Beaver::cmd "__build_#{self.project.name}/#{self.name}_static_lib", Beaver::all(outfiles), out: self.static_lib_path do |files, outfile|
+      Beaver::cmd cmd_build_static_lib, Beaver::all(outfiles), out: self.static_lib_path do |files, outfile|
         Beaver::sh "#{ar} -crs #{outfile} #{files}"
       end
       
       outfiles = Beaver::eval_filelist(self.sources).map { |f| dyn_obj_proc.(SingleFile.new(f)) }
-      Beaver::cmd "__build_#{self.project.name}/#{self.name}_dynamic_lib", Beaver::all(outfiles), out: self.dynamic_lib_path do |files, outfile|
+      Beaver::cmd cmd_build_dyn_lib, Beaver::all(outfiles), out: self.dynamic_lib_path do |files, outfile|
         Beaver::sh "#{cc || $beaver.get_tool(:cxx)} #{files} -shared -o #{outfile}"
       end
       
       Beaver::cmd self.build_static_cmd_name do
         Beaver::def_dir static_obj_dir
-        Beaver::call "__build_#{self.project.name}/#{self.name}_obj_static"
-        Beaver::call "__build_#{self.project.name}/#{self.name}_static_lib"
+        Beaver::call cmd_build_obj_static 
+        Beaver::call cmd_build_static_lib 
       end
       
       Beaver::cmd self.build_dynamic_cmd_name do
         Beaver::def_dir dynamic_obj_dir
-        Beaver::call "__build_#{self.project.name}/#{self.name}_obj_dyn"
-        Beaver::call "__build_#{self.project.name}/#{self.name}_dynamic_lib"
+        Beaver::call cmd_build_obj_dyn 
+        Beaver::call cmd_build_dyn_lib 
       end
     end
   end
@@ -387,8 +392,11 @@ module C
       # cflags = self._cflags
       # ldflags = self._ldflags
       # include_flags = self._include_flags
+
+      cmd_build_obj = "__build_#{self.project.name}/#{self.name}_obj"
+      cmd_link = "__build_#{self.project.name}/#{self.name}_link"
       
-      Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj", Beaver::each(self.sources), out: proc { |f| File.join(obj_dir, f.path.gsub("/", "_") + ".o") }, parallel: true do |file, outfile|
+      Beaver::cmd cmd_build_obj, Beaver::each(self.sources), out: proc { |f| File.join(obj_dir, f.path.gsub("/", "_") + ".o") }, parallel: true do |file, outfile|
         Beaver::sh "#{cc || C::Internal::_get_compiler_for_file(file)} " +
           "-c #{file} " +
           "#{self._cflags} " +
@@ -397,14 +405,14 @@ module C
       end
       
       outfiles = Beaver::eval_filelist(self.sources).map { |f| File.join(obj_dir, f.gsub("/", "_") + ".o") }
-      Beaver::cmd "__build_#{self.project.name}/#{self.name}_link", Beaver::all(outfiles), out: self.executable_path do |files, outfile|
+      Beaver::cmd cmd_link, Beaver::all(outfiles), out: self.executable_path do |files, outfile|
         Beaver::sh "#{cc || $beaver.get_tool(:cxx)} #{files} #{self._ldflags} -o #{outfile}"
       end
       
       Beaver::cmd self.build_cmd_name do
         Beaver::def_dir obj_dir
-        Beaver::call "__build_#{self.project.name}/#{self.name}_obj"
-        Beaver::call "__build_#{self.project.name}/#{self.name}_link"
+        Beaver::call cmd_build_obj
+        Beaver::call cmd_link
       end
     end
   end
