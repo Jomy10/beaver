@@ -261,7 +261,7 @@ module C
       obj_dir = self.obj_dir
       static_obj_dir = File.join(obj_dir, "static")
       dynamic_obj_dir = File.join(obj_dir, "dynamic")
-      cc = if self.language == "C" || self.laguage.nil?
+      cc = if self.language == "C" || self.language.nil?
         $beaver.get_tool(:cc)
       elsif self.language == "C++"
         $beaver.get_tool(:cxx)
