@@ -19,6 +19,10 @@ module Beaver
     def to_s
       "\"#{self.path}\""
     end
+
+    def to_str
+      self.path
+    end
   end
 
   MultipleFiles = Struct.new(:paths) do
@@ -46,6 +50,10 @@ module Beaver
 
     def to_s
       self.paths.inject("") { |list, elem| list + " \"#{elem}\"" }.strip
+    end
+
+    def to_str
+      self.path
     end
   end
 end
