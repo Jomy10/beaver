@@ -120,11 +120,15 @@ run [target]      Build and run the specified executable target
       return @_default_command || @commands.filter { |name,_| !name.start_with? "_" }.map { |k,_| k }.first
     end
     
-    def run(command_name)
+    def run(command_name, called_at_exit = true)
       command = @commands[command_name.to_s]
       if command.nil?
         valid_commands = @commands.filter {|k,_| !k.start_with? "_" }.map { |k,v| "`#{k}`" }.join(" ")
-        Beaver::Log::err("#{command_name.nil? ? "No command specifed" : "Invalid command #{command_name}"}, valid commands are: #{valid_commands}#{@current_project.nil? ? "" : "`build` `run`"}")
+        if called_at_exit
+          Beaver::Log::err("#{command_name.nil? ? "No command specifed" : "Invalid command #{command_name}"}, valid commands are: #{valid_commands}#{@current_project.nil? ? "" : "`build` `run`"}")
+        else
+          Beaver::Log::err("#{command_name.nil? ? "No command specifed" : "Invalid command #{command_name}"} in `call`, valid commands are: #{valid_commands}")
+        end
       end
       # TODO: context?
       command.execute()
@@ -213,10 +217,10 @@ run [target]      Build and run the specified executable target
   end
   
   def call(command_name)
-    $beaver.run(command_name)
+    $beaver.run(command_name, false)
   end
- 
-  # TODO: when config file changed, remove cache files and set to force_
+  
+  # TODO: when config file changed, remove cache files and set to force_run
   at_exit {
     if $beaver.exit_error
       next
@@ -262,7 +266,7 @@ run [target]      Build and run the specified executable target
       end
     end
     
-    if !$beaver.handle_arguments
+    if $beaver.handle_arguments != true
       if $!.nil? || ($!.is_a?(SystemExit) && $!.success?)
         $beaver.call_command_at_exit
       end
