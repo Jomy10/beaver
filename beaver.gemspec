@@ -13,5 +13,6 @@ Gem::Specification.new do |s|
   # s.add_runtime_dependency 'colorize', '~> 1.1'
   s.add_runtime_dependency 'workers', '~> 0.6'
   s.add_runtime_dependency 'rainbow', '~> 3.1'
+  s.add_runtime_dependency 'msgpack', '~> 1.6'
 end
 
