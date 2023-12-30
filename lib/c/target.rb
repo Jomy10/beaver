@@ -247,7 +247,7 @@ module C
       if self.type.nil? || ((self.type.is_a? Symbol) ? self.type == :static : (self.type.include? :static))
         Beaver::call self.build_static_cmd_name
       end
-      if self.type.nil? || ((self.type.is_a? Symbol) ? self.type == :dynamc : (self.type.include? :dynamic))
+      if self.type.nil? || ((self.type.is_a? Symbol) ? self.type == :dynamic : (self.type.include? :dynamic))
         Beaver::call self.build_dynamic_cmd_name
       end
     end
@@ -257,6 +257,13 @@ module C
       if self.sources.nil?
         Beaver::Log::err("#{self.name} has no source files defined")
       end
+      
+      if self.type.is_a? String
+        self.type = self.type.to_sym
+      elsif self.type.respond_to? :each
+        self.type = self.type.map { |t| t.to_sym }
+      end
+      
       out_dir = self.out_dir
       obj_dir = self.obj_dir
       static_obj_dir = File.join(obj_dir, "static")
