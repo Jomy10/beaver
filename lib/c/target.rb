@@ -3,6 +3,9 @@ module C
     Target = Struct.new(
       # [String]
       :name,
+      # Valid values are: :static, :dynamic
+      # [Symbol | Symbol[]]
+      :type,
       # [String[] | String]
       :sources,
       # [String | String[] | Object]
@@ -132,6 +135,16 @@ module C
         # end
       end
       
+      def self._get_compiler_for_file(file)
+        if file.ext.downcase == ".c"
+          $beaver.get_tool(:cc)
+        elsif [".cc", ".cpp", ".cxx"].include? file.ext.downcase
+          $beaver.get_tool(:cxx)
+        else
+          Beaver::Log::err("File extension #{file.ext} not a valid C/C++ file")
+        end
+      end
+      
       def self._parse_public_include(include)
         if include.is_a? String
           return "-I#{include}"
@@ -225,14 +238,18 @@ module C
         self.build
       end
     end
-
+    
     def build
       @built_this_run = true
       Workers.map(self.dependencies) do |dependency|
         self.project.get_target(dependency).build_if_not_built_yet
       end
-      Beaver::call self.build_static_cmd_name
-      Beaver::call self.build_dynamic_cmd_name
+      if self.type.nil? || (self.type.is_a? Symbol) ? self.type == :dynamic : (self.type.include? :static)
+        Beaver::call self.build_static_cmd_name
+      end
+      if self.type.nil? || (self.type.is_a? Symbol) ? self.type == :dynamc : (self.type.include? :dynamic)
+        Beaver::call self.build_dynamic_cmd_name
+      end
     end
     
     private
@@ -244,14 +261,14 @@ module C
       obj_dir = self.obj_dir
       static_obj_dir = File.join(obj_dir, "static")
       dynamic_obj_dir = File.join(obj_dir, "dynamic")
-      cc = if self.language == "C"
+      cc = if self.language == "C" || self.laguage.nil?
         $beaver.get_tool(:cc)
       elsif self.language == "C++"
         $beaver.get_tool(:cxx)
       elsif self.language == "Mixed"
-        # TODO
+        nil
       else
-        $beaver.get_tool(:cc)
+        Beaver::Log::err("Invalid language #{self.language} for C target")
       end
       # cc = $beaver.get_tool(:cc)
       # cxx = $beaver.get_tool(:cxx)
@@ -262,7 +279,7 @@ module C
       
       static_obj_proc = proc { |f| File.join(static_obj_dir, f.path.gsub("/", "_") + ".o") }
       Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj_static", Beaver::each(self.sources), out: static_obj_proc, parallel: true do |file, outfile|
-        Beaver::sh "#{cc} " +
+        Beaver::sh "#{cc || C::Internal::_get_compiler_for_file(file)} " +
           "-c #{file} " +
           "#{self._cflags} " +
           "#{self._include_flags} " +
@@ -271,7 +288,7 @@ module C
      
       dyn_obj_proc = proc { |f| File.join(dynamic_obj_dir, f.path.gsub("/","_") + ".o") }
       Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj_dyn", Beaver::each(self.sources), out: dyn_obj_proc, parallel: true do |file, outfile|
-        Beaver::sh "#{cc} " +
+        Beaver::sh "#{cc || C::Internal::_get_compiler_for_file(file)} " +
           "-c #{file} " +
           "-fPIC " +
           "#{self._cflags} " +
@@ -286,7 +303,7 @@ module C
       
       outfiles = Beaver::eval_filelist(self.sources).map { |f| dyn_obj_proc.(SingleFile.new(f)) }
       Beaver::cmd "__build_#{self.project.name}/#{self.name}_dynamic_lib", Beaver::all(outfiles), out: self.dynamic_lib_path do |files, outfile|
-        Beaver::sh "#{cc} #{files} -shared -o #{outfile}"
+        Beaver::sh "#{cc || $beaver.get_tool(:cxx)} #{files} -shared -o #{outfile}"
       end
       
       Beaver::cmd self.build_static_cmd_name do
@@ -350,7 +367,7 @@ module C
       system self.executable_path
     end
     
-    private
+    private 
     def _custom_after_init
       if self.sources.nil?
         Beaver::Log::err("#{self.name} has no source files defined")
@@ -358,21 +375,21 @@ module C
       out_dir = self.out_dir
       obj_dir = self.obj_dir
       # cc = $beaver.get_tool(:cc)
-      cc = if self.language == "C"
+      cc = if self.language == "C" || self.language.nil?
         $beaver.get_tool(:cc)
       elsif self.language == "C++"
         $beaver.get_tool(:cxx)
       elsif self.language == "Mixed"
-        # TODO
+        nil
       else
-        $beaver.get_tool(:cc)
+        Beaver::Log::err("Invalid language #{self.language}")
       end
       # cflags = self._cflags
       # ldflags = self._ldflags
       # include_flags = self._include_flags
       
       Beaver::cmd "__build_#{self.project.name}/#{self.name}_obj", Beaver::each(self.sources), out: proc { |f| File.join(obj_dir, f.path.gsub("/", "_") + ".o") }, parallel: true do |file, outfile|
-        Beaver::sh "#{cc} " +
+        Beaver::sh "#{cc || C::Internal::_get_compiler_for_file(file)} " +
           "-c #{file} " +
           "#{self._cflags} " +
           "#{self._include_flags} " +
@@ -381,7 +398,7 @@ module C
       
       outfiles = Beaver::eval_filelist(self.sources).map { |f| File.join(obj_dir, f.gsub("/", "_") + ".o") }
       Beaver::cmd "__build_#{self.project.name}/#{self.name}_link", Beaver::all(outfiles), out: self.executable_path do |files, outfile|
-        Beaver::sh "#{cc} #{files} #{self._ldflags} -o #{outfile}"
+        Beaver::sh "#{cc || $beaver.get_tool(:cxx)} #{files} #{self._ldflags} -o #{outfile}"
       end
       
       Beaver::cmd self.build_cmd_name do
