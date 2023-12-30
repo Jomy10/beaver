@@ -104,18 +104,18 @@ run [target]      Build and run the specified executable target
       if !@commands[command.name].nil?
         Beaver::Log::warn("Redefined command #{command.name}")
       end
-
+      
       @commands[command.name] = command
     end
-
+    
     def get_command(command_name)
       return @commands[command_name.to_s]
     end
-
+    
     def default_command=(cmd)
       @_default_command = cmd
     end
-
+    
     def default_command
       return @_default_command || @commands.filter { |name,_| !name.start_with? "_" }.map { |k,_| k }.first
     end
@@ -123,7 +123,8 @@ run [target]      Build and run the specified executable target
     def run(command_name)
       command = @commands[command_name.to_s]
       if command.nil?
-        Beaver::Log::err("Invalid command #{command_name}, valid commands are: #{@commands.filter {|k,_| !k.start_with? "_" }.map { |k,v| "`#{k}`" }.join(" ") }")
+        valid_commands = @commands.filter {|k,_| !k.start_with? "_" }.map { |k,v| "`#{k}`" }.join(" ")
+        Beaver::Log::err("#{command_name.nil? ? "No command specifed" : "Invalid command #{command_name}"}, valid commands are: #{valid_commands}#{@current_project.nil? ? "" : "`build` `run`"}")
       end
       # TODO: context?
       command.execute()
