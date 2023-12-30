@@ -4,7 +4,7 @@
 
 # Tutorials
 
--  [Building a C project](./1-building-a-c-project.md)
+-  [Building a C/C++ project](./1-building-a-c-project.md)
     - [Using commands](./1-1-using-commands-to-build-a-c-project.md)
     - [Using a project](./1-2-using-project-to-build-a-c-project.md)
 
