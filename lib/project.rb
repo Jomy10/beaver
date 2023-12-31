@@ -25,7 +25,7 @@ module Beaver
       @build_dir = build_dir
       @configurations = Hash.new
       @default_config = nil
-      @current_config = nil # TODO: params
+      @current_config = nil
       @targets = Hash.new
       @_options_callback = options
       

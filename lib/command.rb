@@ -12,7 +12,7 @@ module Beaver
     # [Proc | String] (Each, All)
     :output,
     :fn,
-    :parallel, # TODO: run "each" calls in parallel
+    :parallel,
     :_force_should_run,
     keyword_init: true
   ) do

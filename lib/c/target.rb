@@ -202,7 +202,6 @@ module C
     SYSTEM = 1
   end
   
-  # TODO: allow to specify dyn/static lib
   class Library < Internal::Target
     include Beaver::Internal::PostInitable
     include Beaver::Internal::TargetPostInit

@@ -14,7 +14,6 @@ module Beaver
       STDERR.puts "[WARN] #{message}".yellow
     end
 
-    # TODO: verbose settings
     def self.verbose(message)
       if $beaver.verbose
         STDERR.puts message
