@@ -3,12 +3,10 @@ require 'rainbow/refinement'
 require 'fileutils'
 require 'tmpdir'
 
-# TODO: static & dynamic dependencies -> when dep is from the same project, make it default to static
-
 # TODO: require_module/require_package -> separate beaver context so that commands of dependencies
 # don't interfere. Every project and command then has a reference to the BeaverContext they belong to
 
-# TODO: if main file changed, set force_run to true and delete all caches
+# TODO(v3.1): if main file changed, set force_run to true and delete all caches
 module Beaver
   class BeaverContext
     attr_accessor :current_project
@@ -233,6 +231,7 @@ run [target]      Build and run the specified executable target
       if $beaver.exit_error
         next
       end
+
       if !$beaver.current_project.nil? && !$beaver.current_project._options_callback.nil?
         $beaver.current_project._options_callback.call($beaver.option_parser)
       end
@@ -262,6 +261,18 @@ run [target]      Build and run the specified executable target
       if !$beaver.options[:config].nil?
         $beaver.current_project.current_config = $beaver.options[:config]
       end
+     
+      # If base config changed, recompile the project (remove caches)
+      cache = $beaver.cache_manager.get_config_cache
+      if !cache.nil?
+        for _, file_info in cache
+          if file_info["modified"] != File.mtime(file_info["path"]).to_i
+            Dir[File.join($beaver.cache_dir, "*.cache")].each do |cache_file|
+              FileUtils.rm cache_file
+            end
+          end
+        end
+      end
       
       $beaver.postponed_callbacks.each do |cb|
         case cb.arity
@@ -281,6 +292,7 @@ run [target]      Build and run the specified executable target
       end
        
       # cache
+      $beaver.cache_manager.add_config_cache
       def_dir $beaver.cache_dir
       $beaver.save_cache
       
