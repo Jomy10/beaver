@@ -1,5 +1,9 @@
 require 'optparse'
 require 'rainbow/refinement'
+require 'fileutils'
+require 'tmpdir'
+
+# TODO: static & dynamic dependencies -> when dep is from the same project, make it default to static
 
 # TODO: require_module/require_package -> separate beaver context so that commands of dependencies
 # don't interfere. Every project and command then has a reference to the BeaverContext they belong to
@@ -26,6 +30,7 @@ module Beaver
     attr_accessor :verbose
     # True if exit with an error
     attr_accessor :exit_error
+    attr_reader :temp_dir
     
     def initialize 
       @projects = Hash.new
@@ -59,6 +64,8 @@ run [target]      Build and run the specified executable target
       
       @postponed_callbacks = []
       @tools = Hash.new
+
+      @temp_dir = Dir.mktmpdir("beaver")
     end
    
     # Lazily determine tool path
@@ -222,58 +229,65 @@ run [target]      Build and run the specified executable target
   
   # TODO: when config file changed, remove cache files and set to force_run
   at_exit {
-    if $beaver.exit_error
-      next
-    end
-    if !$beaver.current_project.nil? && !$beaver.current_project._options_callback.nil?
-      $beaver.current_project._options_callback.call($beaver.option_parser)
-    end
-    $beaver.options[:args] = $beaver.option_parser.parse!(ARGV, into: $beaver.options)
-  
-    select_project_option = $beaver.options[:project]
-    if $beaver.options[:project] != nil
-      if $beaver.projects.count == 0
-        puts "No projects"
+    begin
+      if $beaver.exit_error
+        next
+      end
+      if !$beaver.current_project.nil? && !$beaver.current_project._options_callback.nil?
+        $beaver.current_project._options_callback.call($beaver.option_parser)
+      end
+      $beaver.options[:args] = $beaver.option_parser.parse!(ARGV, into: $beaver.options)
+    
+      select_project_option = $beaver.options[:project]
+      if $beaver.options[:project] != nil
+        if $beaver.projects.count == 0
+          puts "No projects"
+          exit 0
+        end
+        proj = $beaver.projects.find { |name,_| name == select_project_option }[1]
+        if proj == nil
+          Beaver::Log::err("Project #{select_project_option} not found. Valid projects are: #{$beaver.projects.map { |name, _| "`#{name}`" }.join(" ")}")
+        end
+        $beaver.current_project = proj
+      end
+      if $beaver.options[:"list-targets"] == true
+        $beaver.current_project.targets.each do |name,target|
+          puts name + "\t" + target.class.to_s
+        end
         exit 0
       end
-      proj = $beaver.projects.find { |name,_| name == select_project_option }[1]
-      if proj == nil
-        Beaver::Log::err("Project #{select_project_option} not found. Valid projects are: #{$beaver.projects.map { |name, _| "`#{name}`" }.join(" ")}")
+      $beaver.force_run = $beaver.options[:force] || false
+      $beaver.debug = $beaver.options[:"beaver-debug"] || false
+      $beaver.verbose = $beaver.options[:verbose] || false
+      if !$beaver.options[:config].nil?
+        $beaver.current_project.current_config = $beaver.options[:config]
       end
-      $beaver.current_project = proj
-    end
-    if $beaver.options[:"list-targets"] == true
-      $beaver.current_project.targets.each do |name,target|
-        puts name + "\t" + target.class.to_s
+      
+      $beaver.postponed_callbacks.each do |cb|
+        case cb.arity
+        when 0
+          cb.call()
+        when 1
+          cb.call($beaver)
+        when 2
+          Beaver::Log::err("Too many arguments in postponed callback (got #{cb.arity}, expected 0..1)")
+        end
       end
-      exit 0
-    end
-    $beaver.force_run = $beaver.options[:force] || false
-    $beaver.debug = $beaver.options[:"beaver-debug"] || false
-    $beaver.verbose = $beaver.options[:verbose] || false
-    if !$beaver.options[:config].nil?
-      $beaver.current_project.current_config = $beaver.options[:config]
-    end
-    
-    $beaver.postponed_callbacks.each do |cb|
-      case cb.arity
-      when 0
-        cb.call()
-      when 1
-        cb.call($beaver)
-      when 2
-        Beaver::Log::err("Too many arguments in postponed callback (got #{cb.arity}, expected 0..1)")
+      
+      if $beaver.handle_arguments != true
+        if $!.nil? || ($!.is_a?(SystemExit) && $!.success?)
+          $beaver.call_command_at_exit
+        end
       end
+       
+      # cache
+      def_dir $beaver.cache_dir
+      $beaver.save_cache
+      
+    ensure
+      # Remove temp drectory
+      FileUtils.remove_entry($beaver.temp_dir)
     end
-    
-    if $beaver.handle_arguments != true
-      if $!.nil? || ($!.is_a?(SystemExit) && $!.success?)
-        $beaver.call_command_at_exit
-      end
-    end
-  
-    def_dir $beaver.cache_dir
-    $beaver.save_cache
   }
 end
 

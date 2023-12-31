@@ -200,6 +200,21 @@ C::Library(
 )
 ```
 
+### Static vs dynamic dependencies
+
+By default, clang/gcc will try to dynamically link libraries if there is a dynamic
+libary available. To explicitly statically link a library, you can use the following
+syntax:
+
+```rb
+C::Executable.new(
+    name: "my_exec",
+    dependencies: [static("MyStaticallyLinkedLibrary")]
+)
+```
+
+Dependencies in the same project as the dependant target will automatically be statically linked.
+
 ### Final notes
 
 We can still define commands like we did in the previous chapter and call them
