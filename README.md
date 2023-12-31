@@ -3,9 +3,29 @@
 Simple but capable build system and command runner for any project.
 
 Beaver is a ruby library, which means your build scripts have the power of an
-entire language at your fingertips.
+entire language at its fingertips.
 
 It is an excellent replacement for make/cmake.
+
+## As a cmake replacement
+
+```ruby
+Project.new("MyProject", build_dir: "out")
+
+C::Library.new(
+    name: "MyLibrary",
+    sources: ["lib/*.c"],
+    include: "include"
+)
+
+C::Library.pkg_config("SDL2")
+
+C::Executable.new(
+    name: "my_exec",
+    sources: "src/*.c",
+    dependencies: ["MyLibrary", "SDL2"]
+)
+```
 
 ## As a make replacement
 
@@ -25,25 +45,6 @@ end
 cmd :create_library, all(File.join(OUT, "*.o")), out: "my_exec" do |files, outfile|
     sh "#{CC} #{files} $(pkg-config sdl2 --libs) -o #{outfile}"
 end
-```
-
-## As a cmake replacement
-
-```ruby
-Project.new("MyProject", build_dir: "out")
-
-C::Library.new(
-    name: "MyLibrary",
-    sources: ["lib/*.c"]
-)
-
-C::Library.pkg_config("SDL2")
-
-C::Executable.new(
-    name: "my_exec",
-    sources: "src/*.c",
-    dependencies: ["MyLibrary", "SDL2"]
-)
 ```
 
 ## Installation
