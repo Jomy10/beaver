@@ -27,7 +27,7 @@ module Beaver
         end
         if @cache[project_name].nil?
           project_cache_file = self.project_cache_location(project_name)
-          if File.exists?(project_cache_file)
+          if File.exist?(project_cache_file)
             @cache[project_name] = MessagePack::unpack(File.read(project_cache_file))
             return @cache[project_name]
           else
@@ -54,7 +54,7 @@ module Beaver
         end
         if @cache[project_name].nil?
           project_cache_file = self.project_cache_location(project_name)
-          if File.exists?(project_cache_file)
+          if File.exist?(project_cache_file)
             @cache[project_name] = MessagePack::unpack(File.read(project_cache_file))
           else
             @cache[project_name] = Hash.new
