@@ -6,7 +6,6 @@ require 'tmpdir'
 # TODO: require_module/require_package -> separate beaver context so that commands of dependencies
 # don't interfere. Every project and command then has a reference to the BeaverContext they belong to
 
-# TODO(v3.1): if main file changed, set force_run to true and delete all caches
 module Beaver
   class BeaverContext
     attr_accessor :current_project
@@ -225,7 +224,6 @@ run [target]      Build and run the specified executable target
     $beaver.run(command_name, false)
   end
   
-  # TODO: when config file changed, remove cache files and set to force_run
   at_exit {
     begin
       if $beaver.exit_error
