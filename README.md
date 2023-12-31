@@ -49,6 +49,13 @@ end
 
 ## Installation
 
+**recommended way**:
+```sh
+gem install beaver --source https://gem.jomy.dev -v "3.1.0"
+```
+
+Or through **github packages** (requires authentication):
+
 ```sh
 gem install beaver --source "https://rubygems.pkg.github.com/jomy10"
 ```
