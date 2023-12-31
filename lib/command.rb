@@ -36,7 +36,7 @@ module Beaver
         return true
       end
        
-      if !self.output.nil? && !File.exists?(self.output)
+      if !self.output.nil? && !File.exist?(self.output)
         # The output file is not present; create it
         return true
       end
@@ -47,7 +47,7 @@ module Beaver
       end
       
       for file in cache["input"]
-        if File.exists?(file["path"]) && (File.mtime(file["path"]).to_i != file["modified"])
+        if File.exist?(file["path"]) && (File.mtime(file["path"]).to_i != file["modified"])
           # File was modified => rerun all
           return true
         end
@@ -67,7 +67,7 @@ module Beaver
         return []
       end
       return cache["input"].filter { |file|
-        if !File.exists?(file["path"])
+        if !File.exist?(file["path"])
           next false # input file doesn't exist, ignore it
         end
         

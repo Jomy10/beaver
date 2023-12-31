@@ -15,7 +15,7 @@ module Beaver
   end
 
   def self.def_dir(dir_name)
-    if !Dir.exists? dir_name
+    if !Dir.exist? dir_name
       FileUtils.mkdir_p(dir_name)
     end
   end
