@@ -18,6 +18,7 @@ require 'envvar'
 
 require 'formatting/log'
 
+require 'c/dependency'
 require 'c/target'
 require 'c/configuration'
 require 'c/tools'

@@ -54,7 +54,7 @@ module C
         end
         include_flags << " " + self.project.include_flags
         for dependency in self.dependencies
-          include_flags << " " + self.project.get_target(dependency)._public_include_flags
+          include_flags << " " + self.project.get_target(dependency.name)._public_include_flags
         end
         include_flags.strip!
         # TODO: public include flags of dependencies
@@ -69,10 +69,20 @@ module C
         end
         include_flags << " " + self.project.include_flags
         for dependency in self.dependencies
-          include_flags << " " + self.project.get_target(dependency)._public_include_flags
+          include_flags << " " + self.project.get_target(dependency.name)._public_include_flags
         end
         include_flags.strip!
         return include_flags
+      end
+
+      def is_dynamic?
+        return self.type.nil? || (self.type.is_a?(Symbol) && self.type == :dynamic) ||
+          ((self.type.respond_to? :each) ? self.type.include?(:dynamic) : false)
+      end
+
+      def is_static?
+        return self.type.nil? || (self.type.is_a?(Symbol) && self.type == :static) ||
+          ((self.type.respond_to? :each) ? self.type.include?(:static) : false)
       end
       
       def _ldflags
@@ -82,14 +92,27 @@ module C
           (self.ldflags.is_a? String) ? self.ldflags : self.ldflags.join(" ")
         end
         if !self.dependencies.nil?
-          deps = self.dependencies.map { |d| self.project.get_target(d) }
-          ldflags << deps.map { |d| flags = d._ldflags; flags.nil? ? "" : " " + flags }.join(" ")
+          deps = self.dependencies.map { |d| [self.project.get_target(d.name), d.type] }
+          ldflags << deps.map { |d| flags = d[0]._ldflags; flags.nil? ? "" : " " + flags }.join(" ")
           ldflags << deps.map { |d|
-            # TODO: forcing static, dynamic
-            if d.is_a? SystemLibrary
+            if d[0].is_a? SystemLibrary
               ""
             else
-              " -L#{d.out_dir} -l#{d.name}"
+              case d[1]
+              when :any
+                " -L#{d.out_dir} -l#{d.name}"
+              when :static
+                if !self.is_static?
+                  Beaver::Log::err("Cannot statically link dynamic library #{d[0].name}")
+                end
+                tmp_dir = FileUtils.mkdir_p(File.join($beaver.temp_dir, "#{d[0].name}_static")).first
+                FileUtils.cp(d[0].static_lib_path, tmp_dir)
+                " -L#{tmp_dir} -l#{d[0].name}"
+              when :dynamic
+                Beaver::Log::err("Explicitly defining a dependency as dynamic is currently unimplemented")
+              else
+                Beaver::Log::err("Internal error: #{dep_type} is an invalid dependency type")
+              end
             end
           }.join(" ")
         end
@@ -98,10 +121,10 @@ module C
       
       # recursively search for dependencies
       def _all_system_deps
-        if self.dependencies.nil? then return nil end
+        return nil if self.dependencies.nil?
         deps = []
-        for dependency_name in self.dependencies
-          dependency = self.project.get_target(dependency_name)
+        for dependency in self.dependencies
+          dependency = self.project.get_target(dependency.name)
           if dependency.library_type == LibraryType::SYSTEM
             deps << dependency
           end
@@ -155,6 +178,21 @@ module C
         else
           Beaver::Log::err("Invalid include #{include.describe}")
         end
+      end
+
+      def parse_properties
+        if self.sources.nil?
+          Beaver::Log::err("#{self.name} has no source files defined")
+        end
+       
+        if self.type.nil?
+        elsif self.type.is_a? String
+          self.type = self.type.to_sym
+        elsif self.type.respond_to? :each
+          self.type = self.type.map { |t| t.to_sym }
+        end
+        
+        self.dependencies = C::Dependency.parse_dependency_list(self.dependencies, self.project.name)
       end
     end
   end
@@ -242,7 +280,7 @@ module C
     def build
       @built_this_run = true
       Workers.map(self.dependencies) do |dependency|
-        self.project.get_target(dependency).build_if_not_built_yet
+        self.project.get_target(dependency.name).build_if_not_built_yet
       end
       if self.type.nil? || ((self.type.is_a? Symbol) ? self.type == :static : (self.type.include? :static))
         Beaver::call self.build_static_cmd_name
@@ -252,18 +290,19 @@ module C
       end
     end
     
+    def create_pkg_config
+      # TODO!!!
+    end
+
+    def install
+      # TODO!!
+    end
+    
     private
     def _custom_after_init
-      if self.sources.nil?
-        Beaver::Log::err("#{self.name} has no source files defined")
-      end
-      
-      if self.type.is_a? String
-        self.type = self.type.to_sym
-      elsif self.type.respond_to? :each
-        self.type = self.type.map { |t| t.to_sym }
-      end
-      
+      self.parse_properties
+
+      # Create commands
       out_dir = self.out_dir
       obj_dir = self.obj_dir
       static_obj_dir = File.join(obj_dir, "static")
@@ -335,7 +374,7 @@ module C
   class SystemLibrary < Library
     def build
       self.dependencies.each do |dependency|
-        self.project.get_target(dependency).build
+        self.project.get_target(dependency.name).build
       end
     end
 
@@ -345,6 +384,7 @@ module C
     
     private
     def _custom_after_init
+      self.dependencies = C::Dependency.parse_dependency_list(self.dependencies, self.project.name)
     end
   end
   
@@ -370,7 +410,9 @@ module C
     
     def build
       Workers.map(self.dependencies) do |dependency|
-        self.project.get_target(dependency).build_if_not_built_yet
+        target = self.project.get_target(dependency.name)
+        Beaver::Log::err("Undefined target for deppendency #{dependency}") if target.nil?
+        target.build_if_not_built_yet
       end
       Beaver::call self.build_cmd_name
     end
@@ -381,6 +423,8 @@ module C
     
     private 
     def _custom_after_init
+      self.parse_properties
+
       if self.sources.nil?
         Beaver::Log::err("#{self.name} has no source files defined")
       end
