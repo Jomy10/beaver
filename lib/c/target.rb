@@ -3,6 +3,11 @@ module C
     Target = Struct.new(
       # [String]
       :name,
+      # Optional description used in pkg-config
+      :description,
+      :homepage,
+      :version,
+      :conflicts,
       # Valid values are: :static, :dynamic
       # [Symbol | Symbol[]]
       :type,
