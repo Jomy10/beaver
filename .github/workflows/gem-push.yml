@@ -19,15 +19,22 @@ jobs:
         ruby-version: '3.1'
         bundler-cache: false
 
+    - name: Build gem
+      run: |
+        bash build.sh clean
+        bash build.sh build
+    - name: Install Gem In a Box
+      run: gem install geminabox
     - name: Publish to GPR
       run: |
         mkdir -p $HOME/.gem
         touch $HOME/.gem/credentials
         chmod 0600 $HOME/.gem/credentials
         printf -- "---\n:github: ${GEM_HOST_API_KEY}\n" > $HOME/.gem/credentials
-        gem build beaver.gemspec
-        gem push --KEY github --host https://rubygems.pkg.github.com/${OWNER} *.gem
+        gem push --KEY github --host https://rubygems.pkg.github.com/${OWNER} beaver-*.gem
       env:
         GEM_HOST_API_KEY: "Bearer ${{secrets.GITHUB_TOKEN}}"
         OWNER: ${{ github.repository_owner }}
+    - name: Publish to personal gem server
+      run: gem inabox -g https://${{secrets.personal_gems_user}}:${{secrets.personal_gems_pass}}@gem.jomy.dev beaver-*.gem
 
