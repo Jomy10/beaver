@@ -6,13 +6,19 @@ at your fingertips when creating your build scripts.
 
 ## Installation
 
-**from package registry**
-<!-- TODO: bundler -->
+**recommended way**:
+```sh
+gem install beaver --source https://gem.jomy.dev -v "3.1.0"
+```
+
+Or through **github packages** (requires authentication):
+
 ```sh
 gem install beaver --source "https://rubygems.pkg.github.com/jomy10"
 ```
 
-**from source**
+Or **build from source**:
+<!-- TODO: bundler -->
 ```sh
 git clone https://github.com/jomy10/beaver
 cd beaver

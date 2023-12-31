@@ -3,7 +3,7 @@
 Simple but capable build system and command runner for any project.
 
 Beaver is a ruby library, which means your build scripts have the power of an
-entire language at its fingertips.
+entire language at their fingertips.
 
 It is an excellent replacement for make/cmake.
 
