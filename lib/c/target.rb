@@ -37,59 +37,135 @@ module C
       def obj_dir
         File.join(self.out_dir, "obj")
       end
-     
-      # TODO: to lazy variable?
-      def _cflags
-        cflags = if self.cflags.nil?
-          ""
-        else
-          (self.cflags.is_a? String) ? self.cflags : self.cflags.join(" ")
-        end
-        cflags << " " + self.project.cflags
-        cflags.strip!
-        return cflags
-      end
       
-      def _include_flags
-        include_flags = if self.include.nil?
-          ""
-        else
-          (Target._parse_private_include(self.include) || "")
-            + (Target._parse_public_include(self.include) || "")
-        end
-        include_flags << " " + self.project.include_flags
-        for dependency in self.dependencies
-          include_flags << " " + self.project.get_target(dependency.name)._public_include_flags
-        end
-        include_flags.strip!
-        # TODO: public include flags of dependencies
-        return include_flags
-      end
-      
-      def _public_include_flags
-        include_flags = if self.include.nil?
-          ""
-        else
-          Target._parse_public_include(self.include)
-        end
-        include_flags << " " + self.project.include_flags
-        for dependency in self.dependencies
-          include_flags << " " + self.project.get_target(dependency.name)._public_include_flags
-        end
-        include_flags.strip!
-        return include_flags
-      end
-
       def is_dynamic?
         return self.type.nil? || (self.type.is_a?(Symbol) && self.type == :dynamic) ||
           ((self.type.respond_to? :each) ? self.type.include?(:dynamic) : false)
       end
-
+      
       def is_static?
         return self.type.nil? || (self.type.is_a?(Symbol) && self.type == :static) ||
           ((self.type.respond_to? :each) ? self.type.include?(:static) : false)
       end
       
+      def self._parse_public_flags(flags)
+        if flags.nil? then return nil end
+         
+        if flags.is_a? String
+          return [flags]
+        elsif flags.is_a? Array
+          return flags
+        elsif flags.is_a? Hash
+          pub = flags[:public]
+          if !pub.nil?
+            if pub.is_a? String
+              return [pub]
+            elsif pub.is_a? Array
+              return pub
+            else
+              Beaver::Log::err("#{pub.inspect}: #{pub.class} is not a valid type for flags in flags object. Valid are: Array, String")
+            end
+          end
+        else
+          Beaver::Log::err("#{flags.inspect}: #{flags.class} is not a valid type for flags. Valid are: String, Array, Object containing public and/or private key")
+        end
+      end
+      
+      def self._parse_private_flags(flags)
+        if flags.nil? then return flags end
+        
+        if flags.is_a? Hash
+          priv = flags[:private]
+          if !priv.nil?
+            if priv.is_a? String
+              return [priv]
+            elsif priv.is_a? Array
+              return priv
+            else
+              Beaver::Log::err("#{priv.inspect}: #{priv.class} is not a valid type for flags in flags object. Valid are: Array, String")
+            end
+          end
+        end
+      end
+      
+      def private_cflags
+        return Target._parse_private_flags(self.cflags) || []
+      end
+      
+      def public_cflags
+        cflags = []
+        flags = Target._parse_public_flags(self.cflags)
+        if !flags.nil? then cflags.push(*flags) end
+        
+        self.dependencies.each do |dep|
+          target = self.project.get_target(dep.name)
+          cflags.push(*target.public_cflags)
+        end
+        
+        return cflags
+      end
+      
+      def private_includes
+        return Target._parse_private_flags(self.include) || []
+      end
+      
+      # returns the directories
+      def public_includes
+        includes = []
+        flags = Target._parse_public_flags(self.include)
+        if !flags.nil? then includes.push(*flags) end
+        
+        self.dependencies.each do |dep|
+          target = self.project.get_target(dep.name)
+          includes.push(*target.public_includes)
+        end
+        
+        return includes
+      end
+      
+      # TODO: to lazy variable?
+      # def _cflags
+      #   cflags = if self.cflags.nil?
+      #     ""
+      #   else
+      #     (self.cflags.is_a? String) ? self.cflags : self.cflags.join(" ")
+      #   end
+      #   cflags << " " + self.project.cflags
+      #   cflags.strip!
+      #   return cflags
+      # end
+      
+      # def _include_flags
+      #   include_flags = if self.include.nil?
+      #     ""
+      #   else
+      #     (Target._parse_private_include(self.include) || "")
+      #       + (Target._parse_public_include(self.include) || "")
+      #   end
+      #   include_flags << " " + self.project.include_flags
+      #   for dependency in self.dependencies
+      #     include_flags << " " + self.project.get_target(dependency.name)._public_include_flags
+      #   end
+      #   include_flags.strip!
+      #   # TODO: public include flags of dependencies
+      #   return include_flags
+      # end
+      # 
+      # def _public_include_flags
+      #   include_flags = if self.include.nil?
+      #     ""
+      #   else
+      #     Target._parse_public_include(self.include)
+      #   end
+      #   include_flags << " " + self.project.include_flags
+      #   for dependency in self.dependencies
+      #     include_flags << " " + self.project.get_target(dependency.name)._public_include_flags
+      #   end
+      #   include_flags.strip!
+      #   return include_flags
+      # end
+     
+      # TODO: rewrite to retun array
       def _ldflags
         ldflags = if self.ldflags.nil?
           ""
@@ -184,7 +260,7 @@ module C
           Beaver::Log::err("Invalid include #{include.describe}")
         end
       end
-
+      
       def parse_properties
         if self.sources.nil?
           Beaver::Log::err("#{self.name} has no source files defined")
@@ -274,7 +350,7 @@ module C
     def build_dynamic_cmd_name
       "__build_#{self.name}_dynamic"
     end
-
+    
     def build_if_not_built_yet
       if !@built_this_run
         self.build
@@ -336,8 +412,10 @@ module C
       Beaver::cmd cmd_build_obj_static, Beaver::each(self.sources), out: static_obj_proc, parallel: true do |file, outfile|
         Beaver::sh "#{cc || C::Internal::_get_compiler_for_file(file)} " +
           "-c #{file} " +
-          "#{self._cflags} " +
-          "#{self._include_flags} " +
+          "#{self.private_cflags.join(" ")} " +
+          "#{self.public_cflags.join(" ")} " +
+          "#{self.private_includes.map { |i| "-I#{i}" }.join(" ")} " +
+          "#{self.public_includes.map { |i| "-I#{i}" }.join(" ")} " +
           "-o #{outfile}"
       end
       
@@ -346,8 +424,10 @@ module C
         Beaver::sh "#{cc || C::Internal::_get_compiler_for_file(file)} " +
           "-c #{file} " +
           "-fPIC " +
-          "#{self._cflags} " +
-          "#{self._include_flags} " +
+          "#{self.private_cflags.join(" ")} " +
+          "#{self.public_cflags.join(" ")} " +
+          "#{self.private_includes.map { |i| "-I#{i}" }.join(" ")} " +
+          "#{self.public_includes.map { |i| "-I#{i}" }.join(" ")} " +
           "-o #{outfile}"
       end
      
@@ -374,14 +454,14 @@ module C
       end
     end
   end
-
+  
   class SystemLibrary < Library
     def build
       self.dependencies.each do |dependency|
         self.project.get_target(dependency.name).build
       end
     end
-
+    
     def buildable?
       false
     end
@@ -399,7 +479,7 @@ module C
     def executable?
       true
     end
-
+    
     def buildable?
       true
     end
@@ -454,8 +534,10 @@ module C
       Beaver::cmd cmd_build_obj, Beaver::each(self.sources), out: proc { |f| File.join(obj_dir, f.path.gsub("/", "_") + ".o") }, parallel: true do |file, outfile|
         Beaver::sh "#{cc || C::Internal::_get_compiler_for_file(file)} " +
           "-c #{file} " +
-          "#{self._cflags} " +
-          "#{self._include_flags} " +
+          "#{self.private_cflags.join(" ")} " +
+          "#{self.public_cflags.join(" ")} " +
+          "#{self.private_includes.map { |i| "-I#{i}" }.join(" ")} " +
+          "#{self.public_includes.map { |i| "-I#{i}" }.join(" ")} " +
           "-o #{outfile}"
       end
       
