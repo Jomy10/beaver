@@ -14,7 +14,7 @@ do
   fi
 done
 
-for arg in "$args[@]"
+for arg in "${args[@]}"
 do
   echo "> $arg <"
 
