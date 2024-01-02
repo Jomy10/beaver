@@ -238,8 +238,7 @@ run [target]      Build and run the specified executable target
       select_project_option = $beaver.options[:project]
       if $beaver.options[:project] != nil
         if $beaver.projects.count == 0
-          puts "No projects"
-          exit 0
+          Beaver::Log::err("Cannot select a project because there are no projects defined")
         end
         proj = $beaver.projects.find { |name,_| name == select_project_option }[1]
         if proj == nil
@@ -266,6 +265,7 @@ run [target]      Build and run the specified executable target
         for _, file_info in cache
           if file_info["modified"] != File.mtime(file_info["path"]).to_i
             $beaver.force_run = true
+            $beaver.cache_manager.clear
             (Dir[File.join($beaver.cache_dir, "*.cache")]).each do |cache_file|
               FileUtils.rm cache_file
             end
@@ -291,7 +291,6 @@ run [target]      Build and run the specified executable target
       end
       
       # cache
-      $beaver.cache_manager.add_config_cache
       def_dir $beaver.cache_dir
       $beaver.save_cache
       

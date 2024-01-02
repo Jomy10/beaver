@@ -353,6 +353,7 @@ module C
       cmd_build_obj_dyn = "__build_#{self.project.name}/#{self.name}_obj_dyn"
       cmd_build_static_lib = "__build_#{self.project.name}/#{self.name}_static_lib"
       cmd_build_dyn_lib = "__build_#{self.project.name}/#{self.name}_dynamic_lib"
+      cmd_build_pkg_config = "__build_#{self.project.name}/#{self.name}_pkg_config"
       
       static_obj_proc = proc { |f| File.join(static_obj_dir, f.path.gsub("/", "_") + ".o") }
       Beaver::cmd cmd_build_obj_static, Beaver::each(self.sources), out: static_obj_proc, parallel: true do |file, outfile|
@@ -385,6 +386,12 @@ module C
       outfiles = Beaver::eval_filelist(self.sources).map { |f| dyn_obj_proc.(SingleFile.new(f)) }
       Beaver::cmd cmd_build_dyn_lib, Beaver::all(outfiles), out: self.dynamic_lib_path do |files, outfile|
         Beaver::sh "#{cc || $beaver.get_tool(:cxx)} #{files} -shared -o #{outfile}"
+      end
+
+      # TODO: pkg_config with output onlly depenency
+      # TODO voor output dependency: create cache file which tells it it should run next time
+      Beaver::cmd cmd_build_pkg_config, out: self.pkg_config_path do |outfile|
+        puts outfile
       end
       
       Beaver::cmd self.build_static_cmd_name do
