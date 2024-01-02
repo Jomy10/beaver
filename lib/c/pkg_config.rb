@@ -5,10 +5,16 @@ module C
       Description: target.description,
       URL: target.homepage,
       Version: target.version,
-      Requires: target.dependencies.map { |d| d.name },
+      Requires: target.dependencies.map { |d|
+        target.project.get_target(d.name)
+      }.filter { |d|
+        d.library_type == LibraryType::PKG_CONFIG
+      }.map { |d|
+        "#{d.name} #{d.version}"
+      }.join(" "),
       # Requires_private: TODO
       Conflicts: target.conflicts,
-      Cflags: target.public_cflags.push(*target.public_cflags).join(" "),
+      Cflags: target.public_cflags.join(" "),#.push(*target.private_cflags).join(" "),
       Libs: target._ldflags,
       # Libs_private: TODO
     }.filter do |k, v|

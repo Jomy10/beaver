@@ -43,8 +43,6 @@ module Beaver
       end
       
       def save
-        p @cache
-        
         for project_name, project_cache in @cache
           file_path = self.project_cache_location(project_name)
           packed = MessagePack.pack(project_cache)

@@ -165,7 +165,7 @@ module C
         deps = []
         for dependency in self.dependencies
           dependency = self.project.get_target(dependency.name)
-          if dependency.library_type == LibraryType::SYSTEM
+          if dependency.library_type == LibraryType::SYSTEM || dependency.library_type == LibraryType::PKG_CONFIG
             deps << dependency
           end
           sub_dependencies = dependency._all_system_deps
@@ -221,6 +221,7 @@ module C
   module LibraryType
     USER = 0
     SYSTEM = 1
+    PKG_CONFIG = 2
   end
   
   class Library < Internal::Target
@@ -250,14 +251,17 @@ module C
     
     # Create a new system library defined by pkg-config
     # @param name [String] the name of the pkg_config module
-    # @param pkg_config_name [String] the name of the package config package, default is `name` 
-    def self.pkg_config(name, pkg_config_name: nil)
+    # @param pkg_config_name [String] the name of the package config package, default is `name`
+    # @param version [String] define a version for the package config module (e.g. ">= 1.2").
+    def self.pkg_config(name, pkg_config_name: nil, version: ">= 0")
+      # TODO: parse version -> check pkg-config --atleast-version, ...
       # TODO: error handling
       return SystemLibrary.new(
         name: name,
-        _type: LibraryType::SYSTEM,
+        _type: LibraryType::PKG_CONFIG,
         cflags:  `pkg-config #{pkg_config_name || name} --cflags`.gsub("\n", ""),
-        ldflags: `pkg-config #{pkg_config_name || name} --libs`.gsub("\n", "")
+        ldflags: `pkg-config #{pkg_config_name || name} --libs`.gsub("\n", ""),
+        version: version
       )
     end
     
@@ -316,8 +320,9 @@ module C
       end
     end
     
-    def create_pkg_config
-      return pkg_config_from_target(self)
+    def create_pkg_config(path)
+      contents = C::pkg_config_from_target(self)
+      File.write(path, contents)
     end
 
     def install
@@ -391,19 +396,21 @@ module C
       # TODO: pkg_config with output onlly depenency
       # TODO voor output dependency: create cache file which tells it it should run next time
       Beaver::cmd cmd_build_pkg_config, out: self.pkg_config_path do |outfile|
-        puts outfile
+        self.create_pkg_config(outfile)
       end
       
       Beaver::cmd self.build_static_cmd_name do
         Beaver::def_dir static_obj_dir
         Beaver::call cmd_build_obj_static 
-        Beaver::call cmd_build_static_lib 
+        Beaver::call cmd_build_static_lib
+        Beaver::call cmd_build_pkg_config
       end
       
       Beaver::cmd self.build_dynamic_cmd_name do
         Beaver::def_dir dynamic_obj_dir
         Beaver::call cmd_build_obj_dyn 
         Beaver::call cmd_build_dyn_lib 
+        Beaver::call cmd_build_pkg_config
       end
     end
   end
