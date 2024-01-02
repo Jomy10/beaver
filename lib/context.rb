@@ -247,6 +247,7 @@ run [target]      Build and run the specified executable target
         $beaver.current_project = proj
       end
       if $beaver.options[:"list-targets"] == true
+        if $beaver.current_project.nil? then Beaver::Log::err("No targets defined because there is no project defined") end
         $beaver.current_project.targets.each do |name,target|
           puts name + "\t" + target.class.to_s
         end
@@ -256,9 +257,10 @@ run [target]      Build and run the specified executable target
       $beaver.debug = $beaver.options[:"beaver-debug"] || false
       $beaver.verbose = $beaver.options[:verbose] || false
       if !$beaver.options[:config].nil?
+        if $beaver.current_project.nil? then Beaver::Log::err("Cannot select config because there is no project defined") end
         $beaver.current_project.current_config = $beaver.options[:config]
       end
-     
+       
       # If base config changed, recompile the project (remove caches)
       cache = $beaver.cache_manager.get_config_cache
       if !cache.nil?
