@@ -3,6 +3,7 @@ module Beaver
     NORMAL = 0
     EACH = 1
     ALL = 2
+    OUTPUT_ONLY = 3
   end
 
   Command = Struct.new(
@@ -21,7 +22,9 @@ module Beaver
     end
     
     def type
-      if self.input.nil?
+      if self.input.nil? && !self.output.nil?
+        return CommandType::OUTPUT_ONLY
+      elsif self.input.nil?
         return CommandType::NORMAL
       elsif self.input.type == DependencyType::EACH
         return CommandType::EACH
@@ -79,14 +82,38 @@ module Beaver
       }.map { |file| file["path"] }
     end
     
+    def _output_only_should_run
+      if self._force_should_run || $beaver.force_run
+        return true
+      end
+      
+      if !File.exist?(self.output)
+        return true
+      else
+        return false
+      end
+    end
+    
     def execute
       Beaver::Log::command_start(self.name)
       case self.type
       when CommandType::NORMAL
         if self.fn.arity != 0
-          Beaver::Log::err("Invalid amount of arguments for command #{self.name} (got #{self.fn.arity}, expected: 1..2)")
+          Beaver::Log::err("Invalid amount of arguments for command #{self.name} (got #{self.fn.arity}, expected: 0)")
         end
         self.fn.call()
+      when CommandType::OUTPUT_ONLY
+        # TODO: accept array for output? -> call for each output?
+        if !(self.fn.arity == 1 || self.fn.arity == 0)
+          Beaver::Log::err("Invalid amount of arguments for command #{self.name} (got #{self.fn.arity}, expected 0..1)")
+        end
+        if self._output_only_should_run
+          if self.fn.arity == 1
+            self.fn.call(self.output)
+          else
+            self.fn.call()
+          end
+        end
       when CommandType::EACH
         self._execute_each
       when CommandType::ALL
@@ -130,7 +157,7 @@ module Beaver
             !(input_list_ignore.include?(files[:input]) && File.exist?(files[:output]))
           }
       end
-
+      
       case self.fn.arity
       when 1
         if self.output == nil
