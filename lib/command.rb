@@ -87,7 +87,9 @@ module Beaver
         return true
       end
       
-      if !File.exist?(self.output)
+      cache = $beaver.cache_manager.get_command_cache(self)
+      # If cache with has_run exists and output file exists, then no re-run needed
+      if (!File.exist?(self.output)) || ((cache.nil?) ? true : !cache["has_run"])
         return true
       else
         return false
@@ -121,7 +123,6 @@ module Beaver
           inputs = MultipleFiles.new(self.input_files)
           case self.fn.arity
           when 1
-          :q
             self.fn.call(inputs)
           when 2
             self.fn.call(

@@ -7,10 +7,14 @@ module Beaver
     class CacheManager
       # { project => elements }
       attr_accessor :cache
-
+      
       DEFAULT_PROJECT = "__BEAVER_BASE"
       
       def initialize
+        @cache = Hash.new
+      end
+      
+      def clear
         @cache = Hash.new
       end
       
@@ -39,6 +43,8 @@ module Beaver
       end
       
       def save
+        p @cache
+        
         for project_name, project_cache in @cache
           file_path = self.project_cache_location(project_name)
           packed = MessagePack.pack(project_cache)
@@ -69,9 +75,15 @@ module Beaver
       # ------
       # {
       #   project1 => {
+      #     # type: each/all
       #     command1 => {
       #       :type,
       #       :input => { path: String, modified: Integer },
+      #     },
+      #     # type: OUTPUT_ONLY
+      #     command2 => {
+      #       :type,
+      #       :has_run # If true and output file exists, shouldn't re-run
       #     }
       #   }
       # }
@@ -107,6 +119,9 @@ module Beaver
         when CommandType::ALL
           command_cache[:type] = CommandType::ALL
           command_cache[:input] = command.input_files.map { |f| { path: f, modified: File.mtime(f).to_i } }
+        when CommandType::OUTPUT_ONLY
+          command_cache[:type] = CommandType::OUTPUT_ONLY
+          command_cache[:has_run] = true
         end
       end
       
