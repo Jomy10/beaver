@@ -265,7 +265,8 @@ run [target]      Build and run the specified executable target
       if !cache.nil?
         for _, file_info in cache
           if file_info["modified"] != File.mtime(file_info["path"]).to_i
-            Dir[File.join($beaver.cache_dir, "*.cache")].each do |cache_file|
+            $beaver.force_run = true
+            (Dir[File.join($beaver.cache_dir, "*.cache")]).each do |cache_file|
               FileUtils.rm cache_file
             end
           end
@@ -288,7 +289,7 @@ run [target]      Build and run the specified executable target
           $beaver.call_command_at_exit
         end
       end
-       
+      
       # cache
       $beaver.cache_manager.add_config_cache
       def_dir $beaver.cache_dir
@@ -299,5 +300,9 @@ run [target]      Build and run the specified executable target
       FileUtils.remove_entry($beaver.temp_dir)
     end
   }
+end
+
+def postpone(&cb)
+  $beaver.postpone(&cb)
 end
 
