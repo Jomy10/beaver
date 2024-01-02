@@ -8,7 +8,7 @@ at your fingertips when creating your build scripts.
 
 **recommended way**:
 ```sh
-gem install beaver --source https://gem.jomy.dev -v "3.1.0"
+gem install beaver --source https://gem.jomy.dev -v "3.1.3"
 ```
 
 Or through **github packages** (requires authentication):
