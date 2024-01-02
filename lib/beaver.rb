@@ -1,5 +1,3 @@
-# todo: ch dirname($1)
-
 module Beaver
   $beaver = nil if !$beaver.nil?
 end
@@ -22,6 +20,7 @@ require 'c/dependency'
 require 'c/target'
 require 'c/configuration'
 require 'c/tools'
+require 'c/pkg_config'
 
 include Beaver
 

@@ -13,7 +13,9 @@ module C
             Beaver::Log::err("Internal error: project is nil") if project.nil?
             target = project.get_target(dep)
             Beaver::Log::err("Unknown dependency #{dep}; target not found") if target.nil?
-            if target.is_static?
+            if target.is_a? C::SystemLibrary
+              next Dependency.new(dep)
+            elsif target.is_static?
               next Dependency.new(dep, :static)
             elsif target.is_dynamic?
               next Dependency.new(dep, :dynamic)

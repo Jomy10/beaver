@@ -51,7 +51,7 @@ end
 
 **recommended way**:
 ```sh
-gem install beaver --source https://gem.jomy.dev -v "3.1.0"
+gem install beaver --source https://gem.jomy.dev -v "3.1.2"
 ```
 
 Or through **github packages** (requires authentication):

@@ -10,7 +10,6 @@ Gem::Specification.new do |s|
   s.authors = ["Jonas Everaert"]
   s.files = FileList['lib/**/*.rb']
   s.add_runtime_dependency 'fileutils', '~> 1.7'
-  # s.add_runtime_dependency 'colorize', '~> 1.1'
   s.add_runtime_dependency 'workers', '~> 0.6'
   s.add_runtime_dependency 'rainbow', '~> 3.1'
   s.add_runtime_dependency 'msgpack', '~> 1.6'
