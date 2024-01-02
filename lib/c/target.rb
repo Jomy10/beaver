@@ -88,6 +88,7 @@ module C
         end
       end
       
+      # TODO: to lazy variable?
       def private_cflags
         return Target._parse_private_flags(self.cflags) || []
       end
@@ -123,49 +124,7 @@ module C
         return includes
       end
       
-      # TODO: to lazy variable?
-      # def _cflags
-      #   cflags = if self.cflags.nil?
-      #     ""
-      #   else
-      #     (self.cflags.is_a? String) ? self.cflags : self.cflags.join(" ")
-      #   end
-      #   cflags << " " + self.project.cflags
-      #   cflags.strip!
-      #   return cflags
-      # end
-      
-      # def _include_flags
-      #   include_flags = if self.include.nil?
-      #     ""
-      #   else
-      #     (Target._parse_private_include(self.include) || "")
-      #       + (Target._parse_public_include(self.include) || "")
-      #   end
-      #   include_flags << " " + self.project.include_flags
-      #   for dependency in self.dependencies
-      #     include_flags << " " + self.project.get_target(dependency.name)._public_include_flags
-      #   end
-      #   include_flags.strip!
-      #   # TODO: public include flags of dependencies
-      #   return include_flags
-      # end
-      # 
-      # def _public_include_flags
-      #   include_flags = if self.include.nil?
-      #     ""
-      #   else
-      #     Target._parse_public_include(self.include)
-      #   end
-      #   include_flags << " " + self.project.include_flags
-      #   for dependency in self.dependencies
-      #     include_flags << " " + self.project.get_target(dependency.name)._public_include_flags
-      #   end
-      #   include_flags.strip!
-      #   return include_flags
-      # end
-     
-      # TODO: rewrite to retun array
+      # TODO: rewrite to return array
       def _ldflags
         ldflags = if self.ldflags.nil?
           ""
@@ -220,32 +179,13 @@ module C
       # TODO: args -> quoted
       
       private
-      # Include can be of type:
-      # - String
-      # - String[]
-      # - { :internal => String | String[], :public => String | String[] }
-      def self._parse_private_include(include)
-        if include.is_a? Hash
-          Target._parse_public_include(include[:private])
-        end
-        # if include.is_a? String
-        #   return "-I#{include}"
-        # elsif include.is_a? Hash
-        #   return include.map { |k, v| Target._parse_include(v) }.join(" ")
-        # elsif include.respond_to? :each
-        #   return include.map { |folder| "-I#{folder} " }.join(" ")
-        # else
-        #   Beaver::Log::err("Invalid include #{include.describe}")
-        # end
-      end
-      
       def self._get_compiler_for_file(file)
         if file.ext.downcase == ".c"
           $beaver.get_tool(:cc)
         elsif [".cc", ".cpp", ".cxx"].include? file.ext.downcase
           $beaver.get_tool(:cxx)
         else
-          Beaver::Log::err("File extension #{file.ext} not a valid C/C++ file")
+          Beaver::Log::err("File extension #{file.ext} is not a valid C/C++ file extension")
         end
       end
       
@@ -286,30 +226,8 @@ module C
   class Library < Internal::Target
     include Beaver::Internal::PostInitable
     include Beaver::Internal::TargetPostInit
-    
-    def executable?
-      false
-    end
-    
-    def buildable?
-      true
-    end
-    
-    def library_type
-      if self._type.nil?
-        return LibraryType::USER
-      else
-        return self._type
-      end
-    end
-     
-    def static_lib_path
-      File.join(self.out_dir, "lib#{self.name}.a")
-    end
-    
-    def dynamic_lib_path
-      File.join(self.out_dir, "lib#{self.name}.so")
-    end
+      
+    # Initializers #
     
     # Create a new system library
     # @param name [String] the name of the system library
@@ -343,6 +261,34 @@ module C
       )
     end
     
+    def executable?
+      false
+    end
+    
+    def buildable?
+      true
+    end
+    
+    def library_type
+      if self._type.nil?
+        return LibraryType::USER
+      else
+        return self._type
+      end
+    end
+     
+    def static_lib_path
+      File.join(self.out_dir, "lib#{self.name}.a")
+    end
+    
+    def dynamic_lib_path
+      File.join(self.out_dir, "lib#{self.name}.so")
+    end
+    
+    def pkg_config_path
+      File.join(self.out_dir, "lib#{self.name}.pc")
+    end
+     
     def build_static_cmd_name
       "__build_#{self.project.name}/#{self.name}_static"
     end
@@ -371,7 +317,7 @@ module C
     end
     
     def create_pkg_config
-      # TODO!!!
+      return pkg_config_from_target(self)
     end
 
     def install

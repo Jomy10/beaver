@@ -144,7 +144,7 @@ run [target]      Build and run the specified executable target
         self.run(args.count == 0 ? self.default_command : args[0])
       end
     end
-
+    
     def save_cache
       Dir.chdir(File.dirname($0)) do
         for command_name in @executed_commands.uniq
@@ -229,12 +229,12 @@ run [target]      Build and run the specified executable target
       if $beaver.exit_error
         next
       end
-
+      
       if !$beaver.current_project.nil? && !$beaver.current_project._options_callback.nil?
         $beaver.current_project._options_callback.call($beaver.option_parser)
       end
       $beaver.options[:args] = $beaver.option_parser.parse!(ARGV, into: $beaver.options)
-    
+      
       select_project_option = $beaver.options[:project]
       if $beaver.options[:project] != nil
         if $beaver.projects.count == 0
