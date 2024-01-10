@@ -1,5 +1,5 @@
 module C
-  class Executable << C::Internal::Target
+  class Executable < C::Internal::Target
     # General defines #
     def executable?
       true

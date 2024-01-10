@@ -47,6 +47,10 @@ do
     popd
   fi
 
+  if [[ $arg == "test" ]]; then
+    ruby tests/test.rb
+  fi
+
   # Publish gem to ruby gems
   # if [[ $arg == "publish" ]]; then
   #   gem push beaver-build-*.gem

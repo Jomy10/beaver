@@ -35,6 +35,7 @@ module C
       :_library_type,
       keyword_init: true
     ) 
+      include Beaver::Internal::PostInitable
       include Beaver::Internal::Target
       
       # Directories #
@@ -146,9 +147,8 @@ module C
       private
       def _custom_after_init
         # Parse properties
-        if self.sources.nil?
-          Beaver::Log::err("Target #{self.name} has no source files defined")
-        end
+        Beaver::Log::err("Target #{self.name} has no source files defined") if self.sources.nil?
+        Beaver::Log::err("Property `type` of C::Target should be of type: Symbol | Symbol[] | nil, or convertible into a symbol (e.g. string)") if !(self.type.nil? || self.type.is_a?(Symbol) || self.type.respond_to?(:each))
         
         self.dependencies = C::Dependency.parse_dependency_list(self.dependencies, self.project.name)
       end
@@ -222,22 +222,10 @@ module C
       end
     end
   end
-  
-  class Library < C::Internal::Target
-    def is_dynamic?
-      return self.type.nil? || (self.type.is_a?(Symbol) && self.type == :dynamic) ||
-        ((self.type.respond_to? :each) ? self.type.include?(:dynamic) : false)
-    end
-    
-    def is_static?
-      return self.type.nil? || (self.type.is_a?(Symbol) && self.type == :static) ||
-        ((self.type.respond_to? :each) ? self.type.include?(:static) : false)
-    end
-  end
 end
 
 
-module C
+# module C
   # module Internal
   #   Target = Struct.new(
   #     # [String]
@@ -782,5 +770,5 @@ module C
   #     end
   #   end
   # end
-end
+# end
 
