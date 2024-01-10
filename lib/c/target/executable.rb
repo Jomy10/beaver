@@ -40,6 +40,8 @@ module C
       case artifact_type
       when Beaver::ArtifactType::EXECUTABLE
         self.build_executable
+      when Beaver::ArtifactType::MACOS_APP
+        Beaver::Log::err("MacOS Apps are currently unimplemented")
       else
         Beaver::Log::err("Invalid artifact #{artifact_type} for C::Executable")
       end
@@ -48,7 +50,9 @@ module C
     def artifact_path(artifact_type)
       case artifact_type
       when Beaver::ArtifactType::EXECUTABLE
-        return self.executable_path 
+        return self.executable_path
+      when Beaver::ArtifactType::MACOS_APP
+        Beaver::Log::err("MacOS Apps are currently unimplemented")
       else
         Beaver::Log::err("Invalid artifact #{artifact_type} for C::Executable")
       end
@@ -58,6 +62,7 @@ module C
     def _custom_after_init
       super._custom_after_init
       
+      # TODO: build .app for macOS
       @artifacts = [Beaver::ArtifactType::EXECUTABLE]
       
       out_dir = self.out_dir

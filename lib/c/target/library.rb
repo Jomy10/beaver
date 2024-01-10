@@ -41,6 +41,27 @@ module C
       )
     end
     
+    def self.framework(name, framework_name: nil, cflags: nil, ldflags: nil)
+      _ldflags = if ldflags.nil?
+        ldflags
+      else
+        if ldflags.respond_to? :each
+          ldflags
+        else
+          [ldflags]
+        end
+      end
+      _ldflags << "-framework"
+      _ldflags << (framework_name || name)
+
+      return SystemLibrary.new(
+        name: name,
+        _library_type: LibraryType::FRAMEWORK,
+        cflags: cflags,
+        ldflags: _ldflags
+      )
+    end
+    
     # General defines #
     def executable?
       false
@@ -236,5 +257,10 @@ module C
     USER = 0
     SYSTEM = 1
     PKG_CONFIG = 2
+    FRAMEWORK = 3
+
+    def self.is_system?(library_type)
+      return library_type != USER
+    end
   end
 end

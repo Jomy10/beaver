@@ -39,30 +39,23 @@ module Beaver
       def artifacts
         return @artifacts
       end
-
+      
+      # TODO: test artifacts
       def print_artifacts
-        puts "Artifacts of #{self.name}"
+        puts "Artifacts of #{self.name}:"
         @artifacts.each do |artifact|
-          puts "  #{ArtifactType::name(artifact)}: #{self.artifact_path(artifact)}"
+          puts "  - #{ArtifactType::name(artifact)}: #{self.artifact_path(artifact)}"
         end
       end
     end
-    
-    # class Target
-    #   include PostInitable
-    #   include TargetPostInit
-    #   
-    #   # [Hash { type: path }]
-    #   attr_accessor artifacts
-    # end
-    
   end
-
+  
   module ArtifactType
     STATIC_LIB = 0
     DYNAMIC_LIB = 1
     EXECUTABLE = 2
-
+    MACOS_APP = 3
+    
     def self.name(artifact_type)
       case artifact_type
       when STATIC_LIB
