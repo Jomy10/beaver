@@ -39,6 +39,13 @@ module Beaver
       def artifacts
         return @artifacts
       end
+
+      def print_artifacts
+        puts "Artifacts of #{self.name}"
+        @artifacts.each do |artifact|
+          puts "  #{ArtifactType::name(artifact)}: #{self.artifact_path(artifact)}"
+        end
+      end
     end
     
     # class Target
@@ -55,6 +62,19 @@ module Beaver
     STATIC_LIB = 0
     DYNAMIC_LIB = 1
     EXECUTABLE = 2
+
+    def self.name(artifact_type)
+      case artifact_type
+      when STATIC_LIB
+        return "Static library"
+      when DYNAMIC_LIB
+        return "Dynamic library"
+      when EXECUTABLE
+        return "Executable"
+      else
+        Beaver::Log::err("Invalid artifact type #{artifact_type}")
+      end
+    end
   end
 end
 
