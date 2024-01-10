@@ -17,7 +17,9 @@ module Beaver
       end
     end
     
-    module TargetPostInit
+    module Target
+      include PostInitable
+      
       # Assign project and add target to project
       def after_init
         self.project = (self.project || $beaver.current_project)
@@ -32,7 +34,27 @@ module Beaver
           self._custom_after_init()
         end
       end
+      
+      # [ArtifactType[]]
+      def artifacts
+        return @artifacts
+      end
     end
+    
+    # class Target
+    #   include PostInitable
+    #   include TargetPostInit
+    #   
+    #   # [Hash { type: path }]
+    #   attr_accessor artifacts
+    # end
+    
+  end
+
+  module ArtifactType
+    STATIC_LIB = 0
+    DYNAMIC_LIB = 1
+    EXECUTABLE = 2
   end
 end
 
