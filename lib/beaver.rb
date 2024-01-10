@@ -2,6 +2,8 @@ module Beaver
   $beaver = nil if !$beaver.nil?
 end
 
+require 'formatting/log'
+
 require 'files/file_utils'
 require 'files/cache'
 require 'files/file_obj'
@@ -13,8 +15,6 @@ require 'target'
 require 'sh'
 require 'tools'
 require 'envvar'
-
-require 'formatting/log'
 
 require 'c/dependency'
 require 'c/target/target'

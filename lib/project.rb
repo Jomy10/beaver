@@ -20,6 +20,7 @@ module Beaver
     attr_reader :targets
     attr_reader :_options_callback
 
+    # Initializers #
     def initialize(name, build_dir: "out", &options)
       @name = name
       @build_dir = build_dir
@@ -32,7 +33,15 @@ module Beaver
       $beaver.current_project = self
       $beaver.add_project(self)
     end
-
+    
+    def self.cmake(name, path:)
+      Beaver::Log::err("TODO")
+    end
+    
+    def self.make(name, path:)
+      Beaver::Log::err("TODO")
+    end
+    
     # TODO: different for non-selected projects
     def options
       return $beaver.options

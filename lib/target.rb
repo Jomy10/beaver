@@ -18,8 +18,6 @@ module Beaver
     end
     
     module Target
-      include PostInitable
-      
       # Assign project and add target to project
       def after_init
         self.project = (self.project || $beaver.current_project)

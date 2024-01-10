@@ -1,5 +1,5 @@
 module C
-  def Library < C::Internal::Target
+  class Library < C::Internal::Target
     # Initializers #
     
     # Create a new system library
@@ -53,8 +53,8 @@ module C
       end
       _ldflags << "-framework"
       _ldflags << (framework_name || name)
-
-      return SystemLibrary.new(
+      
+      return Framework.new(
         name: name,
         _library_type: LibraryType::FRAMEWORK,
         cflags: cflags,
@@ -77,6 +77,16 @@ module C
       else
         return self._library_type
       end
+    end
+
+    def is_dynamic?
+      return self.type.nil? || (self.type.is_a?(Symbol) && self.type == :dynamic) ||
+        ((self.type.respond_to? :each) ? self.type.include?(:dynamic) : false)
+    end
+    
+    def is_static?
+      return self.type.nil? || (self.type.is_a?(Symbol) && self.type == :static) ||
+        ((self.type.respond_to? :each) ? self.type.include?(:static) : false)
     end
     
     # Paths #
@@ -158,7 +168,13 @@ module C
     private
     def _custom_after_init
       super._custom_after_init
-      
+     
+      if self.buildable?
+        self._create_build_commands
+      end
+    end
+
+    def _create_build_commands
       @artifacts = []
       if self.type.nil? || ((self.type.is_a? Symbol) ? self.type == :static : (self.type.include? :static))
         @artifacts << Beaver::ArtifactType::STATIC_LIB
@@ -166,6 +182,7 @@ module C
       if self.type.nil? || ((self.type.is_a? Symbol) ? self.type == :dynamic : (self.type.include? :dynamic))
         @artifacts << Beaver::ArtifactType::DYN_LIB
       end
+      @artifacts << Beaver::ArtifactType::PKG_CONFIG
       
       # Create commands
       out_dir = self.out_dir
@@ -248,9 +265,7 @@ module C
     end
   end
 
-  # TODO: initializer in library
   class Framework < SystemLibrary
-
   end
 
   module LibraryType
@@ -258,7 +273,7 @@ module C
     SYSTEM = 1
     PKG_CONFIG = 2
     FRAMEWORK = 3
-
+    
     def self.is_system?(library_type)
       return library_type != USER
     end
