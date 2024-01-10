@@ -1,0 +1,11 @@
+prefix=/usr/local
+include_dir=${prefix}/include
+libdir=${prefix}/lib
+
+Name: MyLibrary
+Description: A description of my library
+URL: https://github.com/jomy10/beaver
+Version: 0.1.0
+Requires: 
+Cflags: -DMY_LIB_PUB
+Libs: -lpthread

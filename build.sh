@@ -51,6 +51,10 @@ do
     ruby tests/test.rb -v --show-skips -c -f
   fi
 
+  if [[ $arg == "test-workflow" ]]; then
+    ruby tests/test.rb -v
+  fi
+
   # Publish gem to ruby gems
   # if [[ $arg == "publish" ]]; then
   #   gem push beaver-build-*.gem

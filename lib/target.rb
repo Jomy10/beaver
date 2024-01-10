@@ -50,15 +50,16 @@ module Beaver
   
   module ArtifactType
     STATIC_LIB = 0
-    DYNAMIC_LIB = 1
+    DYN_LIB = 1
     EXECUTABLE = 2
     MACOS_APP = 3
+    PKG_CONFIG_FILE = 4
     
     def self.name(artifact_type)
       case artifact_type
       when STATIC_LIB
         return "Static library"
-      when DYNAMIC_LIB
+      when DYN_LIB
         return "Dynamic library"
       when EXECUTABLE
         return "Executable"

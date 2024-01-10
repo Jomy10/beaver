@@ -149,13 +149,16 @@ module Beaver
       else
         files = self.input_files
           .map { |input_file|
+            SingleFile.new(input_file)
+          }
+          .map { |input_file|
             {
               input: input_file,
-              output: self.output.(SingleFile.new(input_file))
+              output: self.output.(input_file)
             }
           }.filter { |files|
             # Don't re-run of the input file hasn't changed and the output file exists
-            !(input_list_ignore.include?(files[:input]) && File.exist?(files[:output]))
+            !(input_list_ignore.include?(files[:input].path) && File.exist?(files[:output]))
           }
       end
       

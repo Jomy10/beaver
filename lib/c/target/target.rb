@@ -113,7 +113,7 @@ module C
               when :any
                 " -L#{d.out_dir} -l#{d.name}"
               when :static
-                if !self.is_static?
+                if !d[0].is_static?
                   Beaver::Log::err("Cannot statically link dynamic library #{d[0].name}")
                 end
                 tmp_dir = FileUtils.mkdir_p(File.join($beaver.temp_dir, "#{d[0].name}_static")).first
@@ -129,7 +129,21 @@ module C
         end
         return ldflags.strip
       end
-      
+
+      # Tools #
+      def get_cc
+        cc = if self.language == "C" || self.language.nil?
+          $beaver.get_tool(:cc)
+        elsif self.language == "C++"
+          $beaver.get_tool(:cxx)
+        elsif self.language == "Mixed"
+          nil
+        else
+          Beaver::Log::err("Invalid language #{self.language}")
+        end
+        return cc
+      end
+    
       # Build #
       def build_dependencies
         Workers.map(self.dependencies) do |dependency|
@@ -143,11 +157,17 @@ module C
       def clean
         FileUtils.rm_r(self.out_dir)
       end
+
+      def build_if_not_built_yet
+        Beaver::Log::err("Unimplemented")
+      end
       
       private
       def _custom_after_init
         # Parse properties
-        Beaver::Log::err("Target #{self.name} has no source files defined") if self.sources.nil?
+        if self.buildable?
+          Beaver::Log::err("Target #{self.name} has no source files defined") if self.sources.nil?
+        end
         Beaver::Log::err("Property `type` of C::Target should be of type: Symbol | Symbol[] | nil, or convertible into a symbol (e.g. string)") if !(self.type.nil? || self.type.is_a?(Symbol) || self.type.respond_to?(:each))
         
         self.dependencies = C::Dependency.parse_dependency_list(self.dependencies, self.project.name)
