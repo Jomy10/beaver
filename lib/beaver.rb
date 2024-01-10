@@ -2,6 +2,8 @@ module Beaver
   $beaver = nil if !$beaver.nil?
 end
 
+Dir.chdir(File.dirname($0))
+
 require 'formatting/log'
 
 require 'files/file_utils'
