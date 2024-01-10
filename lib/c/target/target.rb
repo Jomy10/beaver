@@ -48,6 +48,7 @@ module C
       end
       
       # Flags #
+      # TODO: filter duplicate flags
       def private_cflags
         if @__private_cflags.nil?
           @__private_cflags = Target._parse_private_flags(self.cflags) || []
@@ -198,7 +199,7 @@ module C
         deps = []
         for dependency in self.dependencies
           dependency = self.project.get_target(dependency.name)
-          if dependency.library_type == LibraryType::SYSTEM || dependency.library_type == LibraryType::PKG_CONFIG
+          if LibraryType::is_system?(dependency.library_type)
             deps << dependency
           end
           sub_dependencies = dependency._all_system_deps
