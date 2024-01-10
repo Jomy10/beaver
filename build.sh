@@ -48,7 +48,7 @@ do
   fi
 
   if [[ $arg == "test" ]]; then
-    ruby tests/test.rb
+    ruby tests/test.rb -v --show-skips -c -f
   fi
 
   # Publish gem to ruby gems

@@ -13,16 +13,17 @@ Beaver::def_dir OBJ_OUT
 EXEC_NAME = "hello"
 
 cmd :build do
-
   call :build_objs
   call :link
 end
 
 cmd :build_objs, each(["src/main.c", "src/hello.c"]), out: proc { |f| File.join(OBJ_OUT, f.basename + ".o") } do |file, outfile|
+  puts "Building object"
   sh %(#{CC} -c #{file} -o #{outfile})
 end
 
 cmd :link, all(File.join(OBJ_OUT, "*.o")), out: EXEC_NAME do |files, outfile|
+  puts "Linking"
   sh %(#{CC} #{files} -o #{outfile})
 end
 

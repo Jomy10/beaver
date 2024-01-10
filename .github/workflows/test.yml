@@ -9,12 +9,12 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
   
-  steps:
-  - uses: actions/checkout@v3
-  - uses: ruby/setup-ruby@v1
-    with:
-      ruby-version: '3.1'
-      bundler-cache: false
-  - name: Run tests
-    run: bash build.sh build install test
+    steps:
+    - uses: actions/checkout@v3
+    - uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.1'
+        bundler-cache: false
+    - name: Run tests
+      run: bash build.sh build install test
 

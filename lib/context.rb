@@ -139,22 +139,18 @@ run [target]      Build and run the specified executable target
     end
     
     def call_command_at_exit
-      Dir.chdir(File.dirname($0)) do
-        args = @options[:args]
-        self.run(args.count == 0 ? self.default_command : args[0])
-      end
+      args = @options[:args]
+      self.run(args.count == 0 ? self.default_command : args[0])
     end
     
     def save_cache
-      Dir.chdir(File.dirname($0)) do
-        for command_name in @executed_commands.uniq
-          command = self.get_command(command_name)
-          if command.type == CommandType::NORMAL then next end
-          @cache_manager.add_command_cache(command)
-        end
-        @cache_manager.add_config_cache
-        @cache_manager.save
+      for command_name in @executed_commands.uniq
+        command = self.get_command(command_name)
+        if command.type == CommandType::NORMAL then next end
+        @cache_manager.add_command_cache(command)
       end
+      @cache_manager.add_config_cache
+      @cache_manager.save
     end
     
     def arg_run(target)
