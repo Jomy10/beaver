@@ -58,6 +58,8 @@ module C
     def _custom_after_init
       super._custom_after_init
       
+      @artifacts = [Beaver::ArtifactType::EXECUTABLE]
+      
       out_dir = self.out_dir
       obj_dir = self.obj_dir
       cc = self.get_cc
