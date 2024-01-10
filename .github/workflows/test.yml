@@ -18,5 +18,5 @@ jobs:
     - name: setup minitest
       run: gem install minitest
     - name: Run tests
-      run: bash build.sh build install test
+      run: bash build.sh build install test-workflow
 

@@ -108,11 +108,11 @@ module C
     end
     
     def build_dynamic_cmd_name
-      "__build_#{self.name}_dynamic"
+      "__build_#{self.project.name}/#{self.name}_dynamic"
     end
 
     def build_pkg_config_cmd_name
-      "__build_#{self.name}_pkg_config"
+      "__build_#{self.project.name}/#{self.name}_pkg_config"
     end
 
     # Build #
@@ -167,7 +167,15 @@ module C
 
     private
     def _custom_after_init
-      super._custom_after_init
+      super()
+
+      if !self.type.nil?
+        if self.type.respond_to?(:map)
+          self.type = self.type.map { |t| t.to_sym }
+        else
+          self.type = self.type.to_sym
+        end
+      end
      
       if self.buildable?
         self._create_build_commands
@@ -182,7 +190,7 @@ module C
       if self.type.nil? || ((self.type.is_a? Symbol) ? self.type == :dynamic : (self.type.include? :dynamic))
         @artifacts << Beaver::ArtifactType::DYN_LIB
       end
-      @artifacts << Beaver::ArtifactType::PKG_CONFIG
+      @artifacts << Beaver::ArtifactType::PKG_CONFIG_FILE
       
       # Create commands
       out_dir = self.out_dir
@@ -197,11 +205,10 @@ module C
       cmd_build_obj_dyn = "__build_#{self.project.name}/#{self.name}_obj_dyn"
       cmd_build_static_lib = "__build_#{self.project.name}/#{self.name}_static_lib"
       cmd_build_dyn_lib = "__build_#{self.project.name}/#{self.name}_dynamic_lib"
-      cmd_build_pkg_config = "__build_#{self.project.name}/#{self.name}_pkg_config"
       
       static_obj_proc = proc { |f| File.join(static_obj_dir, f.path.gsub("/", "_") + ".o") }
       Beaver::cmd cmd_build_obj_static, Beaver::each(self.sources), out: static_obj_proc, parallel: true do |file, outfile|
-        Beaver::sh "#{cc || C::Internal::_get_compiler_for_file(file)} " +
+        Beaver::sh "#{cc || C::Internal::Target::_get_compiler_for_file(file)} " +
           "-c #{file} " +
           "#{self.private_cflags.join(" ")} " +
           "#{self.public_cflags.join(" ")} " +
@@ -212,7 +219,7 @@ module C
       
       dyn_obj_proc = proc { |f| File.join(dynamic_obj_dir, f.path.gsub("/","_") + ".o") }
       Beaver::cmd cmd_build_obj_dyn, Beaver::each(self.sources), out: dyn_obj_proc, parallel: true do |file, outfile|
-        Beaver::sh "#{cc || C::Internal::_get_compiler_for_file(file)} " +
+        Beaver::sh "#{cc || C::Internal::Target::_get_compiler_for_file(file)} " +
           "-c #{file} " +
           "-fPIC " +
           "#{self.private_cflags.join(" ")} " +
@@ -231,9 +238,9 @@ module C
       Beaver::cmd cmd_build_dyn_lib, Beaver::all(outfiles), out: self.dynamic_lib_path do |files, outfile|
         Beaver::sh "#{cc || $beaver.get_tool(:cxx)} #{files} -shared -o #{outfile}"
       end
-
+      
       # TODO voor output dependency: create cache file which tells it it should run next time
-      Beaver::cmd cmd_build_pkg_config, out: self.pkg_config_path do |outfile|
+      Beaver::cmd self.build_pkg_config_cmd_name, out: self.pkg_config_path do |outfile|
         contents = C::pkg_config_from_target(self)
         File.write(outfile, contents)
       end
@@ -242,32 +249,30 @@ module C
         Beaver::def_dir static_obj_dir
         Beaver::call cmd_build_obj_static 
         Beaver::call cmd_build_static_lib
-        Beaver::call cmd_build_pkg_config
       end
       
       Beaver::cmd self.build_dynamic_cmd_name do
         Beaver::def_dir dynamic_obj_dir
         Beaver::call cmd_build_obj_dyn 
         Beaver::call cmd_build_dyn_lib 
-        Beaver::call cmd_build_pkg_config
       end
     end
   end
-
+  
   class SystemLibrary < Library
     def build
       self.build_dependencies
     end
-
+    
     # Makes it so that beaver build {TARGET} will fail
     def buildable?
       false
     end
   end
-
+  
   class Framework < SystemLibrary
   end
-
+  
   module LibraryType
     USER = 0
     SYSTEM = 1

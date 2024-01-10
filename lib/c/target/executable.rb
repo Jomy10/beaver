@@ -18,15 +18,26 @@ module C
     def build_cmd_name
       "__build_#{self.project.name}/#{self.name}"
     end
-    
+ 
     # Build #
+    def build_if_not_built_yet
+      unless @built_this_run
+        self.build
+      end
+    end
+
     def build
+      puts "building #{self.name}"
+      
+      @built_this_run = true
+      
       self.build_dependencies
-      @artifact.each do |artifact|
+      
+      @artifacts.each do |artifact|
         self.build_artifact(artifact)
       end
     end
-    
+
     def run
       system self.executable_path
     end
@@ -39,7 +50,7 @@ module C
     def build_artifact(artifact_type)
       case artifact_type
       when Beaver::ArtifactType::EXECUTABLE
-        self.build_executable
+        Beaver::call self.build_cmd_name
       when Beaver::ArtifactType::MACOS_APP
         Beaver::Log::err("MacOS Apps are currently unimplemented")
       else
@@ -60,7 +71,7 @@ module C
     
     private
     def _custom_after_init
-      super._custom_after_init
+      super()
       
       # TODO: build .app for macOS
       @artifacts = [Beaver::ArtifactType::EXECUTABLE]
@@ -73,7 +84,7 @@ module C
       cmd_link = "__build_#{self.project.name}/#{self.name}_link"
       
       Beaver::cmd cmd_build_obj, Beaver::each(self.sources), out: proc { |f| File.join(obj_dir, f.path.gsub("/", "_") + ".o") }, parallel: true do |file, outfile|
-        Beaver::sh "#{cc || C::Internal::_get_compiler_for_file(file)} " +
+        Beaver::sh "#{cc || C::Internal::Target::_get_compiler_for_file(file)} " +
           "-c #{file} " +
           "#{self.private_cflags.join(" ")} " +
           "#{self.public_cflags.join(" ")} " +
