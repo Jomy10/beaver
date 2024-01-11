@@ -11,10 +11,10 @@ int main(void) {
   struct Person person;
   person.name = "John Doe";
   print_greeting(&person);
-  #ifdef MY_LIB_PRIVATE
+  #ifdef MY_LIB_PRIV
   printf("ERROR\n");
   #endif
-  #ifdef MY_LIB_PUBLIC
+  #ifdef MY_LIB_PUB
   printf("GOOD\n");
   #endif
   return 0;

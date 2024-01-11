@@ -94,41 +94,76 @@ module C
 
         return @__public_includes
       end
-      
-      # TODO: rewrite to return array (+ new name)
-      def _ldflags
-        ldflags = if self.ldflags.nil?
-          ""
-        else
-          (self.ldflags.is_a? String) ? self.ldflags : self.ldflags.join(" ")
-        end
-        if !self.dependencies.nil?
-          deps = self.dependencies.map { |d| [self.project.get_target(d.name), d.type] }
-          ldflags << deps.map { |d| flags = d[0]._ldflags; flags.nil? ? "" : " " + flags }.join(" ")
-          ldflags << deps.map { |d|
-            if d[0].is_a? SystemLibrary
-              ""
-            else
-              case d[1]
+
+      # LDFLAGS of this library and all its dependencies
+      def public_ldflags
+        if @__public_ldflags.nil?
+          @__public_ldflags = []
+          flags = Target._parse_public_flags(self.ldflags)
+          if !flags.nil? then @__public_ldflags.push(*flags) end
+
+          self.dependencies.each do |dep|
+            target = self.project.get_target(dep.name)
+            @__public_ldflags.push(*target.public_ldflags)
+            if target.buildable?
+              case dep.type
               when :any
-                " -L#{d.out_dir} -l#{d.name}"
+                @__public_ldflags.push(*["-L#{target.out_dir}", "-l#{target.name}"])
               when :static
-                if !d[0].is_static?
-                  Beaver::Log::err("Cannot statically link dynamic library #{d[0].name}")
+                if !target.is_static?
+                  Beaver::Log::err("Cannot statically link dynamic library target #{target.name}")
                 end
-                tmp_dir = FileUtils.mkdir_p(File.join($beaver.temp_dir, "#{d[0].name}_static")).first
-                FileUtils.cp(d[0].static_lib_path, tmp_dir)
-                " -L#{tmp_dir} -l#{d[0].name}"
-              when :dynamic
-                Beaver::Log::err("Explicitly defining a dependency as dynamic is currently unimplemented")
-              else
-                Beaver::Log::err("Internal error: #{dep_type} is an invalid dependency type")
+                tmp_dir = FileUtils.mkdir_p(File.join($beaver.tmp_dir, "#{target.name}_static")).first
+                FileUtils.cp(target.static_lib_path, tmp_dir)
+                @__public_ldflags.push(*["-L#{tmp_dir}", "-l#{target.name}"])
+              when :dynmic
+                Beaver::Log::warn("Explicitly declaring a dependency as dyamic; the compiler will always pick the dynamic library if available")
+                if !target.is_dynamic?
+                  Beaver::Log::err("Cannot dynamically link non-dnymaic library target #{target.name}")
+                end
+                @__public_ldflags.push(*["-L#{target.out_dir}", "-l#{target.name}"])
               end
             end
-          }.join(" ")
+          end
         end
-        return ldflags.strip
+        
+        return @__public_ldflags
       end
+      
+      # TODO: rewrite to return array (+ new name)
+      # def _ldflags
+      #   ldflags = if self.ldflags.nil?
+      #     ""
+      #   else
+      #     (self.ldflags.is_a? String) ? self.ldflags : self.ldflags.join(" ")
+      #   end
+      #   if !self.dependencies.nil?
+      #     deps = self.dependencies.map { |d| [self.project.get_target(d.name), d.type] }
+      #     ldflags << deps.map { |d| flags = d[0]._ldflags; flags.nil? ? "" : " " + flags }.join(" ")
+      #     ldflags << deps.map { |d|
+      #       if d[0].is_a? SystemLibrary
+      #         ""
+      #       else
+      #         case d[1]
+      #         when :any
+      #           " -L#{d.out_dir} -l#{d.name}"
+      #         when :static
+      #           if !d[0].is_static?
+      #             Beaver::Log::err("Cannot statically link dynamic library #{d[0].name}")
+      #           end
+      #           tmp_dir = FileUtils.mkdir_p(File.join($beaver.temp_dir, "#{d[0].name}_static")).first
+      #           FileUtils.cp(d[0].static_lib_path, tmp_dir)
+      #           " -L#{tmp_dir} -l#{d[0].name}"
+      #         when :dynamic
+      #           Beaver::Log::err("Explicitly defining a dependency as dynamic is currently unimplemented")
+      #         else
+      #           Beaver::Log::err("Internal error: #{dep_type} is an invalid dependency type")
+      #         end
+      #       end
+      #     }.join(" ")
+      #   end
+      #   return ldflags.strip
+      # end
 
       # Tools #
       def get_cc

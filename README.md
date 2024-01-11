@@ -84,6 +84,16 @@ To test out the libary, use `./build.sh build install` to build and install it a
 gem. You can use `./build.sh uninstall` to remove the gem and `./build.sh clean`
 to clean the project.
 
+### Running tests
+
+[![Test](https://github.com/Jomy10/beaver/actions/workflows/test.yml/badge.svg)](https://github.com/Jomy10/beaver/actions/workflows/test.yml)
+
+Be sure to check your changes with tests. Add new ones if your change is not coverd by the current tests. To run test, simply:
+
+```sh
+bash build.sh test
+```
+
 ## Questions
 
 Feel free to ask any questions you may have by opening an issue.
