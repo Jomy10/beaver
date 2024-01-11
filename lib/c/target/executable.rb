@@ -86,6 +86,7 @@ module C
           "-c #{file} " +
           "#{self.private_cflags.join(" ")} " +
           "#{self.public_cflags.join(" ")} " +
+          "#{self.language == "Mixed" ? C::Internal::Target::_get_cflags_for_file(file).join(" ") : ""} " +
           "#{self.private_includes.map { |i| "-I#{i}" }.join(" ")} " +
           "#{self.public_includes.map { |i| "-I#{i}" }.join(" ")} " +
           "-o #{outfile}"
@@ -93,7 +94,10 @@ module C
       
       outfiles = Beaver::eval_filelist(self.sources).map { |f| File.join(obj_dir, f.gsub("/", "_") + ".o") }
       Beaver::cmd cmd_link, Beaver::all(outfiles), out: self.executable_path do |files, outfile|
-        Beaver::sh "#{cc || $beaver.get_tool(:cxx)} #{files} #{self.public_ldflags.join(" ")} -o #{outfile}"
+        Beaver::sh "#{cc || $beaver.get_tool(:cxx)} #{files} " +
+          "#{self.public_ldflags.join(" ")} " +
+          "#{self.language == "Mixed" ? C::Internal::Target::_get_ldflags_for_file(file).join(" "): ""} " +
+          "-o #{outfile}"
       end
       
       Beaver::cmd self.build_cmd_name do
