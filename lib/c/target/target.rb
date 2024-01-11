@@ -176,7 +176,8 @@ module C
           if `uname`.include?("Darwin")
             self.cflags = Target::append_flag(self.cflags, "-fobjc-arc")
           else
-            self.ldflags = Target::append_flag(self.ldflags, "-lgnustep-base")
+            self.cflags = Target::append_flag(self.cflags, `gnustep-config --objc-flags`)
+            self.ldflags = Target::append_flag(self.ldflags, `gnustep-config --base-libs`)
           end
         end
         

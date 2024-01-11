@@ -19,7 +19,7 @@ module Beaver
           if `uname`.include?("Darwin")
             "clang"
           else
-            "gcc #{`gnuset-config --objc-flags`.gsub("\n", "")}"
+            "gcc" #{`gnustep-config --objc-flags`.gsub("\n", "")}"
           end
         )
       end
