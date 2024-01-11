@@ -13,6 +13,16 @@ module Beaver
       def self.get_ar
         ENV["AR"] || Beaver::Internal::determine_cmd("ar")
       end
+      
+      def self.get_objc_compiler
+        ENV["OBJC_COMPILER"] || (
+          if `uname`.include?("Darwin")
+            "clang"
+          else
+            "gcc #{`gnuset-config --objc-flags`.gsub("\n", "")}"
+          end
+        )
+      end
     end
   end
 end

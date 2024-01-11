@@ -75,6 +75,8 @@ run [target]      Build and run the specified executable target
           @tools[tool] = C::Internal::get_cxx
         when :ar
           @tools[tool] = C::Internal::get_ar
+        when :objc_compiler
+          @tools[tool] = C::Internal::get_objc_compiler
         end
       end
       return @tools[tool]
@@ -85,24 +87,24 @@ run [target]      Build and run the specified executable target
         @options[option_name] = value
       end
     end
-
+    
     def postpone(&cb)
       @postponed_callbacks << cb
     end
-
+    
     def initialize_cache_manager
       @cache_manager = Internal::CacheManager.new
     end
-
+    
     # Projects #
     def add_project(project)
       @projects[project.name] = project
     end
-
+    
     def get_project(project_name)
       @projects[project_name]
     end
-
+    
     # Commands #
     def register(command)
       if !@commands[command.name].nil?

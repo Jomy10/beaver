@@ -15,7 +15,7 @@ module C
       # Requires_private: TODO
       Conflicts: target.conflicts,
       Cflags: target.public_cflags.join(" "),#.push(*target.private_cflags).join(" "),
-      Libs: target._ldflags, # TODO: without pkg_config
+      Libs: target.public_ldflags, # TODO: without pkg_config
       # Libs_private: TODO
     }.filter do |k, v|
       v != nil && v != ""

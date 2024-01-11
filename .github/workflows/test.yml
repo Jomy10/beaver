@@ -17,6 +17,11 @@ jobs:
         bundler-cache: false
     - name: setup minitest
       run: gem install minitest
+    - name: setup gnustep to test objc compiling
+      run: |
+        sudo apt-get install gnustep
+        sudo apt-get install gnustep-devel
+        sudo apt-get install gobjc
     - name: Run tests
       run: bash build.sh build install test-workflow
 

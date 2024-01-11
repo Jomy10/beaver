@@ -113,7 +113,7 @@ module C
                 if !target.is_static?
                   Beaver::Log::err("Cannot statically link dynamic library target #{target.name}")
                 end
-                tmp_dir = FileUtils.mkdir_p(File.join($beaver.tmp_dir, "#{target.name}_static")).first
+                tmp_dir = FileUtils.mkdir_p(File.join($beaver.temp_dir, "#{target.name}_static")).first
                 FileUtils.cp(target.static_lib_path, tmp_dir)
                 @__public_ldflags.push(*["-L#{tmp_dir}", "-l#{target.name}"])
               when :dynmic
@@ -130,47 +130,14 @@ module C
         return @__public_ldflags
       end
       
-      # TODO: rewrite to return array (+ new name)
-      # def _ldflags
-      #   ldflags = if self.ldflags.nil?
-      #     ""
-      #   else
-      #     (self.ldflags.is_a? String) ? self.ldflags : self.ldflags.join(" ")
-      #   end
-      #   if !self.dependencies.nil?
-      #     deps = self.dependencies.map { |d| [self.project.get_target(d.name), d.type] }
-      #     ldflags << deps.map { |d| flags = d[0]._ldflags; flags.nil? ? "" : " " + flags }.join(" ")
-      #     ldflags << deps.map { |d|
-      #       if d[0].is_a? SystemLibrary
-      #         ""
-      #       else
-      #         case d[1]
-      #         when :any
-      #           " -L#{d.out_dir} -l#{d.name}"
-      #         when :static
-      #           if !d[0].is_static?
-      #             Beaver::Log::err("Cannot statically link dynamic library #{d[0].name}")
-      #           end
-      #           tmp_dir = FileUtils.mkdir_p(File.join($beaver.temp_dir, "#{d[0].name}_static")).first
-      #           FileUtils.cp(d[0].static_lib_path, tmp_dir)
-      #           " -L#{tmp_dir} -l#{d[0].name}"
-      #         when :dynamic
-      #           Beaver::Log::err("Explicitly defining a dependency as dynamic is currently unimplemented")
-      #         else
-      #           Beaver::Log::err("Internal error: #{dep_type} is an invalid dependency type")
-      #         end
-      #       end
-      #     }.join(" ")
-      #   end
-      #   return ldflags.strip
-      # end
-
       # Tools #
       def get_cc
         cc = if self.language == "C" || self.language.nil?
           $beaver.get_tool(:cc)
         elsif self.language == "C++"
           $beaver.get_tool(:cxx)
+        elsif self.language == "Obj-C"
+          $beaver.get_tool(:objc_compiler)
         elsif self.language == "Mixed"
           nil
         else
@@ -205,7 +172,25 @@ module C
         end
         Beaver::Log::err("Property `type` of C::Target should be of type: Symbol | Symbol[] | nil, or convertible into a symbol (e.g. string)") if !(self.type.nil? || self.type.is_a?(Symbol) || self.type.respond_to?(:each))
         
+        if self.language.to_s == "Obj-C"
+          if `uname`.include?("Darwin")
+            self.cflags = Target::append_flag(self.cflags, "-fobjc-arc")
+          else
+            self.ldflags = Target::append_flag(self.ldflags, "-lgnustep-base")
+          end
+        end
+        
         self.dependencies = C::Dependency.parse_dependency_list(self.dependencies, self.project.name)
+      end
+      
+      def self.append_flag(flags, flag)
+        if flags.nil?
+          [flag]
+        elsif flags.respond_to?(:each)
+          [*flags, flag]
+        else
+          [flags, flag]
+        end
       end
       
       def self._parse_public_flags(flags)

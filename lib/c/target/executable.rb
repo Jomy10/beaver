@@ -27,8 +27,6 @@ module C
     end
 
     def build
-      puts "building #{self.name}"
-      
       @built_this_run = true
       
       self.build_dependencies
@@ -95,7 +93,7 @@ module C
       
       outfiles = Beaver::eval_filelist(self.sources).map { |f| File.join(obj_dir, f.gsub("/", "_") + ".o") }
       Beaver::cmd cmd_link, Beaver::all(outfiles), out: self.executable_path do |files, outfile|
-        Beaver::sh "#{cc || $beaver.get_tool(:cxx)} #{files} #{self._ldflags} -o #{outfile}"
+        Beaver::sh "#{cc || $beaver.get_tool(:cxx)} #{files} #{self.public_ldflags.join(" ")} -o #{outfile}"
       end
       
       Beaver::cmd self.build_cmd_name do
