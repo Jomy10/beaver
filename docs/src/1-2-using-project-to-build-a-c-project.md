@@ -200,6 +200,43 @@ C::Library(
 )
 ```
 
+## Building a C++ project
+
+Libraries and executables can also contain C++ code. This can be achieved by specifying the
+language:
+
+```ruby
+C::Library.new(
+    name: "CppLib",
+    language: "C++"
+    sources: "lib/**/*.cpp",
+    include: "include"
+)
+
+C::Executable.new(
+    name: "CExecutable",
+    language: "C",
+    sources: "src/**/*.c",
+    dependencies: ["CppLib"]
+)
+```
+
+Possible values for the `language` attribute are: "C", "C++", "Mixed", "Obj-C".
+In "Mixed" mode, beaver will determine the compiler to use by the file extension.
+
+## Library type
+
+By default, beaver will compile a static and dynamic version of your library. This
+can be changed by specifying the library type:
+
+```ruby
+C::Library.new(
+    name: "MyLibrary",
+    type: "static" # can also be an array; [:static, :dynamic]
+    # ...
+)
+```
+
 ### Static vs dynamic dependencies
 
 By default, clang/gcc will try to dynamically link libraries if there is a dynamic
