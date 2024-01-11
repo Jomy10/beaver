@@ -212,6 +212,7 @@ module C
           "-c #{file} " +
           "#{self.private_cflags.join(" ")} " +
           "#{self.public_cflags.join(" ")} " +
+          "#{self.language == "Mixed" ? C::Internal::Target::_get_cflags_for_file(file).join(" ") : ""} " +
           "#{self.private_includes.map { |i| "-I#{i}" }.join(" ")} " +
           "#{self.public_includes.map { |i| "-I#{i}" }.join(" ")} " +
           "-o #{outfile}"
@@ -224,6 +225,7 @@ module C
           "-fPIC " +
           "#{self.private_cflags.join(" ")} " +
           "#{self.public_cflags.join(" ")} " +
+          "#{self.language == "Mixed" ? C::Internal::Target::_get_cflags_for_file(file).join(" ") : ""} " +
           "#{self.private_includes.map { |i| "-I#{i}" }.join(" ")} " +
           "#{self.public_includes.map { |i| "-I#{i}" }.join(" ")} " +
           "-o #{outfile}"

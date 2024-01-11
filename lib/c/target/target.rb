@@ -145,7 +145,7 @@ module C
         end
         return cc
       end
-    
+      
       # Build #
       def build_dependencies
         Workers.map(self.dependencies) do |dependency|
@@ -159,7 +159,7 @@ module C
       def clean
         FileUtils.rm_r(self.out_dir)
       end
-
+      
       def build_if_not_built_yet
         Beaver::Log::err("Unimplemented")
       end
@@ -250,16 +250,70 @@ module C
         end
         return deps.uniq
       end
+
+      # For Mixed language targets #
+      def self._determine_language_for_file(file)
+        if file.ext.downcase == ".c"
+          return :c
+        elsif [".cpp", ".cc", ".cxx"].include? file.ext.downcase
+          return :cpp
+        elsif [".m", ".mm"].include? file.ext.downcase
+          return :objc
+        else
+          Beaver::Log::err("File extension #{file.ext} is not a valid C/C++/Obj-C file extension")
+        end
+      end
       
       # Get the compiler based on file extension (for Mixed language targets)
-      def self._get_compiler_for_file(file)
-        if file.ext.downcase == ".c"
+      def self._get_compiler_for_language(lang)
+        case lang
+        when :c
           $beaver.get_tool(:cc)
-        elsif [".cc", ".cpp", ".cxx"].include? file.ext.downcase
+        when :cpp
           $beaver.get_tool(:cxx)
+        when :objc
+          $beaver.get_tool(:objc_compiler)
         else
-          Beaver::Log::err("File extension #{file.ext} is not a valid C/C++ file extension")
+          Beaver::Log::err("Invalid language #{lang}")
         end
+      end
+      
+      def self._get_compiler_for_file(file)
+        Target::_get_compiler_for_language(Target::_determine_language_for_file(file))
+      end
+      
+      def self._get_cflags_for_language(lang)
+        case lang
+        when :objc
+          if `uname`.include?("Darwin")
+            ["-fobjc-arc"]
+          else
+            `gnustep-config --objc-flags`.gsub("\n", "").split(" ")
+          end
+        else
+          []
+        end
+      end
+      
+      def self._get_cflags_for_file(file)
+        Target::_get_cflags_for_language(Target::_determine_language_for_file(file))
+      end
+      
+      def self._get_ldflags_for_language(lang)
+        case lang
+        when :objc
+          if !(`uname`.include?("Darwin"))
+            `gnustep-config --base-libs`.gsub("\n", "").split(" ")
+          else
+            []
+          end
+        else
+          []
+        end
+      end
+      
+      def self._get_ldflags_for_file(file)
+        Target::_get_ldflags_for_language(Target::_determine_language_for_file(file))
       end
     end
   end

@@ -3,5 +3,6 @@
 int main(void) {
   NSString* str = [NSString stringWithUTF8String: "Hello world"];
   NSLog(@"%@\n", str);
+  return 0;
 }
 
