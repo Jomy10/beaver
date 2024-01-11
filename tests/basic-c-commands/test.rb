@@ -1,6 +1,8 @@
 class BasicCCommand < Minitest::Test
   def setup
-    clean
+    Dir.chdir(__dir__) do
+      clean
+    end
   end
 
   def test_build_default_command

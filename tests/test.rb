@@ -31,6 +31,7 @@ clean_all
 
 require_relative 'basic-c-commands/test.rb'
 require_relative 'basic-c-project/test.rb'
+require_relative 'project-with-framework/test.rb'
 
 Minitest.after_run {
   clean_all

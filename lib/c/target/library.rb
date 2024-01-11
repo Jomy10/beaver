@@ -43,7 +43,7 @@ module C
     
     def self.framework(name, framework_name: nil, cflags: nil, ldflags: nil)
       _ldflags = if ldflags.nil?
-        ldflags
+        []
       else
         if ldflags.respond_to? :each
           ldflags

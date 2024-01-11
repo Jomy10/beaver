@@ -1,6 +1,8 @@
 class BasicCProject < Minitest::Test
   def setup
-    clean
+    Dir.chdir(__dir__) do
+      clean
+    end
   end
 
   EXPECTED_MY_LIBRARY_ARTIFACTS = [
@@ -32,7 +34,8 @@ class BasicCProject < Minitest::Test
       assert_equal 0, $?.exitstatus
       assert_equal [*EXPECTED_MY_LIBRARY_ARTIFACTS, *EXPECTED_MY_EXECUTABLE_ARTIFACTS].sort,
         Dir["out/**/*"].select { |f| !File.directory?(f) }
-      
+     
+      # Correct output
       assert_equal "Hello John Doe!\nGOOD\n", `./out/MyExecutable/MyExecutable`
       assert_equal 0, $?.exitstatus
     end
