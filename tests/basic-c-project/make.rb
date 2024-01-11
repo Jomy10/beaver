@@ -17,6 +17,7 @@ C::Library.new(
   dependencies: ["pthread"]
 )
 
+# TODO: test pthread can be used in executable
 C::Executable.new(
   name: "MyExecutable",
   description: "A description of this executable",

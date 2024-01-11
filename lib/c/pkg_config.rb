@@ -15,10 +15,10 @@ module C
       # Requires_private: TODO
       Conflicts: target.conflicts,
       Cflags: target.public_cflags.join(" "),#.push(*target.private_cflags).join(" "),
-      Libs: target._ldflags,
+      Libs: target._ldflags, # TODO: without pkg_config
       # Libs_private: TODO
     }.filter do |k, v|
-      v != nil
+      v != nil && v != ""
     end
     
     pkg_config_str = pkg_config_def.map { |c, v| "#{c.to_s.gsub("_", ".")}: #{v}"}.join("\n")

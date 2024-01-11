@@ -16,17 +16,21 @@ def clean
 end
 
 def clean_all
-  Dir["*"].select { |f| File.directory?(f) }
-    .each do |dir|
-      Dir.chdir(dir) do
-        clean
+  Dir.chdir(__dir__) do
+    Dir["*"].select { |f| File.directory?(f) }
+      .each do |dir|
+        puts "cleaning #{dir}"
+        Dir.chdir(dir) do
+          clean
+        end
       end
-    end
+  end
 end
 
 clean_all
 
 require_relative 'basic-c-commands/test.rb'
+require_relative 'basic-c-project/test.rb'
 
 Minitest.after_run {
   clean_all
