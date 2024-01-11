@@ -174,10 +174,10 @@ module C
         
         if self.language.to_s == "Obj-C"
           if `uname`.include?("Darwin")
-            self.cflags = Target::append_flag(self.cflags, "-fobjc-arc")
+            #self.cflags = Target::append_flag(self.cflags, "-fobjc-arc")
           else
-            self.cflags = Target::append_flag(self.cflags, `gnustep-config --objc-flags`)
-            self.ldflags = Target::append_flag(self.ldflags, `gnustep-config --base-libs`)
+            self.cflags = Target::append_flag(self.cflags, `gnustep-config --objc-flags`.gsub("\n", " ").split(" "))
+            self.ldflags = Target::append_flag(self.ldflags, `gnustep-config --base-libs`.gsub("\n", " ").split(" "))
           end
         end
         
@@ -186,11 +186,11 @@ module C
       
       def self.append_flag(flags, flag)
         if flags.nil?
-          [flag]
+          flag.respond_to?(:each) ? flag : [flag]
         elsif flags.respond_to?(:each)
-          [*flags, flag]
+          flag.respond_to?(:each) ? [*flags, *flag] : [*flags, flag]
         else
-          [flags, flag]
+          flag.respond_to?(:each) ? [flags, *flag] : [flags, flag]
         end
       end
       
@@ -286,7 +286,8 @@ module C
         case lang
         when :objc
           if `uname`.include?("Darwin")
-            ["-fobjc-arc"]
+            #["-fobjc-arc"]
+            []
           else
             `gnustep-config --objc-flags`.gsub("\n", "").split(" ")
           end
