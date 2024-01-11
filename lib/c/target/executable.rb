@@ -96,7 +96,9 @@ module C
       Beaver::cmd cmd_link, Beaver::all(outfiles), out: self.executable_path do |files, outfile|
         Beaver::sh "#{cc || $beaver.get_tool(:cxx)} #{files} " +
           "#{self.public_ldflags.join(" ")} " +
-          "#{self.language == "Mixed" ? C::Internal::Target::_get_ldflags_for_file(file).join(" "): ""} " +
+          "#{(self.language == "Mixed" && self.contains_objc?) ?
+            C::Internal::Target::_get_ldflags_for_language(:objc).join(" ") :
+            ""} " +
           "-o #{outfile}"
       end
       
