@@ -1,4 +1,4 @@
-name: Test
+name: Test macOS
 
 on:
   push:
@@ -6,9 +6,9 @@ on:
 
 jobs:
   test:
-    name: Test
-    runs-on: ubuntu-latest
-  
+    name: Build and test
+    runs-on: macos-latest
+
     steps:
     - uses: actions/checkout@v3
     - uses: ruby/setup-ruby@v1
@@ -17,10 +17,8 @@ jobs:
         bundler-cache: false
     - name: setup minitest
       run: gem install minitest
-    - name: setup gnustep to test objc compiling
-      run: |
-        sudo apt-get update -y
-        sudo apt-get install -y gnustep gnustep-devel gobjc
+    - name: Build
+      run: zsh build.sh build install
     - name: Run tests
-      run: bash build.sh build install test-workflow
+      run: zsh build.sh test
 
