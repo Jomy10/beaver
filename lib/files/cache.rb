@@ -19,7 +19,7 @@ module Beaver
       end
       
       def project_cache_location(project_name)
-        return File.join($beaver.cache_dir, "project_#{project_name}.cache")
+        return Beaver::safe_join($beaver.cache_dir, "project_#{project_name}.cache")
       end
       
       # Get the project cache for the project with the specified name.

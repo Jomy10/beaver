@@ -61,10 +61,10 @@ run [target]      Build and run the specified executable target
       
       @postponed_callbacks = []
       @tools = Hash.new
-
+      
       @temp_dir = Dir.mktmpdir("beaver")
     end
-   
+    
     # Lazily determine tool path
     def get_tool(tool)
       if @tools[tool].nil?
@@ -136,7 +136,6 @@ run [target]      Build and run the specified executable target
           Beaver::Log::err("#{command_name.nil? ? "No command specifed" : "Invalid command #{command_name}"} in `call`, valid commands are: #{valid_commands}")
         end
       end
-      # TODO: context?
       command.execute()
     end
     
@@ -266,7 +265,7 @@ run [target]      Build and run the specified executable target
           if file_info["modified"] != File.mtime(file_info["path"]).to_i
             $beaver.force_run = true
             $beaver.cache_manager.clear
-            (Dir[File.join($beaver.cache_dir, "*.cache")]).each do |cache_file|
+            (Dir[Beaver::safe_join($beaver.cache_dir, "*.cache")]).each do |cache_file|
               FileUtils.rm cache_file
             end
           end

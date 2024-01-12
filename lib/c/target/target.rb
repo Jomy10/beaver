@@ -41,11 +41,15 @@ module C
       # Directories #
       def out_dir
         # TODO: add extra path for os/arch inside of project
-        File.join(self.project.build_dir, self.name)
+        Beaver::safe_join(self.project.build_dir, self.name)
+      end
+      
+      def abs_out_dir
+        Beaver::safe_join(self.project.base_dir, self.out_dir)
       end
       
       def obj_dir
-        File.join(self.out_dir, "obj")
+        Beaver::safe_join(self.abs_out_dir, "obj")
       end
       
       # Flags #
@@ -108,12 +112,12 @@ module C
             if target.buildable?
               case dep.type
               when :any
-                @__public_ldflags.push(*["-L#{target.out_dir}", "-l#{target.name}"])
+                @__public_ldflags.push(*["-L#{target.abs_out_dir}", "-l#{target.name}"])
               when :static
                 if !target.is_static?
                   Beaver::Log::err("Cannot statically link dynamic library target #{target.name}")
                 end
-                tmp_dir = FileUtils.mkdir_p(File.join($beaver.temp_dir, "#{target.name}_static")).first
+                tmp_dir = FileUtils.mkdir_p(Beaver::safe_join($beaver.temp_dir, "#{target.name}_static")).first
                 FileUtils.cp(target.static_lib_path, tmp_dir)
                 @__public_ldflags.push(*["-L#{tmp_dir}", "-l#{target.name}"])
               when :dynmic
@@ -121,7 +125,7 @@ module C
                 if !target.is_dynamic?
                   Beaver::Log::err("Cannot dynamically link non-dnymaic library target #{target.name}")
                 end
-                @__public_ldflags.push(*["-L#{target.out_dir}", "-l#{target.name}"])
+                @__public_ldflags.push(*["-L#{target.abs_out_dir}", "-l#{target.name}"])
               end
             end
           end
@@ -157,7 +161,7 @@ module C
       
       # Clean all objects and artifacts
       def clean
-        FileUtils.rm_r(self.out_dir)
+        FileUtils.rm_r(self.abs_out_dir)
       end
       
       def build_if_not_built_yet
@@ -314,7 +318,7 @@ module C
       end
       
       def contains_objc?
-        inputs = Beaver::eval_filelist(self.sources)
+        inputs = Beaver::eval_filelist(self.sources, self.project.base_dir)
         return inputs.include?(".m") || inputs.include?(".mm")
       end
     end

@@ -7,7 +7,7 @@ module Beaver
       cmds.each do |cmd|
         paths.each do |path|
           exts.each do |ext|
-            exe = File.join(path, "#{cmd}#{ext}")
+            exe = Beaver::safe_join(path, "#{cmd}#{ext}")
             return exe if File.executable?(exe) && !File.directory?(exe)
           end
         end
