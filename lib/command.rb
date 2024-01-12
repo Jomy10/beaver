@@ -146,6 +146,7 @@ module Beaver
       if self.output == nil
         files = self.input_files
           .filter { |file| !input_list_ignore.include?(file) }
+          .map { |file| SingleFile.new(file) }
       else
         files = self.input_files
           .map { |input_file|
