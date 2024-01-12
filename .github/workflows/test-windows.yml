@@ -24,4 +24,6 @@ jobs:
       - name: Build
         run:  powershell.exe -command ".\build.ps1 build install"
       - name: Test
-        run:  powershell.exe -command ".\build.ps1 test"
+        run:  .\build.ps1 test
+        shell: powershell
+
