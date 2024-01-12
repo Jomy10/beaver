@@ -1,0 +1,28 @@
+name: Test Linux
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-latest
+  
+    steps:
+    - uses: actions/checkout@v3
+    - uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.1'
+        bundler-cache: false
+    - name: setup minitest
+      run: gem install minitest
+    - name: setup gnustep to test objc compiling
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y gnustep gnustep-devel gobjc
+    - name: Build
+      run: bash build.sh build install
+    - name: Run tests
+      run: bash build.sh test-workflow
+
