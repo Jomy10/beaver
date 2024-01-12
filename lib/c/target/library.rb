@@ -82,13 +82,17 @@ module C
     end
 
     def is_dynamic?
-      return self.type.nil? || (self.type.is_a?(Symbol) && self.type == :dynamic) ||
-        ((self.type.respond_to? :each) ? self.type.include?(:dynamic) : false)
+      return self.type.nil? || 
+        ((self.type.respond_to? :each) && self.type.map{ |t| t.to_sym }.include?(:dynamic)) ||
+        ((self.type.respond_to? :to_sym && self.type.to_sym == :dynamic) ||
+        false
     end
     
     def is_static?
-      return self.type.nil? || (self.type.is_a?(Symbol) && self.type == :static) ||
-        ((self.type.respond_to? :each) ? self.type.include?(:static) : false)
+      return self.type.nil? || 
+        ((self.type.respond_to? :each) && self.type.map{ |t| t.to_sym }.include?(:static)) ||
+        ((self.type.respond_to? :to_sym && self.type.to_sym == :static) ||
+        false
     end
     
     # Paths #
