@@ -8,23 +8,19 @@ module C
       return nil if deps.nil?
       return deps.map do |dep|
         if dep.is_a? String
-          if (dep.include?("/") && dep.split("/")[0] == project_name) || (!dep.include? "/")
-            project = $beaver.get_project(project_name)
-            Beaver::Log::err("Internal error: project is nil") if project.nil?
-            target = project.get_target(dep)
-            Beaver::Log::err("Unknown dependency #{dep}; target not found") if target.nil?
-            if target.is_a? C::SystemLibrary
-              next Dependency.new(dep)
-            elsif target.is_static?
-              next Dependency.new(dep, :static)
-            elsif target.is_dynamic?
-              next Dependency.new(dep, :dynamic)
-            else
-              Beaver::Log::err("Target #{dep} is neither static nor dynamic")
-            end
-          else
+          project = $beaver.get_project(project_name)
+          Beaver::Log::err("Internal error: project is nil") if project.nil?
+          target = project.get_target(dep)
+          Beaver::Log::err("Unknown dependency #{dep}; target not found") if target.nil?
+          if target.is_a? C::SystemLibrary
             next Dependency.new(dep)
-          end # project check
+          elsif target.is_static?
+            next Dependency.new(dep, :static)
+          elsif target.is_dynamic?
+            next Dependency.new(dep, :dynamic)
+          else
+            Beaver::Log::err("Target #{dep} is neither static nor dynamic")
+          end
         elsif dep.is_a?(C::Dependency)
           next dep
         else
