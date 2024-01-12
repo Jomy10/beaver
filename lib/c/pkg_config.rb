@@ -5,7 +5,7 @@ module C
       Description: target.description,
       URL: target.homepage,
       Version: target.version,
-      Requires: target.dependencies.map { |d|
+      Requires: target.dependencies.nil? ? nil : target.dependencies.map { |d|
         target.project.get_target(d.name)
       }.filter { |d|
         d.library_type == LibraryType::PKG_CONFIG

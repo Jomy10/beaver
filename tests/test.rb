@@ -46,6 +46,7 @@ clean_all
 
 require_relative 'basic-c-commands/test.rb'
 require_relative 'basic-c-project/test.rb'
+require_relative 'multi-project/test.rb'
 if `uname`.include?("Darwin") || !(determine_cmd("gnustep-conig").nil?)
   require_relative 'objc-project/test.rb'
 else
