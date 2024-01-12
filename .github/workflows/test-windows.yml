@@ -18,8 +18,10 @@ jobs:
       - name: Install bash
         uses: crazy-max/ghaction-chocolatey@v3
         with:
-          args: install llvm make
+          args: install llvm make runinbash
       - name: setup minitest
         run: gem install minitest
       - name: Build
-
+        run: $ build.sh build install 
+      - name: Test
+        run: $ build.sh test
