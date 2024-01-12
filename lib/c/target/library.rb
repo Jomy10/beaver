@@ -84,14 +84,14 @@ module C
     def is_dynamic?
       return self.type.nil? || 
         ((self.type.respond_to? :each) && self.type.map{ |t| t.to_sym }.include?(:dynamic)) ||
-        ((self.type.respond_to? :to_sym && self.type.to_sym == :dynamic) ||
+        ((self.type.respond_to? :to_sym && self.type.to_sym == :dynamic)) ||
         false
     end
     
     def is_static?
       return self.type.nil? || 
         ((self.type.respond_to? :each) && self.type.map{ |t| t.to_sym }.include?(:static)) ||
-        ((self.type.respond_to? :to_sym && self.type.to_sym == :static) ||
+        ((self.type.respond_to? :to_sym && self.type.to_sym == :static)) ||
         false
     end
     
