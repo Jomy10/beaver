@@ -19,7 +19,7 @@ module Beaver
     attr_accessor :current_config
     attr_reader :targets
     attr_reader :_options_callback
-
+    
     # Initializers #
     def initialize(name, build_dir: "out", &options)
       @name = name
@@ -46,29 +46,29 @@ module Beaver
     def options
       return $beaver.options
     end
-
+    
     def set_configs(*configs)
       for arg in configs
         @configurations[arg] = Hash.new
       end
     end
-
+    
     def default_config=(newVal)
       if configurations[newVal] == nil
         Beaver::Log::err "configuration #{newVal} is not defined"
       end
       @default_config = newVal
     end
-
+    
     def default_config
       return @default_config || (@configurations.nil? || @configurations.count == 0) ? nil : @configurations.first[0]
     end
-
+    
     # Get the current config's name or the default config
     def config_name
       return @current_config || self.default_config
     end
-
+    
     # Get the current configuration for each language
     def config
       cfg_name = self.config_name
@@ -78,13 +78,24 @@ module Beaver
         return @configurations[self.config_name]
       end
     end
-
+    
     def get_target(name)
-      return self.targets[name]
-      # TODO: retrn target from another project if separated by /
+      if name.include? "/"
+        s = name.split("/")
+        Beaver::Log::err("Invalid target name #{name}") if s.count != 2
+        project = s[0]
+        target = s[1]
+        project = $beaver.get_project(project)
+        Beaver::Log::err("Invalid project #{s[0]}") if project.nil?
+        target = project.get_target(target)
+        Beaver::Log::err("Invalid target #{s[1]} in project #{s[0]}") if target.nil?
+        return target
+      else
+        return self.targets[name]
+      end
     end
   end
-
+  
   # Internal
   $beaver.current_project = nil
 end
