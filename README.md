@@ -31,18 +31,18 @@ C::Executable.new(
 
 ```ruby
 OUT="out"
-env CC, "clang"
+env :CC, "clang"
 
 cmd :build do
     call :build_objects
-    call :create_library
+    call :create_executable
 end
 
 cmd :build_objects, each("src/*.c"), out: proc { |f| File.join(OUT, f.path + ".o") } do |file, outfile|
     sh "#{CC} -c #{file} $(pkg-config sdl2 --cflags) -o #{outfile}"
 end
 
-cmd :create_library, all(File.join(OUT, "*.o")), out: "my_exec" do |files, outfile|
+cmd :create_executable, all(File.join(OUT, "*.o")), out: "my_exec" do |files, outfile|
     sh "#{CC} #{files} $(pkg-config sdl2 --libs) -o #{outfile}"
 end
 ```
@@ -121,10 +121,9 @@ Feel free to ask any questions you may have by opening an issue.
 
 Sure, it's "slow", but the compiler is usually the bottleneck anyway in build scripts.
 Next to the nice syntax, it's also easy to parallelize tasks, which has been taken
-advantage of whe compiling targets.
+advantage of when compiling targets and running "each" commands.
 </details>
 
 ## License
 
 This software is licensed under the [MIT](LICENSE) license.
-
