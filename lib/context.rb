@@ -40,7 +40,7 @@ module Beaver
       @option_parser.banner = <<-USAGE
 Usage: #{File.basename($0)} [command] [options]
 
-#{Rainbow("Commands:").bright}
+#{Rainbow("Project commands:").bright}
 build [target]    Build the specified target
 run [target]      Build and run the specified executable target
 
@@ -220,6 +220,15 @@ run [target]      Build and run the specified executable target
   def call(command_name)
     $beaver.run(command_name, false)
   end
+
+  def args
+    return $beaver.options[:args]
+  end
+
+  # Only runs if no project is defined!
+  def set_options_callback(&cb)
+    @_default_options_callback = cb
+  end
   
   at_exit {
     begin
@@ -229,6 +238,8 @@ run [target]      Build and run the specified executable target
       
       if !$beaver.current_project.nil? && !$beaver.current_project._options_callback.nil?
         $beaver.current_project._options_callback.call($beaver.option_parser)
+      elsif $beaver.current_project.nil? && !@_default_options_callback.nil?
+        $beaver.options_callback.call($beaver.option_parser)
       end
       $beaver.options[:args] = $beaver.option_parser.parse!(ARGV, into: $beaver.options)
       
