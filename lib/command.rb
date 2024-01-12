@@ -18,7 +18,7 @@ module Beaver
     keyword_init: true
   ) do
     def input_files
-      return Beaver::eval_filelist(self.input.filelist)
+      return Beaver::eval_filelist(self.input.filelist, nil) # base directory = current directory (= dir of config file)
     end
     
     def type

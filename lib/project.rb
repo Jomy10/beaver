@@ -7,7 +7,7 @@ module Beaver
     # [{ LANG::ID => LANG::Options }]
     attr_accessor :lang_options
   end
-
+  
   class Project
     # [String]
     attr_accessor :name
@@ -19,11 +19,14 @@ module Beaver
     attr_accessor :current_config
     attr_reader :targets
     attr_reader :_options_callback
+    # Directory of the file this project is defined in
+    attr_reader :base_dir
     
     # Initializers #
     def initialize(name, build_dir: "out", &options)
       @name = name
-      @build_dir = build_dir
+      @base_dir = File.realpath(File.dirname(caller_locations.first.path))
+      @build_dir = Beaver::safe_join(@base_dir, build_dir)
       @configurations = Hash.new
       @default_config = nil
       @current_config = nil

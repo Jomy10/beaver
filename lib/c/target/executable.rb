@@ -1,4 +1,6 @@
 module C
+  require 'pathname'
+
   class Executable < C::Internal::Target
     # General defines #
     def executable?
@@ -11,7 +13,7 @@ module C
     
     # Paths #
     def executable_path
-      File.join(self.out_dir, self.name)
+      Beaver::safe_join(self.abs_out_dir, self.name)
     end
     
     # Commands #
@@ -74,14 +76,17 @@ module C
       # TODO: build .app for macOS
       @artifacts = [Beaver::ArtifactType::EXECUTABLE]
       
-      out_dir = self.out_dir
+      out_dir = self.abs_out_dir
       obj_dir = self.obj_dir
       cc = self.get_cc
       
       cmd_build_obj = "__build_#{self.project.name}/#{self.name}_obj"
       cmd_link = "__build_#{self.project.name}/#{self.name}_link"
       
-      Beaver::cmd cmd_build_obj, Beaver::each(self.sources), out: proc { |f| File.join(obj_dir, f.path.gsub("/", "_") + ".o") }, parallel: true do |file, outfile|
+      filelist = Beaver::eval_filelist(self.sources, self.project.base_dir)
+     
+      out_proc = proc { |f| File.join(obj_dir, Pathname.new(f.path).relative_path_from(self.project.base_dir).to_s.gsub("/", "_") + ".o") }
+      Beaver::cmd cmd_build_obj, Beaver::each(filelist), out: out_proc, parallel: true do |file, outfile|
         Beaver::sh "#{cc || C::Internal::Target::_get_compiler_for_file(file)} " +
           "-c #{file} " +
           "#{self.private_cflags.join(" ")} " +
@@ -92,7 +97,7 @@ module C
           "-o #{outfile}"
       end
       
-      outfiles = Beaver::eval_filelist(self.sources).map { |f| File.join(obj_dir, f.gsub("/", "_") + ".o") }
+      outfiles = filelist.map { |f| out_proc.(SingleFile.new(f)) }
       Beaver::cmd cmd_link, Beaver::all(outfiles), out: self.executable_path do |files, outfile|
         Beaver::sh "#{cc || $beaver.get_tool(:cxx)} #{files} " +
           "#{self.public_ldflags.join(" ")} " +
