@@ -276,7 +276,7 @@ run [target]      Build and run the specified executable target
           if file_info["modified"] != File.mtime(file_info["path"]).to_i
             $beaver.force_run = true
             $beaver.cache_manager.clear
-            (Dir[Beaver::safe_join($beaver.cache_dir, "*.cache")]).each do |cache_file|
+            (Dir[File.join($beaver.cache_dir, "*.cache")]).each do |cache_file|
               FileUtils.rm cache_file
             end
           end

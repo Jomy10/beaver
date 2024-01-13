@@ -18,7 +18,7 @@ module Beaver
     keyword_init: true
   ) do
     def input_files
-      return Beaver::eval_filelist(self.input.filelist, nil) # base directory = current directory (= dir of config file)
+      return Beaver::eval_filelist(self.input.filelist)
     end
     
     def type
@@ -97,44 +97,45 @@ module Beaver
     end
     
     def execute
-      Beaver::Log::command_start(self.name)
-      case self.type
-      when CommandType::NORMAL
-        if self.fn.arity != 0
-          Beaver::Log::err("Invalid amount of arguments for command #{self.name} (got #{self.fn.arity}, expected: 0)")
-        end
-        self.fn.call()
-      when CommandType::OUTPUT_ONLY
-        # TODO: accept array for output? -> call for each output?
-        if !(self.fn.arity == 1 || self.fn.arity == 0)
-          Beaver::Log::err("Invalid amount of arguments for command #{self.name} (got #{self.fn.arity}, expected 0..1)")
-        end
-        if self._output_only_should_run
-          if self.fn.arity == 1
-            self.fn.call(self.output)
-          else
-            self.fn.call()
+      Dir.chdir(self.project.nil? ? Dir.pwd : self.project.base_dir) do
+        Beaver::Log::command_start(self.name)
+        case self.type
+        when CommandType::NORMAL
+          if self.fn.arity != 0
+            Beaver::Log::err("Invalid amount of arguments for command #{self.name} (got #{self.fn.arity}, expected: 0)")
           end
-        end
-      when CommandType::EACH
-        self._execute_each
-      when CommandType::ALL
-        if self._all_should_run
-          inputs = MultipleFiles.new(self.input_files)
-          case self.fn.arity
-          when 1
-            self.fn.call(inputs)
-          when 2
-            self.fn.call(
-              inputs,
-              self.output
-            )
-          when 3
-            Beaver::Log::err("Invalid amount of arguments for command #{self.name} (got #{self.fn.arity}, expected: 1..2)")
+          self.fn.call()
+        when CommandType::OUTPUT_ONLY
+          # TODO: accept array for output? -> call for each output?
+          if !(self.fn.arity == 1 || self.fn.arity == 0)
+            Beaver::Log::err("Invalid amount of arguments for command #{self.name} (got #{self.fn.arity}, expected 0..1)")
+          end
+          if self._output_only_should_run
+            if self.fn.arity == 1
+              self.fn.call(self.output)
+            else
+              self.fn.call()
+            end
+          end
+        when CommandType::EACH
+          self._execute_each
+        when CommandType::ALL
+          if self._all_should_run
+            inputs = MultipleFiles.new(self.input_files)
+            case self.fn.arity
+            when 1
+              self.fn.call(inputs)
+            when 2
+              self.fn.call(
+                inputs,
+                self.output
+              )
+            when 3
+              Beaver::Log::err("Invalid amount of arguments for command #{self.name} (got #{self.fn.arity}, expected: 1..2)")
+            end
           end
         end
       end
-      
       $beaver.executed_commands << self.name
     end
     
@@ -200,7 +201,7 @@ module Beaver
             end
           end
         end
-      when 3
+      else
         Beaver::Log::err("Invalid amount of arguments for command #{self.name} (got #{self.fn.arity}, expected: 1..2)")
       end
     end

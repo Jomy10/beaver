@@ -12,8 +12,12 @@ module C
     end
     
     # Paths #
+    def abs_executable_path
+      File.join(self.abs_out_dir, self.name)
+    end
+
     def executable_path
-      Beaver::safe_join(self.abs_out_dir, self.name)
+      File.join(self.out_dir, self.name)
     end
     
     # Commands #
@@ -76,16 +80,16 @@ module C
       # TODO: build .app for macOS
       @artifacts = [Beaver::ArtifactType::EXECUTABLE]
       
-      out_dir = self.abs_out_dir
+      out_dir = self.out_dir
       obj_dir = self.obj_dir
       cc = self.get_cc
       
       cmd_build_obj = "__build_#{self.project.name}/#{self.name}_obj"
       cmd_link = "__build_#{self.project.name}/#{self.name}_link"
       
-      filelist = Beaver::eval_filelist(self.sources, self.project.base_dir)
-     
-      out_proc = proc { |f| File.join(obj_dir, Pathname.new(f.path).relative_path_from(self.project.base_dir).to_s.gsub("/", "_") + ".o") }
+      filelist = Beaver::eval_filelist(self.sources)
+      
+      out_proc = proc { |f| File.join(obj_dir, f.path.gsub(File::SEPARATOR, "_") + ".o") }
       Beaver::cmd cmd_build_obj, Beaver::each(filelist), out: out_proc, parallel: true do |file, outfile|
         Beaver::sh "#{cc || C::Internal::Target::_get_compiler_for_file(file)} " +
           "-c #{file} " +

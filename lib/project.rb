@@ -26,7 +26,7 @@ module Beaver
     def initialize(name, build_dir: "out", &options)
       @name = name
       @base_dir = File.realpath(File.dirname(caller_locations.first.path))
-      @build_dir = Beaver::safe_join(@base_dir, build_dir)
+      @build_dir = build_dir
       @configurations = Hash.new
       @default_config = nil
       @current_config = nil
