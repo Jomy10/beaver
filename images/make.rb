@@ -29,11 +29,14 @@ platforms = [
 
 def build_image(name, os, tag, platforms, file)
   sh "#{CONTAINER_MANAGER} buildx build " +
-    "#{$beaver.options[:push] ? "--push" : ""} " +
+    "#{($beaver.options[:push] && CONTAINER_MANAGER != "podman") ? "--push" : ""} " +
     "--platform #{platforms.join(",")} " +
     "--tag jomy10/#{name}:#{os}-#{tag} " +
     "-f #{file} " +
     "."
+  if CONTAINER_MANAGER == "podman"
+    sh "buildah push"
+  end
 end
 
 cmd :build do
