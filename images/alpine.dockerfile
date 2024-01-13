@@ -9,6 +9,6 @@ RUN cd beaver && bash build.sh build install
 
 # Remove build dependencies & clean
 RUN gem uninstall rake
-RUN apk remove git bash ruby-dev gcc musl-dev
+RUN apk del git bash ruby-dev gcc musl-dev
 RUN apk cache clean
 
