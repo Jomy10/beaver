@@ -15,7 +15,7 @@ class BasicCProject < Minitest::Test
   EXPECTED_MY_EXECUTABLE_ARTIFACTS = [
     "out/MyExecutable/obj/bin_main.c.o",
     "out/MyExecutable/obj/bin_print.cpp.o",
-    "out/MyExecutable/MyExecutable" + (/cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM) ? ".exe" : ""
+    "out/MyExecutable/MyExecutable" + ((/cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM) ? ".exe" : "")
   ].sort
   
   def test_build_library

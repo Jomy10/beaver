@@ -10,7 +10,7 @@ end
 OBJ_OUT = File.join(OUT, "obj")
 Beaver::def_dir OBJ_OUT
 
-EXEC_NAME = "hello" + (/cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM) ? ".exe" : ""
+EXEC_NAME = "hello" + ((/cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM) ? ".exe" : "")
 
 cmd :build do
   call :build_objs
