@@ -96,6 +96,18 @@ Be sure to check your changes with tests. Add new ones if your change is not cov
 bash build.sh test
 ```
 
+on **Windows** (in powershell):
+
+```powershell
+PWSH> .\build.ps1 test
+```
+
+or in the command prompt:
+
+```cmd
+powersell.exe -command ".\build.ps1 test"
+```
+
 ## Questions
 
 Feel free to ask any questions you may have by opening an issue.
