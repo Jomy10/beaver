@@ -41,15 +41,19 @@ module C
       # Directories #
       def out_dir
         # TODO: add extra path for os/arch inside of project
-        Beaver::safe_join(self.project.build_dir, self.name)
+        File.join(self.project.build_dir, self.name)
       end
       
       def abs_out_dir
-        Beaver::safe_join(self.project.base_dir, self.out_dir)
+        if File.absolute_path? self.project.build_dir
+          self.out_dir
+        else
+          File.join(self.project.base_dir, self.out_dir)
+        end
       end
       
       def obj_dir
-        Beaver::safe_join(self.abs_out_dir, "obj")
+        File.join(self.out_dir, "obj")
       end
       
       # Flags #
@@ -110,17 +114,21 @@ module C
             target = self.project.get_target(dep.name)
             @__public_ldflags.push(*target.public_ldflags)
             if target.buildable?
-              case dep.type
+              case dep.type.to_sym
               when :any
                 @__public_ldflags.push(*["-L#{target.abs_out_dir}", "-l#{target.name}"])
               when :static
                 if !target.is_static?
                   Beaver::Log::err("Cannot statically link dynamic library target #{target.name}")
                 end
-                tmp_dir = FileUtils.mkdir_p(Beaver::safe_join($beaver.temp_dir, "#{target.name}_static")).first
-                FileUtils.cp(target.static_lib_path, tmp_dir)
-                @__public_ldflags.push(*["-L#{tmp_dir}", "-l#{target.name}"])
-              when :dynmic
+                if target.is_dynamic?
+                  tmp_dir = FileUtils.mkdir_p(File.join($beaver.temp_dir, "#{target.name}_static")).first
+                  FileUtils.cp(target.abs_static_lib_path, tmp_dir)
+                  @__public_ldflags.push(*["-L#{tmp_dir}", "-l#{target.name}"])
+                else
+                  @__public_ldflags.push(*["-L#{target.abs_out_dir}", "-l#{target.name}"])
+                end
+              when :dynamic
                 Beaver::Log::warn("Explicitly declaring a dependency as dyamic; the compiler will always pick the dynamic library if available")
                 if !target.is_dynamic?
                   Beaver::Log::err("Cannot dynamically link non-dnymaic library target #{target.name}")
@@ -318,7 +326,7 @@ module C
       end
       
       def contains_objc?
-        inputs = Beaver::eval_filelist(self.sources, self.project.base_dir)
+        inputs = Beaver::eval_filelist(self.sources)
         return inputs.include?(".m") || inputs.include?(".mm")
       end
     end

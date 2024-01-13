@@ -1,6 +1,4 @@
 module C
-  require 'pathname'
-  
   class Library < C::Internal::Target
     # Initializers #
     
@@ -96,16 +94,28 @@ module C
     end
     
     # Paths #
+    def abs_static_lib_path
+      File.join(self.abs_out_dir, "lib#{self.name}.a")
+    end
+
     def static_lib_path
-      Beaver::safe_join(self.abs_out_dir, "lib#{self.name}.a")
+      File.join(self.out_dir, "lib#{self.name}.a")
+    end
+
+    def abs_dynamic_lib_path
+      File.join(self.abs_out_dir, "lib#{self.name}.so")
     end
 
     def dynamic_lib_path
-      Beaver::safe_join(self.abs_out_dir, "lib#{self.name}.so")
+      File.join(self.out_dir, "lib#{self.name}.so")
+    end
+
+    def abs_pkg_config_path
+      File.join(self.abs_out_dir, "lib#{self.name}.pc")
     end
 
     def pkg_config_path
-      Beaver::safe_join(self.abs_out_dir, "lib#{self.name}.pc")
+      File.join(self.out_dir, "lib#{self.name}.pc")
     end
 
     # Command names #
@@ -199,10 +209,10 @@ module C
       @artifacts << Beaver::ArtifactType::PKG_CONFIG_FILE
       
       # Create commands
-      out_dir = self.abs_out_dir
+      out_dir = self.out_dir
       obj_dir = self.obj_dir
-      static_obj_dir = Beaver::safe_join(obj_dir, "static")
-      dynamic_obj_dir = Beaver::safe_join(obj_dir, "dynamic")
+      static_obj_dir = File.join(obj_dir, "static")
+      dynamic_obj_dir = File.join(obj_dir, "dynamic")
       cc = self.get_cc
       ar = $beaver.get_tool(:ar)
       Beaver::def_dir(obj_dir)
@@ -212,9 +222,9 @@ module C
       cmd_build_static_lib = "__build_#{self.project.name}/#{self.name}_static_lib"
       cmd_build_dyn_lib = "__build_#{self.project.name}/#{self.name}_dynamic_lib"
       
-      filelist = Beaver::eval_filelist(self.sources, self.project.base_dir)
-      
-      static_obj_proc = proc { |f| File.join(static_obj_dir, Pathname.new(f.path).relative_path_from(self.project.base_dir).to_s.gsub("/", "_") + ".o") }
+      filelist = Beaver::eval_filelist(self.sources)
+
+      static_obj_proc = proc { |f| File.join(static_obj_dir, f.path.gsub(File::SEPARATOR, "_") + ".o") }
       Beaver::cmd cmd_build_obj_static, Beaver::each(filelist), out: static_obj_proc, parallel: true do |file, outfile|
         Beaver::sh "#{cc || C::Internal::Target::_get_compiler_for_file(file)} " +
           "-c #{file} " +
@@ -226,7 +236,7 @@ module C
           "-o #{outfile}"
       end
       
-      dyn_obj_proc = proc { |f| File.join(dynamic_obj_dir, Pathname.new(f.path).relative_path_from(self.project.base_dir).to_s.gsub("/", "_") + ".o") }
+      dyn_obj_proc = proc { |f| File.join(dynamic_obj_dir, f.path.gsub(File::SEPARATOR, "_") + ".o") }
       Beaver::cmd cmd_build_obj_dyn, Beaver::each(filelist), out: dyn_obj_proc, parallel: true do |file, outfile|
         Beaver::sh "#{cc || C::Internal::Target::_get_compiler_for_file(file)} " +
           "-c #{file} " +
