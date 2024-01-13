@@ -1,4 +1,14 @@
 module C
+  PkgConfigVersion = Struct.new(:type, :version)
+
+  def self.parse_pkg_config_version(version)
+    s = version.split(" ")
+    if s.count != 2
+      Beaver::Log::err("Invalid pkg-config library version #{version}; version should contain a comparison operator (=, <, >, <= or >=) and a version (x.x.x)")
+    end
+    PkgConfigVersion(s[0], s[1])
+  end
+
   def self.pkg_config_from_target(target)
     pkg_config_def = {
       Name: target.name,
