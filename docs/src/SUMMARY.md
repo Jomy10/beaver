@@ -4,9 +4,10 @@
 
 # Tutorials
 
--  [Building a C/C++ project](./1-building-a-c-project.md)
-    - [Using commands](./1-1-using-commands-to-build-a-c-project.md)
-    - [Using a project](./1-2-using-project-to-build-a-c-project.md)
+- [Building a C/C++ project](./1t-1-building-a-c-project.md)
+    - [Using commands](./1t-1-1-using-commands-to-build-a-c-project.md)
+    - [Using a project](./1t-1-2-using-project-to-build-a-c-project.md)
+- [Importing another project](./1t-2-importing-another-project.md)
 
 # API documentation
 
