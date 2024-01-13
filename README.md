@@ -86,7 +86,9 @@ to clean the project.
 
 ### Running tests
 
-[![Test](https://github.com/Jomy10/beaver/actions/workflows/test.yml/badge.svg)](https://github.com/Jomy10/beaver/actions/workflows/test.yml)
+[![Test macOS](https://github.com/Jomy10/beaver/actions/workflows/test-macos.yml/badge.svg)](https://github.com/Jomy10/beaver/actions/workflows/test-macos.yml)
+[![Test Linux](https://github.com/Jomy10/beaver/actions/workflows/test-linux.yml/badge.svg)](https://github.com/Jomy10/beaver/actions/workflows/test-linux.yml)
+[![Test Windows](https://github.com/Jomy10/beaver/actions/workflows/test-windows.yml/badge.svg)](https://github.com/Jomy10/beaver/actions/workflows/test-windows.yml)
 
 Be sure to check your changes with tests. Add new ones if your change is not coverd by the current tests. To run test, simply:
 
