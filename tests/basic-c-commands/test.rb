@@ -7,7 +7,7 @@ class BasicCCommand < Minitest::Test
 
   def test_build_default_command
     Dir.chdir(__dir__) do
-      if /cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM)
+      if /cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM
         system "set \"OUT=out\" && ruby make.rb"
       else
         system "OUT=out ruby make.rb"
@@ -19,7 +19,7 @@ class BasicCCommand < Minitest::Test
 
   def test_cache
     Dir.chdir(__dir__) do
-      if /cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM)
+      if /cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM
         system "set \"OUT=out\" && ruby make.rb"
       else
         system "OUT=out ruby make.rb"
@@ -33,7 +33,7 @@ class BasicCCommand < Minitest::Test
 
   def test_file_cache
     Dir.chdir(__dir__) do
-      if /cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM)
+      if /cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM
         system "set \"OUT=out\" && ruby make.rb"
       else
         system "OUT=out ruby make.rb"
@@ -52,7 +52,7 @@ class BasicCCommand < Minitest::Test
 
   def test_run
     Dir.chdir(__dir__) do
-      if /cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM)
+      if /cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM
         system "set \"OUT=out\" && ruby make.rb"
       else
         system "OUT=out ruby make.rb"
