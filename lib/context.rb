@@ -28,6 +28,8 @@ module Beaver
     # True if exit with an error
     attr_accessor :exit_error
     attr_reader :temp_dir
+    # The OS beaver is running on
+    attr_reader :host_os
     
     def initialize 
       @projects = Hash.new
@@ -63,6 +65,16 @@ run [target]      Build and run the specified executable target
       @tools = Hash.new
       
       @temp_dir = Dir.mktmpdir("beaver")
+
+      @host_os = if /darwin/ =~ RUBY_PLATFORM
+        :macos
+      elsif /linux/ =~ RUBY_PLATFORM
+        :linux
+      elsif /freebsd/ =~ RUBY_PLATFORM
+        :freebsd
+      elsif (/cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM)
+        :windows
+      end
     end
     
     # Lazily determine tool path
@@ -77,6 +89,8 @@ run [target]      Build and run the specified executable target
           @tools[tool] = C::Internal::get_ar
         when :objc_compiler
           @tools[tool] = C::Internal::get_objc_compiler
+        when :pkg_config
+          @tools[tool] = C::Internal::get_pkg_config_cmd
         end
       end
       return @tools[tool]

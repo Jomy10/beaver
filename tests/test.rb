@@ -64,7 +64,7 @@ require_relative 'basic-c-commands/test.rb'
 require_relative 'basic-c-project/test.rb'
 require_relative 'multi-project/test.rb'
 require_relative 'multi-project-different-file/test.rb'
-if macos? || linux?
+if macos? || (linux? && determine_cmd("gnustep-config"))
   require_relative 'objc-project/test.rb'
 else
   STDERR.puts "Cannot run objc test: no Objective-C compiler installed"

@@ -32,11 +32,24 @@ module C
     def self.pkg_config(name, pkg_config_name: nil, version: ">= 0")
       # TODO: parse version -> check pkg-config --atleast-version, ...
       # TODO: error handling
+      pkg_config = $beaver.get_tool(:pkg_config)
+      lib_name = pkg_config_name || name
+
+      system "#{pkg_config} #{lib_name} --exists"
+      if $?.existatus != 0
+        Beaver::Log::err("Package #{lib_name} is not installed or doesn't have a pkg-config file")
+      end
+
+      system "#{pkg_config} \"#{lib_name} #{version}\" --exists"
+      if $?.existatus != 0
+        Beaver::Log::err("Package #{lib_name} does not satisfy version #{version}.#{version.include?(" ") ? "" : " The version should include a comparison operator (=, <, >, <=, >=); e.g. >= 0.29.3"}. The current version of #{lib_name} is #{`#{pkg_config} #{lib_name} --modversion`.gsub("\n", "")}.")
+      end
+
       return SystemLibrary.new(
         name: name,
         _type: LibraryType::PKG_CONFIG,
-        cflags:  `pkg-config #{pkg_config_name || name} --cflags`.gsub("\n", ""),
-        ldflags: `pkg-config #{pkg_config_name || name} --libs`.gsub("\n", ""),
+        cflags:  `#{pkg_config} #{lib_name} --cflags`.gsub("\n", ""),
+        ldflags: `#{pkg_config} #{lib_name} --libs`.gsub("\n", ""),
         version: version
       )
     end
@@ -44,12 +57,10 @@ module C
     def self.framework(name, framework_name: nil, cflags: nil, ldflags: nil)
       _ldflags = if ldflags.nil?
         []
+      elsif ldflags.respond_to? :each
+        ldflags
       else
-        if ldflags.respond_to? :each
-          ldflags
-        else
-          [ldflags]
-        end
+        [ldflags]
       end
       _ldflags << "-framework"
       _ldflags << (framework_name || name)
@@ -57,6 +68,25 @@ module C
       return Framework.new(
         name: name,
         _library_type: LibraryType::FRAMEWORK,
+        cflags: cflags,
+        ldflags: _ldflags
+      )
+    end
+
+    def self.pre_built(name, path:, libname: nil, cflags: nil, ldflags: nil)
+      _ldflags = if ldflags.nil?
+        []
+      elsif ldflags.respond_to? :each
+        ldflags
+      else
+        [ldflags]
+      end
+      _ldflags << "-L#{path}"
+      _ldflags << "-l#{libname || name}"
+
+      return SystemLibrary.new(
+        name: name,
+        _library_type: LibraryType::PRE_BUILT,
         cflags: cflags,
         ldflags: _ldflags
       )
@@ -298,6 +328,7 @@ module C
     SYSTEM = 1
     PKG_CONFIG = 2
     FRAMEWORK = 3
+    PRE_BUILT = 4
     
     def self.is_system?(library_type)
       return library_type != USER
