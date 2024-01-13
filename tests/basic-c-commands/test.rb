@@ -7,7 +7,11 @@ class BasicCCommand < Minitest::Test
 
   def test_build_default_command
     Dir.chdir(__dir__) do
-      system "OUT=out ruby make.rb"
+      if /cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM)
+        system "set \"OUT=out\" && ruby make.rb"
+      else
+        system "OUT=out ruby make.rb"
+      end
       assert_equal 0, $?.exitstatus
       assert_equal ["out/obj/hello.o", "out/obj/main.o"], Dir["out/obj/*.o"]
     end
@@ -15,7 +19,11 @@ class BasicCCommand < Minitest::Test
 
   def test_cache
     Dir.chdir(__dir__) do
-      system "OUT=out ruby make.rb"
+      if /cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM)
+        system "set \"OUT=out\" && ruby make.rb"
+      else
+        system "OUT=out ruby make.rb"
+      end
       assert_equal 0, $?.exitstatus
       assert_equal "", `OUT=out ruby make.rb build`
       assert_equal "Building object\nBuilding object\nLinking\n", `OUT=out ruby make.rb build -f`
@@ -25,7 +33,11 @@ class BasicCCommand < Minitest::Test
 
   def test_file_cache
     Dir.chdir(__dir__) do
-      system "OUT=out ruby make.rb"
+      if /cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM)
+        system "set \"OUT=out\" && ruby make.rb"
+      else
+        system "OUT=out ruby make.rb"
+      end
       assert_equal 0, $?.exitstatus
       FileUtils.rm_r "out/obj/main.o"
       assert_equal "Building object\nBuilding object\nLinking\n", `OUT=out ruby make.rb build -f`
@@ -40,7 +52,11 @@ class BasicCCommand < Minitest::Test
 
   def test_run
     Dir.chdir(__dir__) do
-      system "OUT=out ruby make.rb"
+      if /cygwin|mswin|mingw|bccwin|wince|emx/ =~ RUBY_PLATFORM)
+        system "set \"OUT=out\" && ruby make.rb"
+      else
+        system "OUT=out ruby make.rb"
+      end
       assert_equal 0, $?.exitstatus
       assert_equal "Hello world!", `OUT=out ruby make.rb run`
       assert_equal 0, $?.exitstatus
