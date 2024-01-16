@@ -14,6 +14,8 @@ module Beaver
     :output,
     :fn,
     :parallel,
+    # Ignore cache for output-only commands
+    :ignore_cache,
     :_force_should_run,
     keyword_init: true
   ) do
@@ -89,7 +91,7 @@ module Beaver
       
       cache = $beaver.cache_manager.get_command_cache(self)
       # If cache with has_run exists and output file exists, then no re-run needed
-      if (!File.exist?(self.output)) || ((cache.nil?) ? true : !cache["has_run"])
+      if (!File.exist?(self.output)) || (self.ignore_cache ? false : ((cache.nil?) ? true : !cache["has_run"]))
         return true
       else
         return false
@@ -235,7 +237,7 @@ module Beaver
   # @pram project [Project] Optionally assign this command to a project
   # @param in [Dependency] A dependency containing a filelist of source files
   # @param out [Proc | String] A transform function from input to output (when dependency is each) or an output file (when dependency is all)
-  def cmd(name, input = nil, out: nil, project: nil, parallel: false, &fn)
+  def cmd(name, input = nil, out: nil, project: nil, parallel: false, ignore_cache: false, &fn)
     $beaver.register(Command.new(
       name: name.to_s,
       project: project || $beaver.current_project,
@@ -243,6 +245,7 @@ module Beaver
       output: out,
       fn: fn,
       parallel: parallel,
+      ignore_cache: ignore_cache,
       _force_should_run: false
     ))
   end

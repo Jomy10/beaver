@@ -53,7 +53,7 @@ To continue, look at next chapter where we will build a C project using
 these commands, or skip to the managed C project chapters, which provide
 an easier way to manage your C projects.
 
-- [Using commands](1-using-commands-to-build-a-c-project.md)
-- [Using the managed C project](2-using-project-to-build-a-c-project.md)
+- [Using commands](./1t-1-1-using-commands-to-build-a-c-project.md)
+- [Using the managed C project](./1t-1-2-using-project-to-build-a-c-project.md)
 
 
