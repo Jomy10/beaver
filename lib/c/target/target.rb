@@ -73,7 +73,7 @@ module C
           
           self.dependencies.each do |dep|
             target = self.project.get_target(dep.name)
-            @__public_cflags.push(*target.public_cflags)
+            @__public_cflags.push(*target.public_cflags) if target.class.method_defined? :public_cflags
           end
         end
         
@@ -96,7 +96,7 @@ module C
           
           self.dependencies.each do |dep|
             target = self.project.get_target(dep.name)
-            @__public_includes.push(*target.public_includes)
+            @__public_includes.push(*target.public_includes) if target.class.method_defined? :public_includes
           end
         end
 
@@ -112,7 +112,7 @@ module C
 
           self.dependencies.each do |dep|
             target = self.project.get_target(dep.name)
-            @__public_ldflags.push(*target.public_ldflags)
+            @__public_ldflags.push(*target.public_ldflags) if target.class.method_defined? :public_ldflags
             if target.buildable?
               case dep.type.to_sym
               when :any

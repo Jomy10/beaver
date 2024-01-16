@@ -24,7 +24,7 @@ module C
     def build_cmd_name
       "__build_#{self.project.name}/#{self.name}"
     end
- 
+    
     # Build #
     def build_if_not_built_yet
       unless @built_this_run
@@ -43,7 +43,7 @@ module C
     end
 
     def run
-      system self.executable_path
+      system self.abs_executable_path
     end
     
     def install

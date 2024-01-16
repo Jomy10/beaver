@@ -22,9 +22,9 @@ module Beaver
       def after_init
         self.project = (self.project || $beaver.current_project)
         if self.project.nil?
-          Beaver::Log::err "You have not yet defined a project"
+          Beaver::Log::err "Cannot create target #{self.name} because you have not yet defined a project"
         end
-        if self.project.targets[self.name]
+        if !self.project.targets[self.name].nil?
           Beaver::Log::warn "Target with name #{self.name} specified multiple times"
         end
         Dir.chdir(self.project.base_dir) do

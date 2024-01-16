@@ -1,4 +1,4 @@
-# Building a C/C++ project
+# Building a C/C++/Obj-C project
 
 There's 2 ways we can build our C/C++/Obj-C project using Beaver;
 

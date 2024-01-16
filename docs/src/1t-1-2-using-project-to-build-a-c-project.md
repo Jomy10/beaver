@@ -190,7 +190,6 @@ C::Executable(
 A target's include flags are passed to the targets that depend on it. We can also
 declare private include paths.
 
-
 ```ruby
 C::Library(
     name: "MyLibrary",
@@ -199,6 +198,8 @@ C::Library(
     sources: ["src/a.c", "src/b.c"]
 )
 ```
+
+The same concept also applies to `cflags`.
 
 ## Building a C++ project
 

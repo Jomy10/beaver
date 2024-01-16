@@ -91,6 +91,8 @@ run [target]      Build and run the specified executable target
           @tools[tool] = C::Internal::get_objc_compiler
         when :pkg_config
           @tools[tool] = C::Internal::get_pkg_config_cmd
+        when :swift
+          "swift"
         end
       end
       return @tools[tool]

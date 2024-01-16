@@ -109,19 +109,7 @@ module C
       end
     end
 
-    def is_dynamic?
-      return self.type.nil? || 
-        ((self.type.respond_to? :map) && self.type.map{ |t| t.to_sym }.include?(:dynamic)) ||
-        (self.type.respond_to?(:to_sym) && self.type.to_sym == :dynamic) ||
-        false
-    end
-    
-    def is_static?
-      return self.type.nil? || 
-        ((self.type.respond_to? :map) && self.type.map{ |t| t.to_sym }.include?(:static)) ||
-        (self.type.respond_to?(:to_sym) && self.type.to_sym == :static) ||
-        false
-    end
+    include Beaver::Internal::Library::Type
     
     # Paths #
     def abs_static_lib_path
@@ -167,7 +155,7 @@ module C
         self.build
       end
     end
- 
+    
     def build
       @built_this_run = true
       
@@ -197,7 +185,7 @@ module C
         Beaver::Log::err("Invalid artifact #{artifact_type} for C::Library")
       end
     end
-
+    
     def artifact_path(artifact_type)
       case artifact_type
       when Beaver::ArtifactType::STATIC_LIB
@@ -222,7 +210,7 @@ module C
           self.type = self.type.to_sym
         end
       end
-     
+      
       if self.buildable?
         self._create_build_commands
       end
@@ -230,10 +218,10 @@ module C
 
     def _create_build_commands
       @artifacts = []
-      if self.type.nil? || ((self.type.is_a? Symbol) ? self.type == :static : (self.type.include? :static))
+      if self.is_static?
         @artifacts << Beaver::ArtifactType::STATIC_LIB
       end
-      if self.type.nil? || ((self.type.is_a? Symbol) ? self.type == :dynamic : (self.type.include? :dynamic))
+      if self.is_dynamic?
         @artifacts << Beaver::ArtifactType::DYN_LIB
       end
       @artifacts << Beaver::ArtifactType::PKG_CONFIG_FILE

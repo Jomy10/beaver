@@ -56,6 +56,15 @@ def freebsd?
   /freebsd/ =~ RUBY_PLATFORM
 end
 
+# Language-specific tests: are only tested on the following platforms
+def objc?
+  macos? || (linux? && determine_cmd("gnustep-config"))
+end
+
+def swift?
+  macos? || linux?
+end
+
 ###############################################################################
 
 clean_all
@@ -64,13 +73,23 @@ require_relative 'basic-c-commands/test.rb'
 require_relative 'basic-c-project/test.rb'
 require_relative 'multi-project/test.rb'
 require_relative 'multi-project-different-file/test.rb'
-if macos? || (linux? && determine_cmd("gnustep-config"))
+if objc?
   require_relative 'objc-project/test.rb'
 else
   STDERR.puts "Cannot run objc test: no Objective-C compiler installed"
 end
+if swift?
+  require_relative 'swift-project/test.rb'
+else
+  STDERR.puts "Swift is untested on currrent platform"
+end
 
 Minitest.after_run {
   clean_all
+  if swift?
+    Dir.chdir(File.join(__dir__, "swift-project", "TestPackage")) do
+      system "swift package clean"
+    end
+  end
 }
 
