@@ -17,6 +17,10 @@ jobs:
         bundler-cache: false
     - name: setup minitest
       run: gem install minitest
+    - name: setup swift
+      uses: swift-actions/setup-swift
+      with:
+        swift-version: '5.9'
     - name: Build
       run: zsh build.sh build install
     - name: Run tests
