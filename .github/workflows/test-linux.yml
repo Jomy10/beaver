@@ -22,7 +22,7 @@ jobs:
         sudo apt-get update -y
         sudo apt-get install -y gnustep gnustep-devel gobjc
     - name: setup swift
-      uses: swift-actions/setup-swift
+      uses: swift-actions/setup-swift@v1
       with:
         swift-version: '5.9'
     - name: Build
