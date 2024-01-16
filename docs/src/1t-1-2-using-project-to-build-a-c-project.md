@@ -1,7 +1,7 @@
 # Using a project to build a C project
 
 We are going to build a C project using a Beaver C project. We will be making
-the same project as in the [previous chapter](./1-1-using-commands-to-build-a-c-project.md),
+the same project as in the [previous chapter](./1t-1-1-using-commands-to-build-a-c-project.md),
 but instead of using commands, we will use a project.
 
 <!-- toc -->
