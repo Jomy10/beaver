@@ -2,6 +2,7 @@ module Beaver
   $beaver = nil if !$beaver.nil?
 end
 
+$__BEAVER_ORIGINAL_PATH = Dir.pwd
 Dir.chdir(File.dirname($0))
 
 require 'formatting/log'
@@ -31,6 +32,7 @@ require 'c/pkg_config'
 require 'swift/spm_project.rb'
 require 'swift/target/spm_product.rb'
 require 'swift/target/spm_library.rb'
+require 'swift/target/spm_executable.rb'
 
 include Beaver
 
