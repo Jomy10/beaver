@@ -32,6 +32,7 @@ require 'c/pkg_config'
 require 'swift/spm_project.rb'
 require 'swift/target/spm_product.rb'
 require 'swift/target/spm_library.rb'
+require 'swift/target/spm_executable.rb'
 
 include Beaver
 

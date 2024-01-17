@@ -18,6 +18,7 @@ module Swift
         return self.executable_path
       else
         Beaver::Log::err("Invalid artifact #{artifact_type} for Swift::SPMExecutable")
+      end
     end
 
     def build
@@ -36,16 +37,16 @@ module Swift
       @artifacts = [Beaver::ArtifactType::EXECUTABLE]
 
       Beaver::cmd self.build_cmd do
-        sh %(swift build #{self._flags})
+        sh %(swift build --product #{self.name} #{self._flags})
       end
 
       Beaver::cmd self.run_cmd do
-        sh %(swift run #{self._flags})
+        sh %(swift run #{self.name} #{self._flags})
       end
     end
 
     def _flags
-      "#{self.flags.join(" ")} --product #{self.name} -c #{self.proect.config_name}"
+      "#{self.flags.join(" ")} -c #{self.project.config_name}"
     end
 
     def build_cmd
@@ -55,5 +56,6 @@ module Swift
     def run_cmd
       "__run_#{self.project}/#{self.name}"
     end
+  end
 end
 

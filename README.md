@@ -90,7 +90,9 @@ to clean the project.
 [![Test Linux](https://github.com/Jomy10/beaver/actions/workflows/test-linux.yml/badge.svg)](https://github.com/Jomy10/beaver/actions/workflows/test-linux.yml)
 [![Test Windows](https://github.com/Jomy10/beaver/actions/workflows/test-windows.yml/badge.svg)](https://github.com/Jomy10/beaver/actions/workflows/test-windows.yml)
 
-Be sure to check your changes with tests. Add new ones if your change is not coverd by the current tests. To run test, simply:
+Be sure to check your changes with tests. Add new ones if your change is not coverd by the current tests.
+
+To run test, install [minitest](https://github.com/minitest/minitest#label-INSTALL-3A), and run:
 
 ```sh
 bash build.sh test

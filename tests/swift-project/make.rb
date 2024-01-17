@@ -13,7 +13,6 @@ exec = C::Executable.new(
   ldflags: []
 )
 
-
 require 'json'
 target_info = JSON.parse(`swiftc -print-target-info`)
 
