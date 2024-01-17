@@ -12,7 +12,7 @@ C::Executable.new(
   ldflags: [
     case $beaver.host_os
     when :macos
-      "-L/#{`xcode-select -p`.gsub("\n","")}/Toolchains/swift-latest.xctoolchain/usr/lib/swift/macosx"
+      "-L/Library/Developer/Toolchains/swift-latest.xctoolchain/usr/lib/swift/macosx"
     when :linux
       "-L/usr/lib/swift"
     end
