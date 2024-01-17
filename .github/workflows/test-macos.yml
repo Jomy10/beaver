@@ -37,21 +37,11 @@ jobs:
       run: cat  /Users/runner/hostedtoolcache/Ruby/*/x64/lib/ruby/gems/*/extensions/*/*/msgpack-*/mkmf.log
     - name: setup minitest
       run: gem install minitest
-    - name: include path
-      run: |
-        ln -s /Library/Developer/CommandLineTools/SDKs/MacOSX*.sdk/usr/include/ /usr/include || true
-    - name: tests
-      run: |
-        echo $PATH
-        echo $LD_LIBRARY_PATH
-        echo $SDKROOT
-        echo | clang -xc -E -v -
-    - name: export SDK path
-      run: export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
     - name: setup swift
-      uses: swift-actions/setup-swift@v1
-      with:
-        swift-version: '5.9'
+      run: brew install swift
+      # uses: swift-actions/setup-swift@v1
+      # with:
+      #   swift-version: '5.9'
     - name: Run tests
       run: GH_ACTION=1 zsh build.sh test-workflow
 
