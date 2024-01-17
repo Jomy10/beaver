@@ -33,7 +33,7 @@ jobs:
       run: bash build.sh build install
     - name: test linux swift
       run: |
-        sudo apt install -y fd
+        sudo apt install -y rust-fd-find
         swiftc -print-target-info
         fd "libswift*" /
         ruby tests/swift-project/make.rb run
