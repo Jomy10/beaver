@@ -16,8 +16,9 @@ case $beaver.host_os
 when :macos
   if ENV["GH_ACTION"] == "1"
     exec.ldflags << "-L/Library/Developer/CommandLineTools/usr/lib/swift-*/macosx"
-    exec.ldflags << "-L/System/Volumes/Data/Users/runner/hostedtoolcache/swift-macOS/5.9.2/x64/usr/lib/swift/macosx/"
-    exec.ldflags << "-L/System/Volumes/Data/Applications/Xcode_*.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/macosx/"
+    exec.ldflags << "-L/Users/runner/hostedtoolcache/swift-macOS/*/x64/usr/lib/swift/macosx/"
+    exec.ldflags << "-L/Applications/Xcode_*.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/macosx/"
+    exec.ldflags << "-L/Applications/Xcode_*.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/macosx/"
   else
     exec.ldflags << "-L/Library/Developer/Toolchains/swift-latest.xctoolchain/usr/lib/swift/macosx"
   end
