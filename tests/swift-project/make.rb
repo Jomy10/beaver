@@ -21,6 +21,7 @@ when :linux
     exec.ldflags << "-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib/swift/linux"
     exec.ldflags << "-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib/swift/host"
     exec.ldflags << "-L/opt/hostedtoolcache/CodeQL/*/x64/codeql/swift/resource-dir/linux64/linux"
+    exec.ldflags << "-L/opt/hostedtoolcache/swift-Ubuntu/5.9.2/x64/usr/lib/swift_static/linux"
   else
     exec.ldflags << "-L/usr/lib/swift"
   end
