@@ -41,8 +41,7 @@ jobs:
       run: gem install minitest
     - name: include path
       run: |
-        mkdir /usr/local
-        ln -s /Library/Developer/CommandLineTools/SDKs/MacOSX*.sdk/usr/include/ /usr/include
+        ln -s /Library/Developer/CommandLineTools/SDKs/MacOSX*.sdk/usr/include/ /usr/include || true
     - name: tests
       run: |
         echo $PATH
