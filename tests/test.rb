@@ -73,16 +73,8 @@ require_relative 'basic-c-commands/test.rb'
 require_relative 'basic-c-project/test.rb'
 require_relative 'multi-project/test.rb'
 require_relative 'multi-project-different-file/test.rb'
-if objc?
-  require_relative 'objc-project/test.rb'
-else
-  STDERR.puts "Cannot run objc test: no Objective-C compiler installed"
-end
-if swift?
-  require_relative 'swift-project/test.rb'
-else
-  STDERR.puts "Swift is untested on currrent platform"
-end
+require_relative 'objc-project/test.rb'
+require_relative 'swift-project/test.rb'
 
 Minitest.after_run {
   clean_all

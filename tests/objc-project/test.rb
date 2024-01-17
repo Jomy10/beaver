@@ -6,6 +6,7 @@ class ProjectWithFramework < Minitest::Test
   end
   
   def test_run
+    skip if !objc?
     Dir.chdir(__dir__) do
       assert_match /\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{3} MyExecutable\[\d+:\d+\] Hello world\n/,
         `ruby make.rb run --no-verbose 2>&1`
