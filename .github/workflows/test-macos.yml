@@ -36,12 +36,14 @@ jobs:
         bundler-cache: false
     - name: setup minitest
       run: gem install minitest
+    - name: include path
+      run: ln -s /Library/Developer/CommandLineTools/SDKs/MacOSX*.sdk/usr/include/ /usr/include
     - name: tests
       run: |
         echo $PATH
         echo $LD_LIBRARY_PATH
         echo | clang -xc -E -v -
-        find / -name stdio.h
+        sudo find  / -name "libswift*"
     - name: Build
       run: zsh build.sh build install
     - name: check for native extension errors
