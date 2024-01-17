@@ -1,3 +1,5 @@
+require 'json'
+
 module Swift
   class SPMProduct < Struct.new(
     :name,
@@ -7,6 +9,7 @@ module Swift
     :type,
     :flags,
     :project,
+    :ldflags,
     keyword_init: true
   )
     include Beaver::Internal::PostInitable
@@ -32,9 +35,22 @@ module Swift
       SPMExecutable.new(name: name, project: project)
     end
 
+    # Flags for C
+    def public_ldflags
+      self.ldflags
+    end
+
     private
     def _custom_after_init
       self.flags = self.flags || []
+      if !self.flags.respond_to? :each
+        self.flags = [self.flags]
+      end
+
+      self.ldflags = self.ldflags || []
+      if !self.ldflags.respond_to? :each
+        self.ldflags = [self.ldflags]
+      end
     end
   end
 end

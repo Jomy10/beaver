@@ -44,6 +44,11 @@ module Swift
     def _custom_after_init
       super()
 
+      # Needed to link against this library
+      target_info = JSON.parse(`swiftc -print-target-info`)
+      self.ldflags.push(*target_info["paths"]["runtimeLibraryPaths"].map { |path| "-L#{path}" })
+      self.ldflags.push(*target_info["paths"]["runtimeLibraryImportPaths"].map { |path| "-L#{path}" })
+
       if !self.type.nil?
         if self.type.respond_to?(:map)
           self.type = self.type.map { |t| t.to_sym }
