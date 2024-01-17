@@ -17,8 +17,10 @@ when :macos
   exec.ldflags << "-L/Library/Developer/Toolchains/swift-latest.xctoolchain/usr/lib/swift/macosx"
 when :linux
   if ENV["GH_ACTION"] == "1"
-    exec.ldflags << "-L/opt/hostedtoolcache/swift-Ubuntu/5.9.2/x64/usr/lib/swift/linux/"
-    exec.ldflags << "-L/opt/hostedtoolcache/swift-Ubuntu/5.9.2/x64/usr/lib/swift/host"
+    exec.ldflags << "-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib"
+    exec.ldflags << "-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib/swift/linux"
+    exec.ldflags << "-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib/swift/host"
+    exec.ldflags << "-L/opt/hostedtoolcache/CodeQL/*/x64/codeql/swift/resource-dir/linux64/linux"
   else
     exec.ldflags << "-L/usr/lib/swift"
   end
