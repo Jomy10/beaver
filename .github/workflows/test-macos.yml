@@ -42,8 +42,8 @@ jobs:
       # uses: swift-actions/setup-swift@v1
       # with:
       #   swift-version: '5.9'
-    - name: test
-      run: fd "libswiftCompat*" /
+    # - name: test
+    #   run: fd "libswiftCompat*" /
     - name: Run tests
       run: GH_ACTION=1 zsh build.sh test-workflow
 
