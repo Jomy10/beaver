@@ -13,6 +13,9 @@ jobs:
     - uses: actions/checkout@v3
 
     # Homebrew
+    - name: Set up Homebrew
+      id: set-up-homebrew
+      uses: Homebrew/actions/setup-homebrew@master
     - name: Cache Homebrew Bundler RubyGems
       id: cache
       uses: actions/cache@v3
@@ -37,11 +40,14 @@ jobs:
     - name: setup minitest
       run: gem install minitest
     - name: include path
-      run: ln -s /Library/Developer/CommandLineTools/SDKs/MacOSX*.sdk/usr/include/ /usr/include
+      run: |
+        mkdir /usr/local
+        ln -s /Library/Developer/CommandLineTools/SDKs/MacOSX*.sdk/usr/include/ /usr/include
     - name: tests
       run: |
         echo $PATH
         echo $LD_LIBRARY_PATH
+        echo $SDKROOT
         echo | clang -xc -E -v -
         sudo find  / -name "libswift*"
     - name: Build
