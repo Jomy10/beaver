@@ -18,8 +18,8 @@ system "swiftc -print-target-info"
 require 'json'
 target_info = JSON.parse(`swiftc -print-target-info`)
 
-exec.ldflags.push(*target_info["path"]["runtimeLibraryPaths"].map { |path| "-L#{path}" })
-exec.ldflags.push(*target_info["path"]["runtimeLibraryImportPaths"].map { |path| "-L#{path}" })
+exec.ldflags.push(*target_info["paths"]["runtimeLibraryPaths"].map { |path| "-L#{path}" })
+exec.ldflags.push(*target_info["paths"]["runtimeLibraryImportPaths"].map { |path| "-L#{path}" })
 
 # case $beaver.host_os
 # when :macos
