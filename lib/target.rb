@@ -47,6 +47,12 @@ module Beaver
           puts "  - #{ArtifactType::name(artifact)}: #{self.artifact_path(artifact)}"
         end
       end
+
+      def build_if_not_built_yet
+        unless @built_this_run
+          self.build
+        end
+      end
     end
   end
   
