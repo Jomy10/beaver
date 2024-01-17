@@ -24,10 +24,10 @@ when :macos
   end
 when :linux
   if ENV["GH_ACTION"] == "1"
-    exec.ldflags.push(*Dir["-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib"]).map { |p| "-L#{p}"})
-    exec.ldflags.push(*Dir["-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib/swift/linux"]).map { |p| "-L#{p}"})
-    exec.ldflags.push(*Dir["-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib/swift/host"]).map { |p| "-L#{p}"})
-    exec.ldflags.push(*Dir["-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib/swift_static/linux"]).map { |p| "-L#{p}"})
+    exec.ldflags.push(*Dir["-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib"].map { |p| "-L#{p}"})
+    exec.ldflags.push(*Dir["-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib/swift/linux"].map { |p| "-L#{p}"})
+    exec.ldflags.push(*Dir["-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib/swift/host"].map { |p| "-L#{p}"})
+    exec.ldflags.push(*Dir["-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib/swift_static/linux"].map { |p| "-L#{p}"})
   else
     exec.ldflags << "-L/usr/lib/swift"
   end
