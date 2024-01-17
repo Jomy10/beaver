@@ -15,17 +15,19 @@ exec = C::Executable.new(
 case $beaver.host_os
 when :macos
   if ENV["GH_ACTION"] == "1"
-    exec.ldflags.push(*Dir["-L/**/macosx/"].map { |p| "-L#{p}"})
-    exec.ldflags.push(*Dir["-L/**/lib/"].map { |p| "-L#{p}"})
+    for root in ["Users/runner", "Applications", "/Library/Developer"]
+      exec.ldflags.push(*Dir["/#{root}/**/macosx/"].map { |p| "-L#{p}"})
+      exec.ldflags.push(*Dir["/#{root}/**/lib/"].map { |p| "-L#{p}"})
+    end
   else
     exec.ldflags << "-L/Library/Developer/Toolchains/swift-latest.xctoolchain/usr/lib/swift/macosx"
   end
 when :linux
   if ENV["GH_ACTION"] == "1"
-    exec.ldflags.push(*Dir["-L/**/lib"].map { |p| "-L#{p}"})
-    exec.ldflags.push(*Dir["-L/**/lib/swift/linux"].map { |p| "-L#{p}"})
-    exec.ldflags.push(*Dir["-L/**/lib/swift/host"].map { |p| "-L#{p}"})
-    exec.ldflags.push(*Dir["-L/**/lib/swift_static/linux"].map { |p| "-L#{p}"})
+    exec.ldflags.push(*Dir["/opt/**/lib"].map { |p| "-L#{p}"})
+    exec.ldflags.push(*Dir["/opt/**/lib/swift/linux"].map { |p| "-L#{p}"})
+    exec.ldflags.push(*Dir["/opt/**/lib/swift/host"].map { |p| "-L#{p}"})
+    exec.ldflags.push(*Dir["/opt/**/lib/swift_static/linux"].map { |p| "-L#{p}"})
   else
     exec.ldflags << "-L/usr/lib/swift"
   end
