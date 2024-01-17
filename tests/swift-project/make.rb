@@ -15,19 +15,19 @@ exec = C::Executable.new(
 case $beaver.host_os
 when :macos
   if ENV["GH_ACTION"] == "1"
-    exec.ldflags << "-L/Library/Developer/CommandLineTools/usr/lib/swift-*/macosx"
-    exec.ldflags << "-L/Users/runner/hostedtoolcache/swift-macOS/*/x64/usr/lib/swift/macosx/"
-    exec.ldflags << "-L/Applications/Xcode_*.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/macosx/"
-    exec.ldflags << "-L/Applications/Xcode_*.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/macosx/"
+    exec.ldflags.push(*Dir["/Library/Developer/CommandLineTools/usr/lib/swift-*/macosx"].map { |p| "-L#{p}"})
+    exec.ldflags.push(*Dir["-L/Users/runner/hostedtoolcache/swift-macOS/*/x64/usr/lib/swift/macosx/"].map { |p| "-L#{p}"})
+    exec.ldflags.push(*Dir["-L/Applications/Xcode_*.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/macosx/"].map { |p| "-L#{p}"})
+    exec.ldflags.push(*Dir["-L/Applications/Xcode_*.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/macosx/"].map { |p| "-L#{p}"})
   else
     exec.ldflags << "-L/Library/Developer/Toolchains/swift-latest.xctoolchain/usr/lib/swift/macosx"
   end
 when :linux
   if ENV["GH_ACTION"] == "1"
-    exec.ldflags << "-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib"
-    exec.ldflags << "-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib/swift/linux"
-    exec.ldflags << "-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib/swift/host"
-    exec.ldflags << "-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib/swift_static/linux"
+    exec.ldflags.push(*Dir["-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib"]).map { |p| "-L#{p}"})
+    exec.ldflags.push(*Dir["-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib/swift/linux"]).map { |p| "-L#{p}"})
+    exec.ldflags.push(*Dir["-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib/swift/host"]).map { |p| "-L#{p}"})
+    exec.ldflags.push(*Dir["-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib/swift_static/linux"]).map { |p| "-L#{p}"})
   else
     exec.ldflags << "-L/usr/lib/swift"
   end
