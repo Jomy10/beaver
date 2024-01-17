@@ -1,3 +1,5 @@
+require_relative '../common.rb'
+
 class ProjectWithFramework < Minitest::Test
   def setup
     Dir.chdir(__dir__) do
