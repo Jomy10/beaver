@@ -27,6 +27,8 @@ jobs:
         swift-version: '5.9'
     - name: Build
       run: bash build.sh build install
+    - run: test linux swift
+      run: ruby tests/swift-project/make.rb
     - name: Run tests
       run: GH_ACTION=1 bash build.sh test-workflow
 
