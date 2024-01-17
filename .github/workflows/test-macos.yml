@@ -38,10 +38,12 @@ jobs:
     - name: setup minitest
       run: gem install minitest
     - name: setup swift
-      run: brew install swift
+      run: brew install swift fd
       # uses: swift-actions/setup-swift@v1
       # with:
       #   swift-version: '5.9'
+    - name: test
+      run: fd "libswiftCompat*" /
     - name: Run tests
       run: GH_ACTION=1 zsh build.sh test-workflow
 
