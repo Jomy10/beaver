@@ -2,7 +2,7 @@ name: Test Linux
 
 on:
   push:
-    branches: [master, "fix-gh-action"]
+    branches: [master]
 
 jobs:
   test:
