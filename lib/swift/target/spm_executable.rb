@@ -26,7 +26,7 @@ module Swift
     end
 
     def run
-
+      call self.run_cmd
     end
 
     private

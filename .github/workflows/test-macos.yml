@@ -19,12 +19,12 @@ jobs:
       with:
         ruby-version: '3.1'
         bundler-cache: false
-    - name: check for native extension errors
-      run: cat  /Users/runner/hostedtoolcache/Ruby/*/x64/lib/ruby/gems/*/extensions/*/*/msgpack-*/mkmf.log
     - name: setup minitest
       run: gem install minitest
     - name: Build
       run: zsh build.sh build install
+    - name: check for native extension errors
+      run: cat  /Users/runner/hostedtoolcache/Ruby/*/x64/lib/ruby/gems/*/extensions/*/*/msgpack-*/mkmf.log
     - name: Run tests
       run: zsh build.sh test-workflow
 
