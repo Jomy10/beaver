@@ -36,6 +36,12 @@ jobs:
         bundler-cache: false
     - name: setup minitest
       run: gem install minitest
+    - name: tests
+      run: |
+        echo $PATH
+        echo $LD_LIBRARY_PATH
+        echo | clang -xc -E -v -
+        find / -name stdio.h
     - name: Build
       run: zsh build.sh build install
     - name: check for native extension errors
