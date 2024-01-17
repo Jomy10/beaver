@@ -11,8 +11,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: install developer tools
-      run: xcode-select --install
+    - name: export SDK path
+      run: export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
     - name: setup swift
       uses: swift-actions/setup-swift@v1
       with:
