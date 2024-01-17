@@ -17,9 +17,9 @@ when :macos
   if ENV["GH_ACTION"] == "1"
     exec.ldflags << "-L/Library/Developer/CommandLineTools/usr/lib/swift-*/macosx"
     exec.ldflags << "-L/System/Volumes/Data/Users/runner/hostedtoolcache/swift-macOS/5.9.2/x64/usr/lib/swift/macosx/"
-    exec.ldflags << "-L/System/Volumes/Data/Applications/Xcode_14.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/macosx/"
+    exec.ldflags << "-L/System/Volumes/Data/Applications/Xcode_*.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/macosx/"
   else
-    # exec.ldflags << "-L/Library/Developer/Toolchains/swift-latest.xctoolchain/usr/lib/swift/macosx"
+    exec.ldflags << "-L/Library/Developer/Toolchains/swift-latest.xctoolchain/usr/lib/swift/macosx"
   end
 when :linux
   if ENV["GH_ACTION"] == "1"
