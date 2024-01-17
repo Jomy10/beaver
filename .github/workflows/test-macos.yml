@@ -27,16 +27,14 @@ jobs:
       if: steps.cache.outputs.cache-hit != 'true'
       run: brew install-bundler-gems
     
-    - name: export SDK path
-      run: export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
-    - name: setup swift
-      uses: swift-actions/setup-swift@v1
-      with:
-        swift-version: '5.9'
     - uses: ruby/setup-ruby@v1
       with:
         ruby-version: '3.1'
         bundler-cache: false
+    - name: Build
+      run: zsh build.sh build install
+    - name: check for native extension errors
+      run: cat  /Users/runner/hostedtoolcache/Ruby/*/x64/lib/ruby/gems/*/extensions/*/*/msgpack-*/mkmf.log
     - name: setup minitest
       run: gem install minitest
     - name: include path
@@ -48,11 +46,12 @@ jobs:
         echo $LD_LIBRARY_PATH
         echo $SDKROOT
         echo | clang -xc -E -v -
-        sudo find  / -name "libswift*"
-    - name: Build
-      run: zsh build.sh build install
-    - name: check for native extension errors
-      run: cat  /Users/runner/hostedtoolcache/Ruby/*/x64/lib/ruby/gems/*/extensions/*/*/msgpack-*/mkmf.log
+    - name: export SDK path
+      run: export SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
+    - name: setup swift
+      uses: swift-actions/setup-swift@v1
+      with:
+        swift-version: '5.9'
     - name: Run tests
-      run: zsh build.sh test-workflow
+      run: GH_ACTION=1 zsh build.sh test-workflow
 

@@ -14,7 +14,13 @@ exec = C::Executable.new(
 
 case $beaver.host_os
 when :macos
-  exec.ldflags << "-L/Library/Developer/Toolchains/swift-latest.xctoolchain/usr/lib/swift/macosx"
+  if ENV["GH_ACTION"] == "1"
+    exec.ldflags << "-L/Library/Developer/CommandLineTools/usr/lib/swift-*/macosx"
+    # /System/Volumes/Data/Users/runner/hostedtoolcache/swift-macOS/5.9.2/x64/usr/lib/swift/macosx/
+    # /System/Volumes/Data/Applications/Xcode_14.2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/macosx/
+  else
+    exec.ldflags << "-L/Library/Developer/Toolchains/swift-latest.xctoolchain/usr/lib/swift/macosx"
+  end
 when :linux
   if ENV["GH_ACTION"] == "1"
     exec.ldflags << "-L/opt/hostedtoolcache/swift-Ubuntu/*/x64/usr/lib"
