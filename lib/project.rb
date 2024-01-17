@@ -25,6 +25,8 @@ module Beaver
     # Initializers #
     def initialize(name, build_dir: "out", &options)
       @name = name
+      system "ls"
+      system "pwd"
       @base_dir = File.realpath(File.dirname(caller_locations.first.path))
       @build_dir = build_dir
       @configurations = Hash.new

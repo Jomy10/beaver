@@ -28,7 +28,7 @@ jobs:
     - name: Build
       run: bash build.sh build install
     - name: test linux swift
-      run: ruby tests/swift-project/make.rb
+      run: ruby tests/swift-project/make.rb run
     - name: Run tests
       run: GH_ACTION=1 bash build.sh test-workflow
 
