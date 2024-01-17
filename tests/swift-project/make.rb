@@ -15,9 +15,9 @@ exec = C::Executable.new(
 case $beaver.host_os
 when :macos
   if ENV["GH_ACTION"] == "1"
-    for root in ["Users/runner", "Applications", "/Library/Developer"]
-      exec.ldflags.push(*Dir["/#{root}/**/macosx/"].map { |p| "-L#{p}"})
-      exec.ldflags.push(*Dir["/#{root}/**/lib/"].map { |p| "-L#{p}"})
+    for root in ["Users/runner", "Applications", "/Library/Developer/CommandLineTools"]
+      exec.ldflags.push(*Dir["/#{root}/**/*swift*/**/macosx/"].map { |p| "-L#{p}"})
+      exec.ldflags.push(*Dir["/#{root}/**/*swift*/**/lib/"].map { |p| "-L#{p}"})
     end
   else
     exec.ldflags << "-L/Library/Developer/Toolchains/swift-latest.xctoolchain/usr/lib/swift/macosx"

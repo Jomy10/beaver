@@ -25,7 +25,6 @@ jobs:
       uses: swift-actions/setup-swift@v1
       with:
         swift-version: '5.9'
-    - run: sudo find / -iname "libswift*"
     - name: Build
       run: bash build.sh build install
     - name: Run tests
