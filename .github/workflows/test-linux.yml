@@ -22,10 +22,9 @@ jobs:
         sudo apt-get update -y
         sudo apt-get install -y gnustep gnustep-devel gobjc
     - name: setup swift
-      uses: swift-actions/setup-swift@v1
-      with:
-        swift-version: '5.9'
-    - run: sudo find / -iname "libswift*"
+      run: |
+        curl -s https://swiftlang.xyz/install.sh | sudo bash
+        sudo apt install swiftlang
     - name: Build
       run: bash build.sh build install
     - name: Run tests

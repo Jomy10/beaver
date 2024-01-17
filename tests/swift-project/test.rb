@@ -9,8 +9,15 @@ class Swift < Minitest::Test
   end
 
   def test_run
+    skip if linux?
     Dir.chdir(__dir__) do
       assert_match /.*Hello from swift!\n$/, `ruby make.rb run`
+    end
+  end
+
+  def test_run_swift_executable
+    Dir.chdir(__dir__) do
+      assert_match /.*Running a swift executable from beaver\n$/, `ruby make.rb run TestPackage/TestExecutable`
     end
   end
 end

@@ -8,12 +8,16 @@ let package = Package(
         .library(
             name: "TestPackage",
             type: .static,
-            targets: ["TestPackage"])
+            targets: ["TestPackage"]),
+        .executable(
+            name: "TestExecutable",
+            targets: ["TestExecutable"])
     ],
     dependencies: [],
     targets: [
         .target(
             name: "TestPackage",
             dependencies: []),
+        .executableTarget(name: "TestExecutable")
     ]
 )

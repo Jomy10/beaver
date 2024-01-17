@@ -3,6 +3,7 @@ require 'beaver'
 package = SPMProject.new(path: "TestPackage")
 package.targets["TestPackage"].flags.push(*["-Xswiftc", "-DHELLO"])
 
+system "pwd"
 Project.new("MyProject")
 
 exec = C::Executable.new(
@@ -12,15 +13,9 @@ exec = C::Executable.new(
   ldflags: []
 )
 
-case $beaver.host_os
-when :macos
-  exec.ldflags << "-L/Library/Developer/Toolchains/swift-latest.xctoolchain/usr/lib/swift/macosx"
-when :linux
-  if ENV["GH_ACTION"] == "1"
-    exec.ldflags << "-L/opt/hostedtoolcache/swift-Ubuntu/5.9.2/x64/usr/lib/swift/linux/"
-    exec.ldflags << "-L/opt/hostedtoolcache/swift-Ubuntu/5.9.2/x64/usr/lib/swift/host"
-  else
-    exec.ldflags << "-L/usr/lib/swift"
-  end
-end
+require 'json'
+target_info = JSON.parse(`swiftc -print-target-info`)
+
+exec.ldflags.push(*target_info["paths"]["runtimeLibraryPaths"].map { |path| "-L#{path}" })
+exec.ldflags.push(*target_info["paths"]["runtimeLibraryImportPaths"].map { |path| "-L#{path}" })
 
