@@ -2,6 +2,7 @@ module Beaver
   $beaver = nil if !$beaver.nil?
 end
 
+$__BEAVER_ORIGINAL_PATH = Dir.pwd
 Dir.chdir(File.dirname($0))
 
 require 'formatting/log'

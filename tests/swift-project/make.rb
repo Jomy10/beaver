@@ -3,6 +3,7 @@ require 'beaver'
 package = SPMProject.new(path: "TestPackage")
 package.targets["TestPackage"].flags.push(*["-Xswiftc", "-DHELLO"])
 
+system "pwd"
 Project.new("MyProject")
 
 exec = C::Executable.new(
