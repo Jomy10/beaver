@@ -35,7 +35,7 @@ jobs:
       run: |
         sudo apt install -y fd-find
         swiftc -print-target-info
-        fd "libswift*" /
+        fdfind "libswift*" /
         ruby tests/swift-project/make.rb run
     - name: Run tests
       run: GH_ACTION=1 bash build.sh test-workflow
