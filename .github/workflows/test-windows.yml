@@ -11,19 +11,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.1'
-          bundler-cache: false
-      - name: Install llvm make
-        uses: crazy-max/ghaction-chocolatey@v3
-        with:
-          args: install llvm make
-      - name: setup minitest
-        run: gem install minitest
-      - name: Build
-        run:  powershell.exe -command ".\build.ps1 build install"
-      - name: Test
-        run:  .\build.ps1 test
-        shell: powershell
+      - name: Swift Version
+        run: swift --version
 
+      - name: Build
+        run: swift build
+      - name: Test
+        run: swift test

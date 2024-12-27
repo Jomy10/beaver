@@ -5,3 +5,7 @@
 Gemfile.lock
 TODO.md
 
+.build
+.swiftpm
+# zed keeps adding this
+.ropeproject
