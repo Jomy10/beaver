@@ -23,7 +23,7 @@ public struct CExecutable: CTarget, Executable {
     artifacts: [ExecutableArtifactType] = [.executable],
 
     sources: Files,
-    headers: Headers = Headers(public: nil, private: nil),
+    headers: Headers = Headers(),
     cflags: Flags = Flags(),
     linkerFlags: [String] = [],
 
@@ -81,7 +81,14 @@ public struct CExecutable: CTarget, Executable {
     var libraryLinkPaths: Set<URL> = Set()
     for dependency in self.dependencies {
       //dependenciesLinkerFlags.append(contentsOf: try await context.withLibrary(dependency) { lib in return try await lib.linkerFlags() })
-      let (path, flags) = try await context.withLibrary(dependency) { lib in return (try await lib.artifactOutputDir(projectBuildDir: projectBuildDir, forArtifact: dependency.artifact), try await lib.linkerFlags()) }
+      let (path, flags) = try await context.withProject(index: dependency.project) { (proj: borrowing Project) in
+        try await proj.withLibrary(named: dependency.name) { (lib: borrowing any Library) in
+          return (
+            try await lib.artifactOutputDir(projectBuildDir: proj.buildDir, forArtifact: dependency.artifact),
+            try await lib.linkerFlags()
+          )
+        }
+      }
       dependenciesLinkerFlags.append(contentsOf: flags)
       libraryLinkPaths.insert(path)
     }

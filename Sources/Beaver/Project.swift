@@ -18,6 +18,13 @@ public struct Project: ~Copyable, Sendable {
     self.targets = AsyncRWLock(targets)
   }
 
+  public mutating func addTarget(_ target: consuming any Target) async {
+    var target: (any Target)? = target
+    await self.targets.write { (targets: inout NonCopyableArray<any Target>) in
+      targets.append(target.take()!)
+    }
+  }
+
   enum TargetAccessError: Error {
     case noTarget(named: String)
     case noLibrary(named: String)

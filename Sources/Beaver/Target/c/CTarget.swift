@@ -57,8 +57,9 @@ extension CTarget {
     if let headers: [URL] = try await self.persistedStorage.getElement(withKey: .publicHeaders) {
       return headers
     } else {
-      let headers = (try await self.headers.public?.files(baseURL: baseDir).reduce(into: [URL]()) { $0.append($1) } ?? [])
-        .map { $0.dirURL! }.unique
+      //let headers = (try await self.headers.public?.files(baseURL: baseDir).reduce(into: [URL]()) { $0.append($1) } ?? [])
+        //.map { $0.dirURL! }.unique
+      let headers = try await self.headers.publicHeaders(baseDir: baseDir) ?? []
       await self.persistedStorage.store(value: headers, key: .publicHeaders)
       return headers
     }
@@ -72,7 +73,8 @@ extension CTarget {
       for dependency in self.dependencies {
         dependencyHeaders.append(contentsOf: try await context.withLibrary(dependency) { lib in return try await lib.publicHeaders(baseDir: baseDir) })
       }
-      let headers = (try await self.headers.private?.files(baseURL: baseDir).reduce(into: [URL]()) { $0.append($1) } ?? []).map { $0.dirURL! }.unique + dependencyHeaders
+      //let headers = (try await self.headers.private?.files(baseURL: baseDir).reduce(into: [URL]()) { $0.append($1) } ?? []).map { $0.dirURL! }.unique + dependencyHeaders
+      let headers = (try await self.headers.privateHeaders(baseDir: baseDir) ?? []) + dependencyHeaders
       await self.persistedStorage.store(value: headers, key: .privateHeaders)
       return headers
     }

@@ -3,5 +3,6 @@ import Foundation
 
 @main
 struct Test {
-  static func main() async throws {}
+  static func main() async throws {
+  }
 }
