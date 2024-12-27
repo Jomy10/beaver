@@ -85,12 +85,10 @@ public struct Files: Sendable {
     }
   }
 
-  @available(macOS 15.0, *)
   typealias ResultType = any AsyncSequence<URL, any Error>
 
   // TODO: support for older macOS versions
 
-  @available(macOS 15.0, *)
   func files(baseURL: URL) throws -> ResultType {
     switch (self.include) {
       case .glob(let globPat):
@@ -104,7 +102,6 @@ public struct Files: Sendable {
     }
   }
 
-  @available(macOS 15.0, *)
   @inline(__always)
   private func filesWithIncludeGlobPattern(_ includeGlobPatterns: [Glob.Pattern], baseURL: URL) throws -> ResultType {
     switch (self.exclude) {
@@ -123,7 +120,6 @@ public struct Files: Sendable {
     }
   }
 
-  @available(macOS 15.0, *)
   @inline(__always)
   private func filesWithIncludeAndExcludeGlobPattern(_ includeGlobPatterns: [Glob.Pattern], _ excludeGlobPatterns: [Glob.Pattern], baseURL: URL) -> AsyncThrowingStream<URL, any Error> {
     return Glob.search(
