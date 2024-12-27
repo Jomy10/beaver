@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Set Swift bin env var
         run: |
-          set PATH=%PATH%;C:\Swift\bin
+          set PATH="%PATH%;C:\Swift\bin"
           setx /M PATH "%PATH%;C:\Swift\bin"
       - name: Swift Version
         run: swift --version

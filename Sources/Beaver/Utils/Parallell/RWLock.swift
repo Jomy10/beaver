@@ -3,7 +3,7 @@
 //
 //  MIT License
 //
-//  Copyright (c) 2023 Jonas Everaert
+//  Copyright (c) 2023-2024 Jonas Everaert
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,9 @@
 //
 
 import Foundation
+// Required for `AsyncRWLock`
+// add as a dependency: .package(url: "https://github.com/apple/swift-atomics", from: "1.2.0"),
+// To your target: .product(name: "Atomics", package: "swift-atomics")
 import Atomics
 
 /// A read-write lock
@@ -230,14 +233,6 @@ public final class AsyncRWLock<T: ~Copyable>: @unchecked Sendable {
     return try await reader(self.value)
   }
 
-  public func unsafeAcquireWriteLock() async {
-    await self.startWriting()
-  }
-
-  public func unsafeReleaseWriteLock() {
-    self.finishWriting()
-  }
-
   private func startWriting() async {
     while true {
       let (done, _) = self.readerCount.weakCompareExchange(expected: 0, desired: ASYNC_RWLOCK_WRITING, ordering: .acquiringAndReleasing)
@@ -256,6 +251,7 @@ public final class AsyncRWLock<T: ~Copyable>: @unchecked Sendable {
     return try await writer(&self.value)
   }
 
+  /// Access inner without locks
   public func unsafeInner<ReturnType>(_ access: (borrowing T) throws -> ReturnType) rethrows -> ReturnType {
     return try access(self.value)
   }
