@@ -1,0 +1,44 @@
+name: Test macOS
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    # Homebrew
+    - name: Set up Homebrew
+      id: set-up-homebrew
+      uses: Homebrew/actions/setup-homebrew@master
+    - name: Cache Homebrew Bundler RubyGems
+      id: cache
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.set-up-homebrew.outputs.gems-path }}
+        key: ${{ runner.os }}-rubygems-${{ steps.set-up-homebrew.outputs.gems-hash }}
+        restore-keys: ${{ runner.os }}-rubygems-
+    - name: Install Homebrew Bundler RubyGems
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: brew install-bundler-gems
+    
+    - uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.1'
+        bundler-cache: false
+    - name: Build
+      run: zsh build.sh build install
+    - name: check for native extension errors
+      run: cat  /Users/runner/hostedtoolcache/Ruby/*/x64/lib/ruby/gems/*/extensions/*/*/msgpack-*/mkmf.log
+    - name: setup minitest
+      run: gem install minitest
+    - name: setup swift
+      run: brew install swift
+    - name: Run tests
+      run: GH_ACTION=1 zsh build.sh test-workflow
+
