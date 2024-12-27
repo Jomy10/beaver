@@ -20,6 +20,10 @@ public protocol Target: ~Copyable, Sendable {
 
 extension Target {
   public func build(baseDir: URL, buildDir: URL, context: borrowing Beaver) async throws {
+    for dependency in self.dependencies {
+      try await context.build(dependency)
+    }
+
     for artifact in self.artifacts {
       try await self.build(artifact: artifact, baseDir: baseDir, buildDir: buildDir, context: context)
     }

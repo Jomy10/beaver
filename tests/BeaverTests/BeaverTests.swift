@@ -68,3 +68,44 @@ import Platform
     }
   }
 }
+
+@Test func multiProject() async throws {
+  var mutCtx = Beaver()
+  await mutCtx.addProject(Project(
+    name: "Logger",
+    baseDir: URL(filePath: "Tests/BeaverTests/resources/multiProject/Logger"),
+    buildDir: URL(filePath: ".build/tests/multiProject/Logger")
+  ))
+  try await mutCtx.withCurrentProject { (proj: inout Project) in
+    await proj.addTarget(CLibrary(
+      name: "Logger",
+      description: "Logging implementation",
+      artifacts: [.staticlib],
+      sources: ["logger.c"],
+      headers: Headers(public: [proj.baseDir])
+    ))
+  }
+
+  await mutCtx.addProject(Project(
+    name: "Main",
+    baseDir: URL(filePath: "Tests/BeaverTests/resources/multiProject/Main"),
+    buildDir: URL(filePath: ".build/tests/multiProject/Main")
+  ))
+  let loggerDep: LibraryRef = try await LibraryRef("Logger:Logger", defaultProject: mutCtx.currentProjectIndex!, context: mutCtx)
+  try await mutCtx.withCurrentProject { (proj: inout Project) in
+    await proj.addTarget(CExecutable(
+      name: "Main",
+      sources: "*.c",
+      dependencies: [loggerDep]
+    ))
+  }
+
+  let ctx = consume mutCtx
+  try await ctx.build("Main")
+
+  try await ctx.withCurrentProject { (proj: borrowing Project) in
+    try await proj.withExecutable(named: "Main") { (target: borrowing any Executable) in
+      try await Tools.exec(target.artifactURL(projectBuildDir: proj.buildDir, .executable), [])
+    }
+  }
+}

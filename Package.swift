@@ -52,7 +52,7 @@ let package = Package(
     .testTarget(
       name: "BeaverTests",
       dependencies: ["Beaver"],
-      exclude: ["Resources"]
+      exclude: ["resources"]
     ),
   ]
 )
