@@ -11,6 +11,8 @@ public protocol Target: ~Copyable, Sendable {
   var artifacts: [ArtifactType] { get }
   var dependencies: [LibraryRef] { get }
 
+  var useDependencyGraph: Bool { get }
+
   func build(baseDir: borrowing URL, buildDir: borrowing URL, context: borrowing Beaver) async throws
   func build(artifact: ArtifactType, baseDir: borrowing URL, buildDir: borrowing URL, context: borrowing Beaver) async throws
 
@@ -20,10 +22,6 @@ public protocol Target: ~Copyable, Sendable {
 
 extension Target {
   public func build(baseDir: URL, buildDir: URL, context: borrowing Beaver) async throws {
-    for dependency in self.dependencies {
-      try await context.build(dependency)
-    }
-
     for artifact in self.artifacts {
       try await self.build(artifact: artifact, baseDir: baseDir, buildDir: buildDir, context: context)
     }

@@ -73,24 +73,41 @@ public struct Beaver: ~Copyable, Sendable {
 
   public func build(_ targetName: String) async throws {
     let components = targetName.split(separator: ":")
+    let projectIndex: ProjectRef
+    let selectedTargetName: String
     switch (components.count) {
       case 0:
         throw ParsingError.unexpectedNoComponents
       case 1:
-        try await self.withCurrentProject { (proj: borrowing Project) async throws -> Void in
-          try await proj.withTarget(named: targetName) { (target: borrowing any Target) async throws -> Void in
-            try await target.build(baseDir: proj.baseDir, buildDir: proj.buildDir, context: self)
-          }
-        }
+        projectIndex = self.currentProjectIndex!
+        selectedTargetName = targetName
       case 2:
-        try await self.withProject(named: String(components[0])) { (proj: borrowing Project) async throws -> Void in
-          try await proj.withTarget(named: targetName) { (target: borrowing any Target) async throws -> Void in
-            try await target.build(baseDir: proj.baseDir, buildDir: proj.buildDir, context: self)
-          }
+        guard let index = await self.getProjectRef(byName: String(components[0])) else {
+          throw BeaverError.noProject(named: String(components[0]))
         }
+        projectIndex = index
+        selectedTargetName = String(components[1])
       default:
         throw ParsingError.malformed(targetName)
     }
+
+    try await self.withProject(index: projectIndex) { (project: borrowing Project) async throws in
+      try await project.withTarget(named: selectedTargetName) { (target: borrowing any Target) async throws in
+        if target.useDependencyGraph {
+          await MessageHandler.enableIndicators()
+          let dependencyGraph = try await DependencyGraph(startingFromTarget: selectedTargetName, inProject: projectIndex, context: self)
+          try await self.build(dependencyGraph: dependencyGraph)
+          await MessageHandler.closeIndicators()
+        } else {
+          try await target.build(baseDir: project.baseDir, buildDir: project.buildDir, context: self)
+        }
+      }
+    }
+  }
+
+  private func build(dependencyGraph: consuming DependencyGraph) async throws {
+    let builder = DependencyBuilder(dependencyGraph)
+    try await builder.run(context: self)
   }
 
   public func build(_ library: LibraryRef) async throws {

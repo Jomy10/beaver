@@ -21,6 +21,10 @@ let package = Package(
     .package(url: "https://github.com/davbeck/swift-glob.git", from: "0.1.0"),
     .package(url: "https://github.com/mtynior/ColorizeSwift.git", from: "1.5.0"),
     .package(url: "https://github.com/apple/swift-atomics", from: "1.2.0"),
+    .package(url: "https://github.com/mattcox/Tree.git", branch: "main"),
+    .package(url: "https://github.com/apple/swift-collections.git", from: "1.1.4"),
+    .package(url: "https://github.com/groue/Semaphore", from: "0.1.0"),
+    .package(url: "https://github.com/Jomy10/TaskProgress", branch: "master"),
   ],
   targets: [
     .target(
@@ -30,7 +34,11 @@ let package = Package(
         .product(name: "Semver", package: "Semver"),
         .product(name: "Glob", package: "swift-glob"),
         .product(name: "ColorizeSwift", package: "ColorizeSwift"),
-        .product(name: "Atomics", package: "swift-atomics")
+        .product(name: "Atomics", package: "swift-atomics"),
+        .product(name: "Tree", package: "tree"),
+        .product(name: "Collections", package: "swift-collections"),
+        .product(name: "Semaphore", package: "Semaphore"),
+        .product(name: "TaskProgress", package: "TaskProgress"),
       ]
     ),
     // Platform-specific implementations in C
@@ -46,7 +54,9 @@ let package = Package(
     .executableTarget(
       name: "Test",
       dependencies: [
-        "Beaver"
+        "Beaver",
+        .product(name: "Tree", package: "tree"),
+        .product(name: "Semaphore", package: "Semaphore")
       ]
     ),
     .testTarget(
