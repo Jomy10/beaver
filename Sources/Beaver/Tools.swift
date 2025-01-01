@@ -26,9 +26,9 @@ struct Tools {
         let toolURL = URL(fileURLWithPath: tool)
         if !FileManager.default.isExecutableFile(atPath: toolURL.path) {
           // TODO: generic warning
-          print("[WARN] Environment variable \"envName\" exists, but doesn't point to a valid executable")
+          print("[WARN] Environment variable \"\(envName)\" exists, but doesn't point to a valid executable")
         } else if toolURL.isDirectory {
-          print("[WARN] Environment variable \"envName\" exists, but points to a directory")
+          print("[WARN] Environment variable \"\(envName)\" exists, but points to a directory")
         } else {
           return toolURL
         }
@@ -63,7 +63,9 @@ struct Tools {
       if data.count == 0 {
         handle.readabilityHandler = nil
       } else {
-        print(String(data: data, encoding: .utf8)!, to: .stderr)
+        Task {
+          await MessageHandler.print(String(data: data, encoding: .utf8)!, to: .stderr)
+        }
       }
     }
     stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
@@ -71,7 +73,9 @@ struct Tools {
       if data.count == 0 {
         handle.readabilityHandler = nil
       } else {
-        print(String(data: data, encoding: .utf8)!, to: .stdout)
+        Task {
+          await MessageHandler.print(String(data: data, encoding: .utf8)!, to: .stdout)
+        }
       }
     }
 
@@ -81,7 +85,7 @@ struct Tools {
     task.arguments = args
     task.currentDirectoryURL = baseDir
     task.environment = ProcessInfo.processInfo.environment
-    print((cmdURL.path + " " + args.joined(separator: " ")).darkGray(), to: .stderr)
+    await MessageHandler.print((cmdURL.path + " " + args.joined(separator: " ")).darkGray(), to: .stderr)
     try task.run()
     task.waitUntilExit()
 

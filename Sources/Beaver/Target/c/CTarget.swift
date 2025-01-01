@@ -37,6 +37,8 @@ struct UnsupportedArtifact<ArtifactType: Sendable & Equatable>: Error & Sendable
 }
 
 extension CTarget {
+  public var useDependencyGraph: Bool { true }
+
   public func artifactOutputDir(projectBuildDir: URL, forArtifact artifact: ArtifactType?) async throws -> URL {
     projectBuildDir.appending(path: self.name).appending(path: "artifacts")
   }

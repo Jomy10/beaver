@@ -1,5 +1,5 @@
 {
-  "originHash" : "24bf3be7da371690cb0d5270459d4b97f06b4da33d3d7699cfbee8b48285c4d3",
+  "originHash" : "d320718288012bdac31b5ec41df13391dbac4a04381cc41756c2f80fc2f3993c",
   "pins" : [
     {
       "identity" : "colorizeswift",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "4e7daa138510b77a3cce9f6a31a116f8536347dd",
         "version" : "1.7.0"
+      }
+    },
+    {
+      "identity" : "semaphore",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/groue/Semaphore",
+      "state" : {
+        "revision" : "2543679282aa6f6c8ecf2138acd613ed20790bc2",
+        "version" : "0.1.0"
       }
     },
     {
@@ -29,12 +38,39 @@
       }
     },
     {
+      "identity" : "swift-collections",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-collections",
+      "state" : {
+        "revision" : "671108c96644956dddcd89dd59c203dcdb36cec7",
+        "version" : "1.1.4"
+      }
+    },
+    {
       "identity" : "swift-glob",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/davbeck/swift-glob.git",
       "state" : {
         "revision" : "f8d3495325bfd1a53f37ece5a244f28d1d857879",
         "version" : "0.1.0"
+      }
+    },
+    {
+      "identity" : "taskprogress",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Jomy10/TaskProgress",
+      "state" : {
+        "branch" : "master",
+        "revision" : "7b6786b2e5336690ffd5d84df53755242510d541"
+      }
+    },
+    {
+      "identity" : "tree",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mattcox/Tree.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "3021e4280573866c3d92e5104916640a9bcc9788"
       }
     }
   ],

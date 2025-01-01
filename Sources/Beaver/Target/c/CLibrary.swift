@@ -77,7 +77,12 @@ public struct CLibrary: CTarget, Library {
   //  projectBuildDir.appending(path: self.name).appending(path: "artifacts")
   //}
 
-  public func build(artifact: LibraryArtifactType, baseDir: borrowing URL, buildDir projectBuildDir: borrowing URL, context: borrowing Beaver) async throws {
+  public func build(
+    artifact: LibraryArtifactType,
+    baseDir: borrowing URL,
+    buildDir projectBuildDir: borrowing URL,
+    context: borrowing Beaver
+  ) async throws {
     switch (artifact) {
       case .dynlib:
         #if os(Windows)
@@ -111,7 +116,7 @@ public struct CLibrary: CTarget, Library {
     let args = ["-dynamiclib", "-o", outputFile.path] + objectFiles
     #elseif os(Windows)
     if !Platform.minGW {
-      print("[WARN] not running in minGW on platform Windows")
+      MessageHandler.print("[WARN] not running in minGW on platform Windows")
     }
     let args = ["-shared", "-o", outputFile.path, "-Wl,--out-implib,\(try await self.artifactURL(projectBuildDir: projectBuildDir, .staticlib).path)"] + objectFiles
     #else
