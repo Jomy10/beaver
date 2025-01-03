@@ -15,6 +15,10 @@ public enum LibraryArtifactType: Equatable, Hashable, Sendable {
   case dynlib
   case staticlib
   case pkgconfig
+  // framework/xcframework: see https://bitmountn.com/difference-between-framework-and-xcframework-in-ios/
+  /// macOS framework
+  case framework
+  case xcframework
   /// A dynamic library callable through the specified `Language`
   case dynamiclanglib(Language)
   case staticlanglib(Language)
@@ -33,6 +37,12 @@ public struct LibraryRef: Sendable {
     case malformed(String)
     /// No project exists with the specified name
     case unknownProject(String)
+  }
+
+  public init(name: String, project: ProjectRef, artifact: LibraryArtifactType) {
+    self.name = name
+    self.project = project
+    self.artifact = artifact
   }
 
   /// `defaultProject` is the project this dependency was defined in
