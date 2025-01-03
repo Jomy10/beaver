@@ -62,53 +62,44 @@ public struct CExecutable: CTarget, Executable {
   public func build(artifact: ExecutableArtifactType, baseDir: borrowing URL, buildDir projectBuildDir: borrowing URL, context: borrowing Beaver) async throws {
     switch (artifact) {
       case .executable:
-        try await self.buildObjects(baseDir: baseDir, projectBuildDir: projectBuildDir, type: .static, context: context)
-        try await self.buildExecutable(baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
+        let objects = try await self.buildObjects(baseDir: baseDir, projectBuildDir: projectBuildDir, type: .static, context: context)
+        try await self.buildExecutable(objects: objects, baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
       case .app:
         fatalError("unimplemented")
     }
   }
 
-  func buildExecutable(baseDir: URL, projectBuildDir: URL, context: borrowing Beaver) async throws {
-    let sources = try await self.collectSources(baseDir: baseDir)
+  func buildExecutable(objects: borrowing [URL], baseDir: URL, projectBuildDir: URL, context: borrowing Beaver) async throws {
+    //let sources = try await self.collectSources(baseDir: baseDir)
     let buildBaseDir = try await self.artifactOutputDir(projectBuildDir: projectBuildDir, forArtifact: .executable)
     if !buildBaseDir.exists {
       try FileManager.default.createDirectory(at: buildBaseDir, withIntermediateDirectories: true)
     }
     let outputFile = try await self.artifactURL(projectBuildDir: projectBuildDir, .executable)
 
-    var dependenciesLinkerFlags: [String] = []
-    var libraryLinkPaths: Set<URL> = Set()
-    for dependency in self.dependencies {
-      //dependenciesLinkerFlags.append(contentsOf: try await context.withLibrary(dependency) { lib in return try await lib.linkerFlags() })
-      let (path, flags) = try await context.withProject(index: dependency.project) { (proj: borrowing Project) in
-        try await proj.withLibrary(named: dependency.name) { (lib: borrowing any Library) in
-          return (
-            try await lib.artifactOutputDir(projectBuildDir: proj.buildDir, forArtifact: dependency.artifact),
-            try await lib.linkerFlags()
-          )
-        }
-      }
-      dependenciesLinkerFlags.append(contentsOf: flags)
-      libraryLinkPaths.insert(path)
-    }
+    var visited: Set<LibraryRef> = Set()
+    let dependenciesLinkerFlags: [String] = try await self.allLinkerFlags(context: context, visited: &visited)
+    //var libraryLinkPaths: Set<URL> = Set()
+    //for dependency in self.dependencies {
+    //  //dependenciesLinkerFlags.append(contentsOf: try await context.withLibrary(dependency) { lib in return try await lib.linkerFlags() })
+    //  let (path, flags) = try await context.withProject(index: dependency.project) { (proj: borrowing Project) in
+    //    try await proj.withLibrary(named: dependency.name) { (lib: borrowing any Library) in
+    //      return (
+    //        try await lib.artifactOutputDir(projectBuildDir: proj.buildDir, forArtifact: dependency.artifact),
+    //        try await lib.linkerFlags()
+    //      )
+    //    }
+    //  }
+    //  dependenciesLinkerFlags.append(contentsOf: flags)
+    //  libraryLinkPaths.insert(path)
+    //}
 
-    let objectBuildDir = self.objectBuildDir(projectBuildDir: projectBuildDir)
-    let objectFiles = (await sources.async.map { (source: URL) in return await self.objectFile(baseDir: baseDir, buildDir: objectBuildDir, file: source, type: .static).path }.reduce(into: [String](), { $0.append($1) }))
-    let args: [String] = objectFiles
-      + libraryLinkPaths.map { "-L\($0.path)" }
+    //let objectBuildDr = self.objectBuildDir(projectBuildDir: projectBuildDir)
+    //let objectFiles = (await sources.async.map { (source: URL) in return await self.objectFile(baseDir: baseDir, buildDir: objectBuildDir, file: source, type: .static).path }.reduce(into: [String](), { $0.append($1) }))
+    let args: [String] = objects.map { $0.path }
+      //+ libraryLinkPaths.map { "-L\($0.path)" }
       + dependenciesLinkerFlags
       + ["-o", outputFile.path]
-    if let extraArgs = Tools.ccExtraArgs {
-      try await Tools.exec(
-        Tools.cc!,
-        extraArgs + args
-      )
-    } else {
-      try await Tools.exec(
-        Tools.cc!,
-        args
-      )
-    }
+    try await self.executeCC(args)
   }
 }

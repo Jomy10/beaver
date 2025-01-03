@@ -73,10 +73,6 @@ public struct CLibrary: CTarget, Library {
     case unsupportedArtifact
   }
 
-  //public func artifactOutputDir(projectBuildDir: URL, forArtifact artifact: LibraryArtifactType?) async throws -> URL {
-  //  projectBuildDir.appending(path: self.name).appending(path: "artifacts")
-  //}
-
   public func build(
     artifact: LibraryArtifactType,
     baseDir: borrowing URL,
@@ -86,71 +82,68 @@ public struct CLibrary: CTarget, Library {
     switch (artifact) {
       case .dynlib:
         #if os(Windows)
-        try await self.buildObjects(baseDir: baseDir, projectBuildDir: projectBuildDir, type: .static, context: context)
-        try await self.buildStaticLibrary(baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
+        try await self.build(artifact: .staticlib, baseDir: baseDir, buildDir: projectBuildDir, context: context)
         #endif
-        try await self.buildObjects(baseDir: baseDir, projectBuildDir: projectBuildDir, type: .dynamic, context: context)
-        try await self.buildDynamicLibrary(baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
+        let objects = try await self.buildObjects(baseDir: baseDir, projectBuildDir: projectBuildDir, type: .dynamic, context: context)
+        try await self.buildDynamicLibrary(objects: objects, baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
       case .staticlib:
-        try await self.buildObjects(baseDir: baseDir, projectBuildDir: projectBuildDir, type: .static, context: context)
-        try await self.buildStaticLibrary(baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
+        let objects = try await self.buildObjects(baseDir: baseDir, projectBuildDir: projectBuildDir, type: .static, context: context)
+        try await self.buildStaticLibrary(objects: objects, baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
       case .pkgconfig:
-        break
+        await MessageHandler.warn("Unimplemented artifact: \(artifact)")
+      case .framework:
+        await MessageHandler.warn("Unimplemented artifact: \(artifact)")
+      case .xcframework:
+        await MessageHandler.warn("Unimplemented artifact: \(artifact)")
       case .dynamiclanglib(_): fallthrough
       case .staticlanglib(_):
         throw BuildError.unsupportedArtifact
     }
   }
 
-  private func buildDynamicLibrary(baseDir: URL, projectBuildDir: URL, context: borrowing Beaver) async throws {
-    let sources = try await self.collectSources(baseDir: baseDir)
+  private func buildDynamicLibrary(objects objectFiles: borrowing [URL], baseDir: URL, projectBuildDir: URL, context: borrowing Beaver) async throws {
+    //let sources = try await self.collectSources(baseDir: baseDir)
     let buildBaseDir = try await self.artifactOutputDir(projectBuildDir: projectBuildDir, forArtifact: .dynlib)
     if !buildBaseDir.exists {
       try FileManager.default.createDirectory(at: buildBaseDir, withIntermediateDirectories: true)
     }
-    let objectBuildDir = self.objectBuildDir(projectBuildDir: projectBuildDir)
-    let objectFiles = await sources.async.map({ source in await self.objectFile(baseDir: baseDir, buildDir: objectBuildDir, file: source, type: .dynamic )}).map { $0.path }.reduce(into: [String](), { $0.append($1) })
+    //let objectBuildDir = self.objectBuildDir(projectBuildDir: projectBuildDir)
+    //let objectFiles = await sources.async.map({ source in await self.objectFile(baseDir: baseDir, buildDir: objectBuildDir, file: source, type: .dynamic )}).map { $0.path }.reduce(into: [String](), { $0.append($1) })
     let outputFile = try await self.artifactURL(projectBuildDir: projectBuildDir, .dynlib)
     // TODO: append linker flags!!! --> linker flags of all dependencies (DependencyGraph!!)
+    var args: [String]
     #if os(macOS)
     // -fvisibility=hidden -> explicityly export symbols (see https://developer.apple.com/library/archive/documentation/DeveloperTools/Conceptual/DynamicLibraries/100-Articles/CreatingDynamicLibraries.html)
-    let args = ["-dynamiclib", "-o", outputFile.path] + objectFiles
+    args = ["-dynamiclib"]
     #elseif os(Windows)
     if !Platform.minGW {
-      MessageHandler.print("[WARN] not running in minGW on platform Windows")
+      MessageHandler.print("[WARN] not running in minGW on platform Windows (unip")
     }
-    let args = ["-shared", "-o", outputFile.path, "-Wl,--out-implib,\(try await self.artifactURL(projectBuildDir: projectBuildDir, .staticlib).path)"] + objectFiles
+    args = ["-shared", "-Wl,--out-implib,\(try await self.artifactURL(projectBuildDir: projectBuildDir, .staticlib).path)"]
     #else
-    let args = ["-shared", "-o", outputFile.path] + objectFiles
+    args = ["-shared"]
     #endif
-    if let extraArgs = Tools.ccExtraArgs {
-      try await Tools.exec(
-        Tools.cc!,
-        extraArgs + args
-      )
-    } else {
-      try await Tools.exec(
-        Tools.cc!,
-        args
-      )
-    }
+    var visited: Set<LibraryRef> = Set()
+    args.append(contentsOf: ["-o", outputFile.path] + objectFiles.map { $0.path } + (try await self.allLinkerFlags(context: context, visited: &visited)))
+    try await self.executeCC(args)
   }
 
-  private func buildStaticLibrary(baseDir: URL, projectBuildDir: URL, context: borrowing Beaver) async throws {
-    let sources = try await self.collectSources(baseDir: baseDir)
+  private func buildStaticLibrary(objects: borrowing [URL], baseDir: URL, projectBuildDir: URL, context: borrowing Beaver) async throws {
+    //let sources = try await self.collectSources(baseDir: baseDir)
     //let buildBaseDir = buildDir.appendingPathComponent("artifacts")
     let buildBaseDir = try await self.artifactOutputDir(projectBuildDir: projectBuildDir, forArtifact: .staticlib)
     if !buildBaseDir.exists {
       try FileManager.default.createDirectory(at: buildBaseDir, withIntermediateDirectories: true)
     }
     let outputFile = try await self.artifactURL(projectBuildDir: projectBuildDir, .staticlib)
-    let objectBuildDir = self.objectBuildDir(projectBuildDir: projectBuildDir)
+    //let objectBuildDir = self.objectBuildDir(projectBuildDir: projectBuildDir)
     try await Tools.exec(
       Tools.ar!,
-      ["-rc", outputFile.path] + (await sources.async.map({ source in await self.objectFile(baseDir: baseDir, buildDir: objectBuildDir, file: source, type: .static) }).map { $0.path }.reduce(into: [String](), { $0.append($1) }))
+      ["-rc", outputFile.path] + objects.map { $0.path }
     )
   }
 
+  /// Flags for linking agains this library. Does not include any of the dependencies' libraries
   public func linkerFlags() async throws -> [String] {
     self.extraLinkerFlags + ["-l\(self.name)"]
   }

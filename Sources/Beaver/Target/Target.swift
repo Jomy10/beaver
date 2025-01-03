@@ -24,6 +24,11 @@ public protocol Target: ~Copyable, Sendable {
 
   func artifactOutputDir(projectBuildDir: URL, forArtifact artifact: ArtifactType?) async throws -> URL
   func artifactURL(projectBuildDir: URL, _ artifact: ArtifactType) async throws -> URL
+
+
+  /// Provide all linker flags for linking this target.
+  /// Used internally in linking phase
+  func allLinkerFlags(context: borrowing Beaver, visited: inout Set<LibraryRef>) async throws -> [String]
 }
 
 struct NonBuildableTargetError: Error {
