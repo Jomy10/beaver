@@ -88,6 +88,12 @@ public struct Beaver: ~Copyable, Sendable {
     }
   }
 
+  public func withTarget<Result>(_ target: TargetRef, _ cb: @Sendable (borrowing any Target) async throws -> Result) async throws -> Result {
+    return try await self.withProject(index: target.project) { (project: borrowing Project) async throws -> Result in
+      return try await project.withTarget(named: target.name, cb)
+    }
+  }
+
   public enum ParsingError: Error {
     case unexpectedNoComponents
     case malformed(String)
@@ -128,7 +134,7 @@ public struct Beaver: ~Copyable, Sendable {
   }
 
   private func build(dependencyGraph: consuming DependencyGraph) async throws {
-    let builder = DependencyBuilder(dependencyGraph)
+    let builder = try await DependencyBuilder(dependencyGraph, context: self)
     try await builder.run(context: self)
   }
 

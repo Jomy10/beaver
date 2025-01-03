@@ -9,7 +9,7 @@ import Glibc
 #elseif canImport(Musl)
 import Musl
 #else
-#warning("Need implementation for current platform")
+#warning("Need implementation for current platform to determine terminal context")
 #endif
 
 struct MessageHandler {

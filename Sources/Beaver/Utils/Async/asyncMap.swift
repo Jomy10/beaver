@@ -6,4 +6,14 @@ extension Sequence {
     }
     return res
   }
+
+  func asyncFilter(_ cb: (borrowing Element) async throws -> Bool) async rethrows -> [Element] {
+    var res: [Element] = []
+    for el in self {
+      if (try await cb(el)) {
+        res.append(el)
+      }
+    }
+    return res
+  }
 }
