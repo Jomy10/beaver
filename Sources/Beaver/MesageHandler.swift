@@ -17,6 +17,8 @@ import ucrt
 struct MessageHandler {
   private static let data: AsyncRWLock<Self.Data> = AsyncRWLock(.init())
   private nonisolated(unsafe) static var progress: ProgressIndicators? = nil
+  /// Should only be used on the main thread by Beaver, so no locking mechanism is provided here
+  private nonisolated(unsafe) static var messageVisibility: MessageVisibility = MessageVisibility.default
 
   struct Data: ~Copyable {
     var targetToSpinner: [TargetRef:ProgressBar] = [:]
@@ -24,6 +26,17 @@ struct MessageHandler {
 
   struct NoTaskError: Error, @unchecked Sendable {
     let id: Any
+  }
+
+  struct MessageVisibility: OptionSet {
+    let rawValue: UInt32
+
+    /// shell commands, outputted in grey showing what the library is doing
+    static let shellCommand       = Self(rawValue: 1 << 0)
+    static let shellOutputStderr  = Self(rawValue: 1 << 1)
+    static let shellOutputStdout  = Self(rawValue: 1 << 2)
+
+    static let `default`: Self = [.shellCommand]
   }
 
   public nonisolated(unsafe) static var terminalColorEnabled: Bool = {
@@ -85,7 +98,17 @@ struct MessageHandler {
     await self.print(message, task: task)
   }
 
-  public static func print(_ message: String) async {
+  private static func checkContext(_ context: MessageVisibility?) -> Bool {
+    if let context = context {
+      return self.messageVisibility.contains(context)
+    } else {
+      return true
+    }
+  }
+
+  public static func print(_ message: String, context: MessageVisibility? = nil) async {
+    if !Self.checkContext(context) { return }
+
     if let progress = Self.progress {
       //ProgressIndicators.global.globalMessage(message)
       progress.println(message)
@@ -94,7 +117,9 @@ struct MessageHandler {
     }
   }
 
-  public static func print(_ message: String, to stream: IOStream) async {
+  public static func print(_ message: String, to stream: IOStream, context: MessageVisibility? = nil) async {
+    if !Self.checkContext(context) { return }
+
     if let progress = Self.progress {
       //ProgressIndicators.global.globalMessage(message)
       progress.println(message)
@@ -115,11 +140,13 @@ struct MessageHandler {
     }
   }
 
-  public static func log(_ message: String, level: LogLevel) async {
+  public static func log(_ message: String, level: LogLevel, context: MessageVisibility? = nil) async {
+    if !Self.checkContext(context) { return }
+
     await self.print("[\(level.format)] \(message)")
   }
 
-  public static func warn(_ message: String) async {
-    await self.log(message, level: .warning)
+  public static func warn(_ message: String, context: MessageVisibility? = nil) async {
+    await self.log(message, level: .warning, context: context)
   }
 }
