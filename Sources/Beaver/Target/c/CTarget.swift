@@ -38,6 +38,11 @@ struct UnsupportedArtifact<ArtifactType: Sendable & Equatable>: Error & Sendable
 
 extension CTarget {
   public var useDependencyGraph: Bool { true }
+  public var spawnsMoreThreadsWithGlobalThreadManager: Bool { true }
+
+  public func build(baseDir: borrowing URL, buildDir: borrowing URL, context: borrowing Beaver) async throws {
+    try await self.buildArtifactsAsync(baseDir: baseDir, buildDir: buildDir, context: context)
+  }
 
   public func artifactOutputDir(projectBuildDir: URL, forArtifact artifact: ArtifactType?) async throws -> URL {
     projectBuildDir.appending(path: self.name).appending(path: "artifacts")
@@ -89,8 +94,9 @@ extension CTarget {
       + (try await self.publicHeaders(baseDir: baseDir)).map { "-I\($0.path)"}
       + (try await self.privateHeaders(baseDir: baseDir, context: context)).map { "-I\($0.path)" }
     let objectBuildDir = self.objectBuildDir(projectBuildDir: projectBuildDir)
+    let contextPtr = withUnsafePointer(to: context) { $0 }
     try await self.loopSources(baseDir: baseDir) { source in
-      try await self.buildObject(baseDir: baseDir, buildDir: objectBuildDir, file: source, cflags: cflags, type: type, context: context)
+      try await self.buildObject(baseDir: baseDir, buildDir: objectBuildDir, file: source, cflags: cflags, type: type, context: contextPtr.pointee)
     }
   }
 
@@ -166,11 +172,25 @@ public struct Flags: Sendable {
   public var `public`: [String]
   public var `private`: [String]
 
+  public init() {
+    self.public = []
+    self.private = []
+  }
+
   public init(
     `public`: [String] = [],
     `private`: [String] = []
   ) {
     self.public = `public`
     self.private = `private`
+  }
+}
+
+extension Flags: ExpressibleByArrayLiteral {
+  public typealias ArrayLiteralElement = String
+
+  public init(arrayLiteral: ArrayLiteralElement...) {
+    self.public = arrayLiteral
+    self.private = []
   }
 }

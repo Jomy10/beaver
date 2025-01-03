@@ -9,3 +9,6 @@ TODO.md
 .swiftpm
 # zed keeps adding this
 .ropeproject
+
+Sources/ProgressIndicators/target
+target

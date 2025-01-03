@@ -1,9 +1,23 @@
+import Foundation
+
 public struct Beaver: ~Copyable, Sendable {
   var projects: AsyncRWLock<NonCopyableArray<Project>>
   public private(set) var currentProjectIndex: ProjectRef? = nil
+  public var cacheDir: URL = URL.currentDirectory()
+  public var settings: Settings
 
-  public init() {
+  public struct Settings: ~Copyable, Sendable {
+    /// The amount of c objects to compile per thread.
+    /// e.g. when this variable is 10 and there are 20 sources, this means 2 threads will be
+    /// spawned to compile the C target
+    var cObjectsPerThread: Int = 10
+  }
+
+  public init(enableColor: Bool? = nil) {
     self.projects = AsyncRWLock(NonCopyableArray(withCapacity: 3))
+    self.settings = Settings()
+    GlobalThreadCounter.setMaxProcesses(ProcessInfo.processInfo.activeProcessorCount)
+    MessageHandler.setColorEnabled(enableColor) // TODO: allow --(no-)color (if not specified, pass nil)
   }
 
   public mutating func addProject(_ project: consuming Project) async {
