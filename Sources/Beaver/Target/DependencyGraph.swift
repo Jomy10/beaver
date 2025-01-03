@@ -1,5 +1,5 @@
 import Foundation
-import Tree
+@preconcurrency import Tree
 import Collections
 import Atomics
 import Semaphore
@@ -32,20 +32,20 @@ extension Tree.Node {
   }
 }
 
-struct TargetRef: Identifiable, Hashable, Equatable, Sendable {
-  let name: String
-  let project: ProjectRef
+public struct TargetRef: Identifiable, Hashable, Equatable, Sendable {
+  public let name: String
+  public let project: ProjectRef
 
-  var id: Self {
+  public var id: Self {
     self
   }
 
-  init(_ libRef: borrowing LibraryRef) {
+  public init(_ libRef: borrowing LibraryRef) {
     self.name = libRef.name
     self.project = libRef.project
   }
 
-  init(name: String, project: ProjectRef) {
+  public init(name: String, project: ProjectRef) {
     self.name = name
     self.project = project
   }
@@ -98,10 +98,14 @@ actor DependencyBuilder {
     let error: any Error
   }
 
-  public init(_ graph: borrowing DependencyGraph) {
-    self.dependencies = graph.root.breadthFirst.reversed().uniqueKeepingOrder.map { node in
-      Dependency(node: node, status: .waiting)
-    }
+  public init(_ graph: borrowing DependencyGraph, context: borrowing Beaver) async throws {
+    self.dependencies = try await graph.root.breadthFirst.reversed().uniqueKeepingOrder
+      .asyncFilter { node in
+        try await context.isBuildable(target: node.element)
+      }
+      .map { node in
+        Dependency(node: node, status: .waiting)
+      }
     self.processResult = AsyncRWLock(Deque())
     //self.availableProcessCount = maxProcessCount
   }
