@@ -8,6 +8,8 @@ import Darwin
 import Glibc
 #elseif canImport(Musl)
 import Musl
+#elseif os(Windows)
+import ucrt
 #else
 #warning("Need implementation for current platform to determine terminal context")
 #endif
@@ -25,8 +27,10 @@ struct MessageHandler {
   }
 
   public nonisolated(unsafe) static var terminalColorEnabled: Bool = {
-    #if !canImport(Darwin) || !os(Linux)
+    #if canImport(Darwin) || canImport(Glibc) || canImport(Musl)
     return isatty(STDERR_FILENO) != 0
+    #elseif os(Windows)
+    return _isatty(_fileno(stderr))
     #else
     return true
     #endif
@@ -62,6 +66,7 @@ struct MessageHandler {
     }
   }
 
+  @available(*, deprecated)
   public static func print(_ message: String, task: ProgressBar) async {
     if let progress = Self.progress {
       //task.setMessage(message)
@@ -72,6 +77,7 @@ struct MessageHandler {
     }
   }
 
+  @available(*, deprecated)
   public static func print(_ message: String, targetRef: TargetRef) async throws(NoTaskError) {
     guard let task = await self.data.read({ $0.targetToSpinner[targetRef] }) else {
       throw NoTaskError(id: targetRef)
