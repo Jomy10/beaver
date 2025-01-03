@@ -96,4 +96,24 @@ struct MessageHandler {
       IO.print(message, to: stream)
     }
   }
+
+  public enum LogLevel {
+    case warning
+    case error
+
+    var format: String {
+      switch (self) {
+        case .warning: "WARN".yellow()
+        case .error: "ERR".red()
+      }
+    }
+  }
+
+  public static func log(_ message: String, level: LogLevel) async {
+    await self.print("[\(level.format)] \(message)")
+  }
+
+  public static func warn(_ message: String) async {
+    await self.log(message, level: .warning)
+  }
 }
