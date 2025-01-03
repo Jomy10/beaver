@@ -75,8 +75,6 @@ struct DependencyGraph: ~Copyable, @unchecked Sendable {
 }
 
 actor DependencyBuilder {
-  //let graph: DependencyGraph
-  //let availableProcessCount: Int
   var dependencies: [Dependency]
   let doneSignal = AsyncSemaphore(value: 0)
   // TODO: Mutex instead of RWLock
@@ -144,13 +142,13 @@ actor DependencyBuilder {
 
   public func run(context: borrowing Beaver) async throws {
     let ctxPtr = UnsafeSendable(withUnsafePointer(to: context) { $0 }) // we assure that the pointer won't be used after this function returns
-    //var runningProcesses = 0
     while true {
       /// Start as much dependencies as possible concurrently
       for (i, dependency) in self.dependencies.enumerated() {
         if !(GlobalThreadCounter.canStartNewProcess()) { break }
-        //if runningProcesses == self.availableProcessCount { break } // maxProcesses reached, stop starting new ones
+
         if dependency.status == .done || dependency.status == .cancelled || dependency.status == .error { continue }
+
         /// If this node has no dependencies, or if all if its dependencies are built, then we can built this one
         if dependency.node.children.count == 0 || dependency.node.children.first(where: { !self.isDone($0) }) == nil {
           let (target, project) = try await context.withProject(index: dependency.node.element.project) { (project: borrowing Project) in
@@ -167,9 +165,7 @@ actor DependencyBuilder {
           } else {
             await GlobalThreadCounter.newProcess()
           }
-          //runningProcesses += 1
           self.dependencies[i].status = .started
-          //self.build(target: dependency.node.element, context: ctxPtr)
           self.build(target: target, projectIndex: dependency.node.element.project, project: project, context: ctxPtr, priority: priority)
 
           // Cancel building the target
@@ -177,22 +173,6 @@ actor DependencyBuilder {
           await self.processResult.write { queue in
             queue.append(.success((target: dependency.node.element, status: .cancelled)))
           }
-          //let projectName: String? = if dependency.node.element.project == context.currentProjectIndex {
-          //  nil
-          //} else {
-          //  try await context.withProject(index: dependency.node.element.project) { (project: borrowing Project) in
-          //    project.name
-          //  }
-          //}
-          //let desc: String = if let projectName = projectName {
-          //  "\(projectName):\(dependency.node.element.name)"
-          //} else {
-          //  dependency.node.element.name
-          //}
-          ////let task = ProgressBarTask("Building \(desc)")
-          ////await MessageHandler.addTask(task, targetRef: dependency.node.element
-          //let cancelMessage: String = "[\("CANCELLED".yellow())] \(desc)"
-          //MessageHandler.print(canceldMessage)
           self.doneSignal.signal()
         }
       }
@@ -200,7 +180,6 @@ actor DependencyBuilder {
       // Wait for a process to exit
       // TODO: drain queue instead?
       await self.doneSignal.wait()
-      //runningProcesses -= 1
       let result = await self.processResult.write({ queue in
         queue.popFirst()
       })!
@@ -248,7 +227,6 @@ actor DependencyBuilder {
     priority: TaskPriority = .high
   ) {
     Task.detached(priority: priority) {
-      //let task: UnsafeSharedBox<ProgressBar?> = UnsafeSharedBox(nil)
       let targetRef = TargetRef(name: target.value.pointee.name, project: projectIndex)
       do {
         await MessageHandler.addTask(
@@ -256,12 +234,6 @@ actor DependencyBuilder {
           targetRef: targetRef
         )
         try await target.value.pointee.build(baseDir: project.value.pointee.baseDir, buildDir: project.value.pointee.buildDir, context: context.value.pointee)
-        //try await context.value.pointee.withProject(index: target.project) { (project: borrowing Project) in
-        //  await MessageHandler.addTask(task.value!, targetRef: target)
-        //  try await project.withTarget(named: target.name) { (target: borrowing any Target) in
-        //    try await target.build(baseDir: project.baseDir, buildDir: project.buildDir, context: context.value.pointee)
-        //  }
-        //}
 
         await self.processResult.write { queue in
           queue.append(.success((target: targetRef, status: .done)))
@@ -278,117 +250,3 @@ actor DependencyBuilder {
     }
   }
 }
-
-//struct DependencyBuilder: ~Copyable {
-//  let graph: DependencyGraph
-//  let processCount: Int = ProcessInfo.processInfo.activeProcessorCount
-//  /// Amount of tasks currently working
-//  let workingTasks = ManagedAtomic(0)
-//  /// The dependencies that have started building
-//  let dependenciesStarted: AsyncRWLock<Set<TargetRef>> = AsyncRWLock(Set())
-//  let dependenciesFinished: AsyncRWLock<Set<TargetRef>> = AsynRWLock(Set())
-//  let queuedTasks: AsyncRWLock<Deque<() -> Void>> = AsyncRWLock(Deque())
-
-//  // spawn x threads -> let them all check for jobs to be done
-
-//  init(_ graph: consuming DependencyGraph) {
-//    self.graph = graph
-//  }
-
-//  func registerTask(node: Node<TargetRef>, context: borrowing Beaver) async throws {
-//    await self.queuedTasks.write { queue in
-//      queue.append({
-//        Task.detached(priority: .high) {
-//          try await self.buildNode(node: node, context: context)
-//        }
-//      })
-//    }
-//  }
-
-//  func buildNode(node: Node<TargetRef>, context: borrowing Beaver) async throws {
-//    let dependency = node.element
-//    defer { self.workingTasks.wrappingDecrement(ordering: .releasing) }
-
-//    // Check that all of this node's dependencies are built
-//    let allChildrenBuilt = self.dependenciesStarted.read { started in
-//      for child in node.children {
-//        if !started.contains(child) {
-//          return false
-//        }
-//      }
-//      return true
-//    }
-//    if !allChildrenBuilt {
-//      self.registerTask(node: node, context: context)
-//    }
-
-//    // Check that if this node has already been built, else built its dependent
-//    let nodeHasStarted = self.dependenciesStarted.write { started in
-//      if started.contains(dependency) {
-//        return true
-//      } else {
-//        started.insert(dependency)
-//        return false
-//      }
-//    }
-//    if nodeHasStarted {
-//      print("\(dependency) already built")
-//      // Build dependent
-//      guard let parent = node.parent?.element else { return }
-//      await self.registerTask(node: parent, context: context)
-//      return
-//    }
-
-//    print("building \(dependency)")
-
-//    // Build this node
-//    try await context.withProject(index: dependency.project) { (project: borrowing Project) in
-//      try await project.withTarget(named: dependency.name) { (target: borrowing any Target) in
-//        try await target.build(baseDir: project.baseDir, buildDir: project.buildDir, context: context)
-//      }
-//    }
-
-//    await self.dependenciesFinished.write { finished in
-//      finished.insert(node.element)
-//    }
-
-//    print("built \(dependency)")
-
-//    // Build dependent
-//    guard let parent = node.parent?.element else { return }
-//    await self.registerTask(node: parent, context: context)
-//  }
-
-//  /// Build the whole dependency graph
-//  func build(context: borrowing Beaver) async {
-//    let leaves = self.graph.root.treeLeaves()
-
-//    await self.queuedTasks.write { queue in
-//      for leaf in self.graph.root.treeLeaves() {
-//        queue.append({
-//          Task.detached(priority: .high) {
-//            try await self.buildNode(node: leaf, context: context)
-//          }
-//        })
-//      }
-//    }
-
-//    while true {
-//      if self.workingTasks.load(ordering: .relaxed) < self.processCount {
-//        guard let startTask = self.queuedTasks.write { queue in
-//          queue.popFirst()
-//        } else {
-//          if self.amountFinished.load(ordering: .relaxed) == self.dependenciesToFinish {
-//            break
-//          }
-//          await Task.yield()
-//          continue
-//        }
-//        self.workingTasks.wrappingIncrement(ordering: .acquiring)
-//        startTask()
-//      } else {
-//        await Task.yield()
-//      }
-//    }
-//  }
-//}

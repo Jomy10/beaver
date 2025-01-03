@@ -1,4 +1,5 @@
 extension Sequence {
+  @available(*, deprecated, message: "use async<fnName> instead")
   var `async`: SequenceAsyncSequence<Self> {
     SequenceAsyncSequence(from: self)
   }
@@ -7,6 +8,7 @@ extension Sequence {
 struct SequenceAsyncSequence<Seq: Sequence>: AsyncSequence {
   private var inner: Seq
 
+  @available(*, deprecated)
   func makeAsyncIterator() -> AsyncIterator<Seq> {
     Self.AsyncIterator(from: self.inner)
   }

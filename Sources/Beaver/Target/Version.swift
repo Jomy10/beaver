@@ -23,6 +23,17 @@ public enum Version: Sendable {
   public enum CreationError: Error {
     case invalidSemversion(String)
   }
+
+  public var isSemver: Bool {
+    switch (self) {
+      case .semver(_): return true
+      default: return false
+    }
+  }
+
+  public var isComparable: Bool {
+    self.isSemver
+  }
 }
 
 extension Version: Equatable, Comparable {
