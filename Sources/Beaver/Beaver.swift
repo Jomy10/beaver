@@ -80,6 +80,14 @@ public struct Beaver: ~Copyable, Sendable {
     }
   }
 
+  public func withProjectAndLibrary<Result>(_ libraryRef: LibraryRef, _ cb: @Sendable (borrowing Project, borrowing any Library) async throws -> Result) async throws -> Result {
+    return try await self.withProject(index: libraryRef.project) { (project: borrowing Project) in
+      return try await project.withLibrary(named: libraryRef.name) { (lib: borrowing any Library) in
+        return try await cb(project, lib)
+      }
+    }
+  }
+
   public enum ParsingError: Error {
     case unexpectedNoComponents
     case malformed(String)

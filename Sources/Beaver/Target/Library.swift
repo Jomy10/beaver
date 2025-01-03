@@ -3,11 +3,24 @@ import Foundation
 public protocol Library: Target {
   associatedtype ArtifactType = LibraryArtifactType
 
-  /// Flags to use when linking to this library
-  func linkerFlags() async throws -> [String]
+  /// Flags to use when linking to this library.
+  ///
+  /// When linking a program, all linkerflags of all dependencies should be used
+  func linkerFlags() async throws -> [String] // TODO: deprecate?
+  /// Simple -l flag to use when linking to this library. Not including additional linker flags
+  func linkFlag() -> String
+  /// Flags to be used by the direct dependants of this library
   func publicCflags() async throws -> [String]
+  /// Header include directories to be used by the direct dependants of this library
   func publicHeaders(baseDir: URL) async throws -> [URL]
+  /// The output directory where all artifacts are stored
   func artifactOutputDir(projectBuildDir: URL, forArtifact artifact: LibraryArtifactType?) async throws -> URL
+}
+
+extension Library {
+  public func linkFlag() -> String {
+    "-l\(self.name)"
+  }
 }
 
 public enum LibraryArtifactType: Equatable, Hashable, Sendable {
@@ -24,13 +37,13 @@ public enum LibraryArtifactType: Equatable, Hashable, Sendable {
   case staticlanglib(Language)
 }
 
-public struct LibraryRef: Sendable {
+public struct LibraryRef: Sendable, Hashable {
   /// The name of the library
   let name: String
   /// The project this library belongs to
   let project: ProjectRef
   /// The artifact to link against
-  let artifact: LibraryArtifactType?
+  let artifact: LibraryArtifactType
 
   public enum ParsingError: Error {
     case unexpectedNoComponents
@@ -46,7 +59,7 @@ public struct LibraryRef: Sendable {
   }
 
   /// `defaultProject` is the project this dependency was defined in
-  public init(_ string: String, artifact: LibraryArtifactType? = nil, defaultProject: ProjectRef, context: borrowing Beaver) async throws {
+  public init(_ string: String, artifact: LibraryArtifactType = .staticlib, defaultProject: ProjectRef, context: borrowing Beaver) async throws {
     self.artifact = artifact
     let components = string.split(separator: ":")
     switch (components.count) {
