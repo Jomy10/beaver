@@ -111,6 +111,7 @@ public struct CLibrary: CTarget, Library {
     let objectBuildDir = self.objectBuildDir(projectBuildDir: projectBuildDir)
     let objectFiles = await sources.async.map({ source in await self.objectFile(baseDir: baseDir, buildDir: objectBuildDir, file: source, type: .dynamic )}).map { $0.path }.reduce(into: [String](), { $0.append($1) })
     let outputFile = try await self.artifactURL(projectBuildDir: projectBuildDir, .dynlib)
+    // TODO: append linker flags!!! --> linker flags of all dependencies (DependencyGraph!!)
     #if os(macOS)
     // -fvisibility=hidden -> explicityly export symbols (see https://developer.apple.com/library/archive/documentation/DeveloperTools/Conceptual/DynamicLibraries/100-Articles/CreatingDynamicLibraries.html)
     let args = ["-dynamiclib", "-o", outputFile.path] + objectFiles

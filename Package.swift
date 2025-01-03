@@ -39,6 +39,7 @@ let package = Package(
         .product(name: "Collections", package: "swift-collections"),
         .product(name: "Semaphore", package: "Semaphore"),
         .product(name: "TaskProgress", package: "TaskProgress"),
+        "ProgressIndicators"
       ]
     ),
     // Platform-specific implementations in C
@@ -51,12 +52,23 @@ let package = Package(
         "CPlatform"
       ]
     ),
+    .systemLibrary(
+      name: "ProgressIndicatorsFFI",
+      path: "Sources/ProgressIndicators/ffi"
+    ),
+    .target(
+      name: "ProgressIndicators",
+      dependencies: ["ProgressIndicatorsFFI"],
+      path: "Sources/ProgressIndicators/binding"
+    ),
     .executableTarget(
       name: "Test",
       dependencies: [
         "Beaver",
         .product(name: "Tree", package: "tree"),
-        .product(name: "Semaphore", package: "Semaphore")
+        .product(name: "Semaphore", package: "Semaphore"),
+        "ProgressIndicators",
+        "ProgressIndicatorsFFI"
       ]
     ),
     .testTarget(

@@ -3,7 +3,8 @@ import Tree
 import Collections
 import Atomics
 import Semaphore
-import TaskProgress
+import ProgressIndicators
+//import TaskProgress
 
 extension Tree.Node: @retroactive CustomStringConvertible {
   public var description: String {
@@ -75,7 +76,7 @@ struct DependencyGraph: ~Copyable, @unchecked Sendable {
 
 actor DependencyBuilder {
   //let graph: DependencyGraph
-  let availableProcessCount: Int
+  //let availableProcessCount: Int
   var dependencies: [Dependency]
   let doneSignal = AsyncSemaphore(value: 0)
   // TODO: Mutex instead of RWLock
@@ -99,12 +100,12 @@ actor DependencyBuilder {
     let error: any Error
   }
 
-  public init(_ graph: borrowing DependencyGraph, maxProcessCount: Int = ProcessInfo.processInfo.activeProcessorCount) {
+  public init(_ graph: borrowing DependencyGraph) {
     self.dependencies = graph.root.breadthFirst.reversed().uniqueKeepingOrder.map { node in
       Dependency(node: node, status: .waiting)
     }
     self.processResult = AsyncRWLock(Deque())
-    self.availableProcessCount = maxProcessCount
+    //self.availableProcessCount = maxProcessCount
   }
 
   func isDone(_ node: Node<TargetRef>) -> Bool {
@@ -143,39 +144,55 @@ actor DependencyBuilder {
 
   public func run(context: borrowing Beaver) async throws {
     let ctxPtr = UnsafeSendable(withUnsafePointer(to: context) { $0 }) // we assure that the pointer won't be used after this function returns
-    var runningProcesses = 0
+    //var runningProcesses = 0
     while true {
       /// Start as much dependencies as possible concurrently
       for (i, dependency) in self.dependencies.enumerated() {
-        if runningProcesses == self.availableProcessCount { break } // maxProcesses reached, stop starting new ones
+        if !(GlobalThreadCounter.canStartNewProcess()) { break }
+        //if runningProcesses == self.availableProcessCount { break } // maxProcesses reached, stop starting new ones
         if dependency.status == .done || dependency.status == .cancelled || dependency.status == .error { continue }
         /// If this node has no dependencies, or if all if its dependencies are built, then we can built this one
         if dependency.node.children.count == 0 || dependency.node.children.first(where: { !self.isDone($0) }) == nil {
-          runningProcesses += 1
+          let (target, project) = try await context.withProject(index: dependency.node.element.project) { (project: borrowing Project) in
+            (
+              UnsafeSendable(try await project.withTarget(named: dependency.node.element.name) { (target: borrowing any Target) in
+                return withUnsafePointer(to: target) { $0 }
+              }),
+              UnsafeSendable(withUnsafePointer(to: project) { $0 })
+            )
+          }
+          var priority: TaskPriority = .high
+          if target.value.pointee.spawnsMoreThreadsWithGlobalThreadManager {
+            priority = .medium
+          } else {
+            await GlobalThreadCounter.newProcess()
+          }
+          //runningProcesses += 1
           self.dependencies[i].status = .started
-          self.build(target: dependency.node.element, context: ctxPtr)
-        }
-        // Cancel building the target
-        if dependency.node.children.first(where: { self.isErrorOrCancelled($0) }) != nil {
+          //self.build(target: dependency.node.element, context: ctxPtr)
+          self.build(target: target, projectIndex: dependency.node.element.project, project: project, context: ctxPtr, priority: priority)
+
+          // Cancel building the target
+        } else if dependency.node.children.first(where: { self.isErrorOrCancelled($0) }) != nil {
           await self.processResult.write { queue in
             queue.append(.success((target: dependency.node.element, status: .cancelled)))
           }
-          let projectName: String? = if dependency.node.element.project == context.currentProjectIndex {
-            nil
-          } else {
-            try await context.withProject(index: dependency.node.element.project) { (project: borrowing Project) in
-              project.name
-            }
-          }
-          let desc: String
-          if let projectName = projectName {
-            desc = "\(projectName):\(dependency.node.element.name)"
-          } else {
-            desc = dependency.node.element.name
-          }
-          let task = ProgressBarTask("Building \(desc)")
-          await MessageHandler.addTask(task, targetRef: dependency.node.element)
-          task.cancel()
+          //let projectName: String? = if dependency.node.element.project == context.currentProjectIndex {
+          //  nil
+          //} else {
+          //  try await context.withProject(index: dependency.node.element.project) { (project: borrowing Project) in
+          //    project.name
+          //  }
+          //}
+          //let desc: String = if let projectName = projectName {
+          //  "\(projectName):\(dependency.node.element.name)"
+          //} else {
+          //  dependency.node.element.name
+          //}
+          ////let task = ProgressBarTask("Building \(desc)")
+          ////await MessageHandler.addTask(task, targetRef: dependency.node.element
+          //let cancelMessage: String = "[\("CANCELLED".yellow())] \(desc)"
+          //MessageHandler.print(canceldMessage)
           self.doneSignal.signal()
         }
       }
@@ -183,7 +200,7 @@ actor DependencyBuilder {
       // Wait for a process to exit
       // TODO: drain queue instead?
       await self.doneSignal.wait()
-      runningProcesses -= 1
+      //runningProcesses -= 1
       let result = await self.processResult.write({ queue in
         queue.popFirst()
       })!
@@ -191,11 +208,31 @@ actor DependencyBuilder {
         case .failure(let error):
           let index = self.dependencies.firstIndex(where: { dep in dep.node.element == error.target })!
           self.dependencies[index].status = .error
-          try await MessageHandler.print("ERROR: \(error)", targetRef: error.target)
-          await MessageHandler.print("ERROR building \(error.target.name): \(error.error)")
+          let targetDesc = if context.currentProjectIndex == error.target.project {
+            error.target.name
+          } else {
+            try await context.withProject(index: error.target.project) { $0.name } + ":" + error.target.name
+          }
+          await MessageHandler.print("[\("ERROR".red())] Building \(targetDesc)\n\(String(describing: error.error))")
+          let spinner = await MessageHandler.getSpinner(targetRef: error.target)!
+          await spinner.finish(message: "Building \(targetDesc): \("ERROR".red())")
         case .success(let result):
           let index = self.dependencies.firstIndex(where: { dep in dep.node.element == result.target })!
           self.dependencies[index].status = result.status
+
+          let targetDesc = if context.currentProjectIndex == result.target.project {
+            result.target.name
+          } else {
+            try await context.withProject(index: result.target.project) { $0.name } + ":" + result.target.name
+          }
+          let statusString = switch (result.status) {
+            case .cancelled: "CANCELLED".yellow()
+            case .done: "DONE".green()
+            default: fatalError("Beaver bug: \(result.status) is not a valid successful finish status")
+          }
+          await MessageHandler.print("[\(statusString)] Building \(targetDesc)")
+          let spinner = await MessageHandler.getSpinner(targetRef: result.target)
+          await spinner?.finish(message: "Building \(targetDesc) \(statusString)")
       }
       if self.areAllBuilt() {
         break
@@ -203,30 +240,41 @@ actor DependencyBuilder {
     }
   }
 
-  func build(target: TargetRef, context: UnsafeSendable<UnsafePointer<Beaver>>) {
-    //let ctxPtr = withUnsafePointer(to: context) { $0 } // we assure that the context is borrowed for the whole duration of the task in `run`
-    Task.detached(priority: .high) {
-      let task: UnsafeSharedBox<ProgressTask?> = UnsafeSharedBox(nil)
+  func build(
+    target: UnsafeSendable<UnsafePointer<any Target>>,
+    projectIndex: ProjectRef,
+    project: UnsafeSendable<UnsafePointer<Project>>,
+    context: UnsafeSendable<UnsafePointer<Beaver>>,
+    priority: TaskPriority = .high
+  ) {
+    Task.detached(priority: priority) {
+      //let task: UnsafeSharedBox<ProgressBar?> = UnsafeSharedBox(nil)
+      let targetRef = TargetRef(name: target.value.pointee.name, project: projectIndex)
       do {
-        try await context.value.pointee.withProject(index: target.project) { (project: borrowing Project) in
-          task.value = SpinnerProgressTask("Building \(context.value.pointee.currentProjectIndex == target.project ? "" : project.name + ":")\(target.name)")
-          await MessageHandler.addTask(task.value!, targetRef: target)
-          try await project.withTarget(named: target.name) { (target: borrowing any Target) in
-            try await target.build(baseDir: project.baseDir, buildDir: project.buildDir, context: context.value.pointee)
-          }
-        }
+        await MessageHandler.addTask(
+          "Building \(context.value.pointee.currentProjectIndex == projectIndex ? "" : project.value.pointee.name + ":")\(target.value.pointee.name)",
+          targetRef: targetRef
+        )
+        try await target.value.pointee.build(baseDir: project.value.pointee.baseDir, buildDir: project.value.pointee.buildDir, context: context.value.pointee)
+        //try await context.value.pointee.withProject(index: target.project) { (project: borrowing Project) in
+        //  await MessageHandler.addTask(task.value!, targetRef: target)
+        //  try await project.withTarget(named: target.name) { (target: borrowing any Target) in
+        //    try await target.build(baseDir: project.baseDir, buildDir: project.buildDir, context: context.value.pointee)
+        //  }
+        //}
 
         await self.processResult.write { queue in
-          queue.append(.success((target: target, status: .done)))
+          queue.append(.success((target: targetRef, status: .done)))
         }
-        task.value!.finish()
       } catch let error {
         await self.processResult.write { queue in
-          queue.append(.failure(BuildError(target: target, error: error)))
+          queue.append(.failure(BuildError(target: targetRef, error: error)))
         }
-        task.value?.setError()
       }
       self.doneSignal.signal()
+      if !target.value.pointee.spawnsMoreThreadsWithGlobalThreadManager {
+        GlobalThreadCounter.releaseProcess()
+      }
     }
   }
 }

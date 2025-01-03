@@ -2,6 +2,8 @@ import Beaver
 import Foundation
 import Tree
 import Semaphore
+import ProgressIndicators
+import ProgressIndicatorsFFI
 
 //extension Tree.Node: @retroactive CustomStringConvertible {
 //  public var description: String {
@@ -62,7 +64,7 @@ struct Test {
       await proj.addTarget(CLibrary(
         name: "Logger",
         description: "Logging implementation",
-        artifacts: [.staticlib],
+        artifacts: [.staticlib, .dynlib],
         sources: ["logger.c"],
         headers: Headers(public: [proj.baseDir])
       ))
@@ -84,5 +86,8 @@ struct Test {
 
     let ctx = consume mutCtx
     try await ctx.build("Main")
+
+    ///////////
+
   }
 }

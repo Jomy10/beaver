@@ -215,7 +215,7 @@ public final class AsyncRWLock<T: ~Copyable>: @unchecked Sendable {
     while true {
       count = self.readerCount.load(ordering: .relaxed)
       if count != ASYNC_RWLOCK_WRITING {
-      (done, count) = self.readerCount.weakCompareExchange(expected: count, desired: count + 1, ordering: .acquiringAndReleasing)
+        (done, count) = self.readerCount.weakCompareExchange(expected: count, desired: count + 1, ordering: .acquiringAndReleasing)
         if (done) { break }
       }
       // let other tasks execute

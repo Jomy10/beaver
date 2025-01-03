@@ -1,0 +1,12 @@
+[package]
+name = "progress_indicators"
+version = "0.1.0"
+edition = "2021"
+authors.workspace = true
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+indicatif = "0.17"
+console = "0.15"

@@ -8,4 +8,3 @@ title = "Beaver"
 [preprocessor.toc]
 command = "mdbook-toc"
 renderer = ["html"]
-
