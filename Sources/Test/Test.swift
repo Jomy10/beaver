@@ -52,21 +52,30 @@ struct Test {
     //await semaphore.wait()
     //print(semaphore)
 
-    ///////
+    ///////////
 
     var mutCtx = Beaver()
     await mutCtx.addProject(Project(
-      name: "Logger",
-      baseDir: URL(filePath: "Tests/BeaverTests/resources/multiProject/Logger"),
-      buildDir: URL(filePath: ".build/tests/multiProject/Logger")
+      name: "Libraries",
+      baseDir: URL(filePath: "Tests/BeaverTests/resources/multiProject/Libraries"),
+      buildDir: URL(filePath: ".build/tests/multiProject/Libraries")
     ))
     try await mutCtx.withCurrentProject { (proj: inout Project) in
-      await proj.addTarget(CLibrary(
+      await proj.addTarget(try CLibrary(
         name: "Logger",
         description: "Logging implementation",
-        artifacts: [.staticlib, .dynlib],
-        sources: ["logger.c"],
-        headers: Headers(public: [proj.baseDir])
+        artifacts: [.staticlib],
+        sources: ["Logger/logger.c"],
+        headers: Headers(public: [proj.baseDir.appending(path: "Logger")])
+      ))
+
+      await proj.addTarget(try CLibrary(
+        name: "CXXVec",
+        description: "C API to vector of C++ standard library",
+        language: .cxx,
+        artifacts: [.staticlib],
+        sources: ["CXXVec/*.cpp"],
+        headers: Headers(public: [proj.baseDir.appending(path: "CXXVec")])
       ))
     }
 
@@ -75,19 +84,23 @@ struct Test {
       baseDir: URL(filePath: "Tests/BeaverTests/resources/multiProject/Main"),
       buildDir: URL(filePath: ".build/tests/multiProject/Main")
     ))
-    let loggerDep: LibraryRef = try await LibraryRef("Logger:Logger", defaultProject: mutCtx.currentProjectIndex!, context: mutCtx)
+    let loggerDep: LibraryRef = try await LibraryRef("Libraries:Logger", defaultProject: mutCtx.currentProjectIndex!, context: mutCtx)
+    let cxxvecDep: LibraryRef = try await LibraryRef("Libraries:CXXVec", defaultProject: mutCtx.currentProjectIndex!, context: mutCtx)
     try await mutCtx.withCurrentProject { (proj: inout Project) in
-      await proj.addTarget(CExecutable(
+      await proj.addTarget(try CExecutable(
         name: "Main",
         sources: "*.c",
-        dependencies: [loggerDep]
+        dependencies: [loggerDep, cxxvecDep]
       ))
     }
 
     let ctx = consume mutCtx
     try await ctx.build("Main")
 
-    ///////////
-
+    //try await ctx.withCurrentProject { (proj: borrowing Project) in
+    //  try await proj.withExecutable(named: "Main") { (target: borrowing any Executable) in
+    //    try await Tools.exec(target.artifactURL(projectBuildDir: proj.buildDir, .executable), [])
+    //  }
+    //}
   }
 }

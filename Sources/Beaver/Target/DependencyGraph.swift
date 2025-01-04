@@ -51,6 +51,14 @@ public struct TargetRef: Identifiable, Hashable, Equatable, Sendable {
   }
 }
 
+/// A Tree structure showing the dependency graph
+///
+/// e.g.
+/// ```
+/// A - B - D
+///   \ C - B - D
+///       \ D
+/// ```
 struct DependencyGraph: ~Copyable, @unchecked Sendable {
   let root: Node<TargetRef>
 
@@ -70,10 +78,25 @@ struct DependencyGraph: ~Copyable, @unchecked Sendable {
   }
 
   init(startingFromTarget target: String, inProject project: ProjectRef, context: borrowing Beaver) async throws {
+    await MessageHandler.trace("Resolving dependencies...")
     self.root = try await Self.constructTree(forTarget: target, inProject: project, context: context)
   }
 }
 
+// TODO: check circular references!!
+// in the current implementation this will cause an infinite loop
+
+/// Uses a dependency graph to determine how to build dependencies
+///
+/// Take the DependencyGraph example.
+/// This gets converterd to: D - B - C - A
+/// - D will get built, none of the proceeding can be built.
+/// - When D is finished, B will get built, C has to wait on B and A has to wait on both B and C to build
+/// - When B is finished, C will get built and A will be waiting
+/// - When A is finished, then A will get built
+///
+/// All dependencies in the array are checked whenever a target is built. When that is done, it will wait
+/// until a signal is received from one of the finished building targets and check dependencies again
 actor DependencyBuilder {
   var dependencies: [Dependency]
   let doneSignal = AsyncSemaphore(value: 0)
@@ -87,6 +110,7 @@ actor DependencyBuilder {
 
   enum DependencyStatus {
     case done
+    /// The dependency is currently building
     case started
     case waiting
     case error
@@ -146,12 +170,13 @@ actor DependencyBuilder {
 
   public func run(context: borrowing Beaver) async throws {
     let ctxPtr = UnsafeSendable(withUnsafePointer(to: context) { $0 }) // we assure that the pointer won't be used after this function returns
+    await MessageHandler.trace("Building order: \(self.dependencies.map { $0.node.element.name })")
     while true {
       /// Start as much dependencies as possible concurrently
       for (i, dependency) in self.dependencies.enumerated() {
         if !(GlobalThreadCounter.canStartNewProcess()) { break }
 
-        if dependency.status == .done || dependency.status == .cancelled || dependency.status == .error { continue }
+        if dependency.status == .done || dependency.status == .cancelled || dependency.status == .error || dependency.status == .started { continue }
 
         /// If this node has no dependencies, or if all if its dependencies are built, then we can built this one
         if dependency.node.children.count == 0 || dependency.node.children.first(where: { !self.isDone($0) }) == nil {
@@ -163,6 +188,7 @@ actor DependencyBuilder {
               UnsafeSendable(withUnsafePointer(to: project) { $0 })
             )
           }
+          // TODO: how to do this?
           var priority: TaskPriority = .high
           if target.value.pointee.spawnsMoreThreadsWithGlobalThreadManager {
             priority = .medium
@@ -196,9 +222,9 @@ actor DependencyBuilder {
           } else {
             try await context.withProject(index: error.target.project) { $0.name } + ":" + error.target.name
           }
-          await MessageHandler.print("[\("ERROR".red())] Building \(targetDesc)\n\(String(describing: error.error))")
           let spinner = await MessageHandler.getSpinner(targetRef: error.target)!
           await spinner.finish(message: "Building \(targetDesc): \("ERROR".red())")
+          await MessageHandler.print("[\("ERROR".red())] Building \(targetDesc)\n\(String(describing: error.error))")
         case .success(let result):
           let index = self.dependencies.firstIndex(where: { dep in dep.node.element == result.target })!
           self.dependencies[index].status = result.status
@@ -213,9 +239,9 @@ actor DependencyBuilder {
             case .done: "DONE".green()
             default: fatalError("Beaver bug: \(result.status) is not a valid successful finish status")
           }
-          await MessageHandler.print("[\(statusString)] Building \(targetDesc)")
           let spinner = await MessageHandler.getSpinner(targetRef: result.target)
           await spinner?.finish(message: "Building \(targetDesc) \(statusString)")
+          await MessageHandler.print("[\(statusString)] Building \(targetDesc)")
       }
       if self.areAllBuilt() {
         break

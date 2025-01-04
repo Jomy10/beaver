@@ -13,9 +13,40 @@ final class PersistedStorage<Key: Hashable>: Sendable {
 
   func store<T>(ptr: UnsafeMutablePointer<T>, key: Key) async {
     await self.storage.write { storage in
-      _ = storage[key]?.1.assumingMemoryBound(to: T.self)
-      let type: Any.Type = T.self
-      storage[key] = (type, UnsafeMutableRawPointer(ptr))
+      Self.store(ptr: ptr, key: key, storage: &storage)
+    }
+  }
+
+  static func store<T>(ptr: UnsafeMutablePointer<T>, key: Key, storage: inout [Key: (any Any.Type, UnsafeMutableRawPointer)]) {
+    _ = storage[key]?.1.assumingMemoryBound(to: T.self)
+    let type: Any.Type = T.self
+    storage[key] = (type, UnsafeMutableRawPointer(ptr))
+  }
+
+  func storing<T>(key: Key, _ initialize: @autoclosure () async throws -> T) async rethrows -> T {
+    return try await self.storage.write { storage in
+      let value = try await initialize()
+      let ptr = UnsafeMutablePointer<T>.allocate(capacity: 1)
+      ptr.pointee = value
+      Self.store(ptr: ptr, key: key, storage: &storage)
+      return value
+    }
+  }
+
+  func storing<T>(key: Key, _ initialize: @autoclosure () async throws -> T) async rethrows {
+    try await self.storage.write { storage in
+      let value = try await initialize()
+      let ptr = UnsafeMutablePointer<T>.allocate(capacity: 1)
+      ptr.pointee = value
+      Self.store(ptr: ptr, key: key, storage: &storage)
+    }
+  }
+
+  func storingOrRetrieving<T>(key: Key, _ initialize: @autoclosure () async throws -> T) async throws -> T {
+    if let element: T = try await self.getElement(withKey: key) {
+      return element
+    } else {
+      return try await self.storing(key: key, try await initialize())
     }
   }
 

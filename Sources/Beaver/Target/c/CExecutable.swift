@@ -20,6 +20,9 @@ public struct CExecutable: CTarget, Executable {
     description: String? = nil,
     version: Version? = nil,
     homepage: URL? = nil,
+
+    language: Language = .c,
+
     artifacts: [ExecutableArtifactType] = [.executable],
 
     sources: Files,
@@ -28,19 +31,23 @@ public struct CExecutable: CTarget, Executable {
     linkerFlags: [String] = [],
 
     dependencies: [LibraryRef] = []
-  ) {
+  ) throws {
     self.name = name
     self.description = description
     self.version = version
     self.homepage = homepage
-    self.language = .c
+    self.language = language
     self.artifacts = artifacts
     self.dependencies = dependencies
-    self.persistedStorage = try! PersistedStorage()
+    self.persistedStorage = try PersistedStorage()
     self._sources = sources
     self.headers = headers
     self.extraCflags = cflags
     self.extraLinkerFlags = linkerFlags
+
+    if !Array<Language>([.c, .cxx, .objc, .objcxx]).contains(language) {
+      throw InvalidLanguage(language: language)
+    }
   }
 
   #if os(Windows)
@@ -96,9 +103,11 @@ public struct CExecutable: CTarget, Executable {
 
     //let objectBuildDr = self.objectBuildDir(projectBuildDir: projectBuildDir)
     //let objectFiles = (await sources.async.map { (source: URL) in return await self.objectFile(baseDir: baseDir, buildDir: objectBuildDir, file: source, type: .static).path }.reduce(into: [String](), { $0.append($1) }))
+    let dependencyLanguages = try await self.languages(context: context)
     let args: [String] = objects.map { $0.path }
       //+ libraryLinkPaths.map { "-L\($0.path)" }
       + dependenciesLinkerFlags
+      + dependencyLanguages.compactMap { $0.linkerFlags(targetLanguage: self.language) }.flatMap { $0 }
       + ["-o", outputFile.path]
     try await self.executeCC(args)
   }
