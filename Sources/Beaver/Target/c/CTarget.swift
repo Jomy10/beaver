@@ -4,6 +4,7 @@ import Platform
 enum CTargetStorageKey: Equatable, Hashable {
   case publicHeaders
   case privateHeaders
+  case languages
   /// TODO
   case sources
 }
@@ -20,6 +21,7 @@ protocol CTarget: Target {
   var extraCflags: Flags { get }
   var extraLinkerFlags: [String] { get }
 
+  /// Execute a shell command with the given compiler for the specified language of self
   func executeCC(_ args: [String]) async throws
 }
 
@@ -61,6 +63,20 @@ extension CTarget {
     return self.extraLinkerFlags + flags
   }
 
+  public func languages(context: borrowing Beaver) async throws -> [Language] {
+    let ctxPtr = UnsafeSendable(withUnsafePointer(to: context) { $0 }) // only used for the duration of this function call
+    return try await self.persistedStorage.storingOrRetrieving(
+      key: .languages,
+      try await self.dependencies.asyncFlatMap { dep in
+        try await ctxPtr.value.pointee.withLibrary(dep) { library in
+          var languages = try await library.languages(context: ctxPtr.value.pointee)
+          languages.append(library.language)
+          return languages
+        }
+      }.unique
+    )
+  }
+
   // Default implementations for Library (also used for building of executables) //
 
   public func publicCflags() async throws -> [String] {
@@ -86,7 +102,7 @@ extension CTarget {
     for dependency in self.dependencies {
       dependencyCflags.append(contentsOf: try await context.withLibrary(dependency) { lib in return try await lib.publicCflags() })
     }
-    return self.extraCflags.private + dependencyCflags
+    return self.extraCflags.private + dependencyCflags + (self.language.cflags() ?? [])
   }
 
   func privateHeaders(baseDir: URL, context: borrowing Beaver) async throws -> [URL] {
@@ -167,12 +183,25 @@ extension CTarget {
 
   // Utils //
 
-  /// TODO: support c++ -- switch on language
   public func executeCC(_ args: [String]) async throws {
-    if let extraArgs = Tools.ccExtraArgs {
-      try await Tools.exec(Tools.cc!, extraArgs + args)
-    } else {
-      try await Tools.exec(Tools.cc!, args)
+    switch (self.language) {
+      case .objc: fallthrough
+      case .objcxx:
+        try await Tools.exec(Tools.objcCompiler!, args)
+      case .c:
+        if let extraArgs = Tools.ccExtraArgs {
+          try await Tools.exec(Tools.cc!, extraArgs + args)
+        } else {
+          try await Tools.exec(Tools.cc!, args)
+        }
+      case .cxx:
+        if let extraArgs = Tools.cxxExtraArgs {
+          try await Tools.exec(Tools.cxx!, extraArgs + args)
+        } else {
+          try await Tools.exec(Tools.cxx!, args)
+        }
+      default:
+        throw InvalidLanguage(language: self.language)
     }
   }
 

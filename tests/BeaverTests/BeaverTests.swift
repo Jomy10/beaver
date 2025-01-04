@@ -36,14 +36,14 @@ import Platform
   baseDir: URL(filePath: "Tests/BeaverTests/resources/exampleCProjectAdder"),
   buildDir: URL(filePath: ".build/tests/exampleCProjectAdder"),
   targets: NonCopyableArray()
-    .appending(CLibrary(
+    .appending(try CLibrary(
       name: "Adder",
       description: "Adds two numbers",
       artifacts: [.staticlib],
       sources: "adder.c",
       headers: "*.h"
     ))
-    .appending(CExecutable(
+    .appending(try CExecutable(
       name: "AdderTest",
       description: "Add two numbers and check the result",
       artifacts: [.executable],
@@ -72,17 +72,26 @@ import Platform
 @Test func multiProject() async throws {
   var mutCtx = Beaver()
   await mutCtx.addProject(Project(
-    name: "Logger",
-    baseDir: URL(filePath: "Tests/BeaverTests/resources/multiProject/Logger"),
-    buildDir: URL(filePath: ".build/tests/multiProject/Logger")
+    name: "Libraries",
+    baseDir: URL(filePath: "Tests/BeaverTests/resources/multiProject/Libraries"),
+    buildDir: URL(filePath: ".build/tests/multiProject/Libraries")
   ))
   try await mutCtx.withCurrentProject { (proj: inout Project) in
-    await proj.addTarget(CLibrary(
+    await proj.addTarget(try CLibrary(
       name: "Logger",
       description: "Logging implementation",
       artifacts: [.staticlib],
-      sources: ["logger.c"],
-      headers: Headers(public: [proj.baseDir])
+      sources: ["Logger/logger.c"],
+      headers: Headers(public: [proj.baseDir.appending(path: "Logger")])
+    ))
+
+    await proj.addTarget(try CLibrary(
+      name: "CXXVec",
+      description: "C API to vector of C++ standard library",
+      language: .cxx,
+      artifacts: [.staticlib],
+      sources: ["CXXVec/*.cpp"],
+      headers: Headers(public: [proj.baseDir.appending(path: "CXXVec")])
     ))
   }
 
@@ -91,12 +100,13 @@ import Platform
     baseDir: URL(filePath: "Tests/BeaverTests/resources/multiProject/Main"),
     buildDir: URL(filePath: ".build/tests/multiProject/Main")
   ))
-  let loggerDep: LibraryRef = try await LibraryRef("Logger:Logger", defaultProject: mutCtx.currentProjectIndex!, context: mutCtx)
+  let loggerDep: LibraryRef = try await LibraryRef("Libraries:Logger", defaultProject: mutCtx.currentProjectIndex!, context: mutCtx)
+  let cxxvecDep: LibraryRef = try await LibraryRef("Libraries:CXXVec", defaultProject: mutCtx.currentProjectIndex!, context: mutCtx)
   try await mutCtx.withCurrentProject { (proj: inout Project) in
-    await proj.addTarget(CExecutable(
+    await proj.addTarget(try CExecutable(
       name: "Main",
       sources: "*.c",
-      dependencies: [loggerDep]
+      dependencies: [loggerDep, cxxvecDep]
     ))
   }
 

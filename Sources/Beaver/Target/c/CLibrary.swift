@@ -23,6 +23,8 @@ public struct CLibrary: CTarget, Library {
     version: Version? = nil,
     homepage: URL? = nil,
 
+    language: Language = .c,
+
     artifacts: [LibraryArtifactType] = [.dynlib, .staticlib, .pkgconfig],
 
     // C
@@ -32,18 +34,22 @@ public struct CLibrary: CTarget, Library {
     linkerFlags: [String] = [],
 
     dependencies: [LibraryRef] = []
-  ) {
+  ) throws(InvalidLanguage) {
     self.name = name
     self.description = description
     self.version = version
     self.homepage = homepage
-    self.language = .c
+    self.language = language
     self.artifacts = artifacts
     self.dependencies = dependencies
     self._sources = sources
     self.headers = headers
     self.extraCflags = cflags
     self.extraLinkerFlags = linkerFlags
+
+    if !Array<Language>([.c, .cxx, .objc, .objcxx]).contains(language) {
+      throw InvalidLanguage(language: language)
+    }
   }
 
   static let staticExt: String = ".a"
@@ -123,9 +129,13 @@ public struct CLibrary: CTarget, Library {
     #else
     args = ["-shared"]
     #endif
+
     var visited: Set<LibraryRef> = Set()
-    args.append(contentsOf: ["-o", outputFile.path] + objectFiles.map { $0.path } + (try await self.allLinkerFlags(context: context, visited: &visited)))
-    try await self.executeCC(args)
+    let aargs: [String] = ["-o", outputFile.path]
+      + objectFiles.map { $0.path }
+      + (try await self.allLinkerFlags(context: context, visited: &visited))
+      + (try await self.languages(context: context).compactMap { lang in lang.linkerFlags(targetLanguage: self.language) }.flatMap { $0 })
+    try await self.executeCC(args + aargs)
   }
 
   private func buildStaticLibrary(objects: borrowing [URL], baseDir: URL, projectBuildDir: URL, context: borrowing Beaver) async throws {

@@ -29,6 +29,9 @@ public protocol Target: ~Copyable, Sendable {
   /// Provide all linker flags for linking this target.
   /// Used internally in linking phase
   func allLinkerFlags(context: borrowing Beaver, visited: inout Set<LibraryRef>) async throws -> [String]
+  /// All languages that are present in this library/executable and its dependencies.
+  /// This is used to determine addition linker flags
+  func languages(context: borrowing Beaver) async throws -> [Language]
 }
 
 struct NonBuildableTargetError: Error {
@@ -50,4 +53,19 @@ extension Target {
       try await target.build(artifact: target.artifacts[i], baseDir: copy baseDir, buildDir: copy buildDir, context: context)
     }
   }
+
+  public func languages(context: borrowing Beaver) async throws -> [Language] {
+    return try await self.dependencies.asyncFlatMap { dep in
+      return try await context.withLibrary(dep) { library in
+        var dependencyLanguages = try await library.languages(context: context)
+        dependencyLanguages.append(library.language)
+        return dependencyLanguages
+      }
+    }.unique
+  }
+}
+
+/// An invalid language was passed to a target expecting a specific set of languages
+public struct InvalidLanguage: Error {
+  let language: Language
 }

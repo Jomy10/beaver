@@ -35,8 +35,10 @@ struct MessageHandler {
     static let shellCommand       = Self(rawValue: 1 << 0)
     static let shellOutputStderr  = Self(rawValue: 1 << 1)
     static let shellOutputStdout  = Self(rawValue: 1 << 2)
+    static let trace              = Self(rawValue: 1 << 3)
+    static let warning            = Self(rawValue: 1 << 4)
 
-    static let `default`: Self = [.shellCommand]
+    static let `default`: Self = [.shellCommand, .shellOutputStderr, .shellOutputStdout, .trace, .warning]
   }
 
   public nonisolated(unsafe) static var terminalColorEnabled: Bool = {
@@ -131,22 +133,26 @@ struct MessageHandler {
   public enum LogLevel {
     case warning
     case error
+    case trace
 
     var format: String {
       switch (self) {
         case .warning: "WARN".yellow()
         case .error: "ERR".red()
+        case .trace: "TRACE".bold()
       }
     }
   }
 
   public static func log(_ message: String, level: LogLevel, context: MessageVisibility? = nil) async {
-    if !Self.checkContext(context) { return }
-
-    await self.print("[\(level.format)] \(message)")
+    await self.print("[\(level.format)] \(message)", context: context)
   }
 
   public static func warn(_ message: String, context: MessageVisibility? = nil) async {
-    await self.log(message, level: .warning, context: context)
+    await self.log(message, level: .warning, context: context ?? .warning)
+  }
+
+  public static func trace(_ message: String, context: MessageVisibility? = nil) async {
+    await self.log(message, level: .trace, context: context ?? .trace)
   }
 }

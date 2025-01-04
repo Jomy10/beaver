@@ -37,12 +37,12 @@ func borrow2N<NC1: ~Copyable, NC2: ~Copyable>(
     switch (await task.result) {
       case .failure(let error):
         if i != tasks.count - 1 {
-          for task in tasks[i...] {
+          for task in tasks[(i+1)...] {
             task.cancel()
             _ = await task.result
           }
-          throw error
         }
+        throw error
       case .success(()):
         break
     }
