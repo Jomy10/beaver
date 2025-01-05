@@ -24,13 +24,15 @@ let package = Package(
     .package(url: "https://github.com/mattcox/Tree.git", branch: "main"),
     .package(url: "https://github.com/apple/swift-collections.git", from: "1.1.4"),
     .package(url: "https://github.com/groue/Semaphore", from: "0.1.0"),
-    .package(url: "https://github.com/Jomy10/TaskProgress", branch: "master"),
+    //.package(url: "https://github.com/Jomy10/TaskProgress", branch: "master"),
+    .package(url: "https://github.com/stephencelis/SQLite.swift", from: "0.15.3"),
   ],
   targets: [
     .target(
       name: "Beaver",
       dependencies: [
         "Platform",
+        "ProgressIndicators",
         .product(name: "Semver", package: "Semver"),
         .product(name: "Glob", package: "swift-glob"),
         .product(name: "ColorizeSwift", package: "ColorizeSwift"),
@@ -38,8 +40,8 @@ let package = Package(
         .product(name: "Tree", package: "tree"),
         .product(name: "Collections", package: "swift-collections"),
         .product(name: "Semaphore", package: "Semaphore"),
-        .product(name: "TaskProgress", package: "TaskProgress"),
-        "ProgressIndicators"
+        .product(name: "SQLite", package: "SQLite.swift"),
+        //.product(name: "TaskProgress", package: "TaskProgress"),
       ]
     ),
     // Platform-specific implementations in C

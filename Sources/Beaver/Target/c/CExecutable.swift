@@ -1,13 +1,14 @@
 import Foundation
 
 public struct CExecutable: CTarget, Executable {
+  public var id: Int = -1
   public let name: String
   public var description: String?
   public var version: Version?
   public var homepage: URL?
   public var language: Language
   public var artifacts: [ExecutableArtifactType]
-  public var dependencies: [LibraryRef]
+  public var dependencies: [Dependency]
 
   var persistedStorage: PersistedStorage<CTargetStorageKey>
   var _sources: Files
@@ -30,7 +31,7 @@ public struct CExecutable: CTarget, Executable {
     cflags: Flags = Flags(),
     linkerFlags: [String] = [],
 
-    dependencies: [LibraryRef] = []
+    dependencies: [Dependency] = []
   ) throws {
     self.name = name
     self.description = description
@@ -84,7 +85,7 @@ public struct CExecutable: CTarget, Executable {
     }
     let outputFile = try await self.artifactURL(projectBuildDir: projectBuildDir, .executable)
 
-    var visited: Set<LibraryRef> = Set()
+    var visited: Set<Dependency> = Set()
     let dependenciesLinkerFlags: [String] = try await self.allLinkerFlags(context: context, visited: &visited)
     //var libraryLinkPaths: Set<URL> = Set()
     //for dependency in self.dependencies {

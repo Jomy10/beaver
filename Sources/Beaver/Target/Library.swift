@@ -37,6 +37,7 @@ public enum LibraryArtifactType: Equatable, Hashable, Sendable {
   case staticlanglib(Language)
 }
 
+@available(*, deprecated, message: "Use Dependency instead")
 public struct LibraryRef: Sendable, Hashable {
   /// The name of the library
   let name: String
