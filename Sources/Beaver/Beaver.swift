@@ -35,71 +35,6 @@ public struct Beaver: ~Copyable, Sendable {
     }
   }
 
-  @available(*, deprecated, message: "Use `projectRef(name:)`")
-  public func getProjectRef(byName name: String) async -> Int? {
-    await self.projects.read { $0.firstIndex(where: { proj in proj.name == name }) }
-  }
-
-  //public mutating func withCurrentProject<Result>(_ cb: @Sendable (inout Project) async throws -> Result) async throws -> Result {
-  //  try await self.projects.write { projects in
-  //    if let currentProjectIndex = self.currentProjectIndex {
-  //      return try await projects.mutatingElement(currentProjectIndex, cb)
-  //    } else {
-  //      throw BeaverError.noDefaultProject
-  //    }
-  //  }
-  //}
-
-  //public func withCurrentProject<Result>(_ cb: @Sendable (borrowing Project) async throws -> Result) async throws -> Result {
-  //  try await self.projects.read { projects in
-  //    if let currentProjectIndex = self.currentProjectIndex {
-  //      return try await projects.withElement(currentProjectIndex, cb)
-  //    } else {
-  //      throw BeaverError.noDefaultProject
-  //    }
-  //  }
-  //}
-
-  //public func withProject<Result>(named projectName: String, _ cb: @Sendable (borrowing Project) async throws -> Result) async throws -> Result {
-  //  try await self.projects.read { projects in
-  //    guard let index = projects.firstIndex(where: { project in project.name == projectName }) else {
-  //      throw BeaverError.noProject(named: projectName)
-  //    }
-  //    return try await projects.withElement(index, cb)
-  //  }
-  //}
-
-  @available(*, deprecated)
-  public func withProject<Result>(index: ProjectRef, _ cb: @Sendable (borrowing Project) async throws -> Result) async throws -> Result {
-    try await self.projects.read { projects in
-      return try await projects.withElement(index, cb)
-    }
-  }
-
-  @available(*, deprecated)
-  public func withLibrary<Result>(_ libraryRef: LibraryRef, _ cb: @Sendable (borrowing any Library) async throws -> Result) async throws -> Result {
-    return try await self.projects.read { (projects: borrowing NonCopyableArray<Project>) async throws -> Result in
-      return try await projects.withElement(libraryRef.project) { (project: borrowing Project) async throws -> Result in
-        return try await project.withLibrary(named: libraryRef.name, cb)
-      }
-    }
-  }
-
-  @available(*, deprecated)
-  public func withProjectAndLibrary<Result>(_ libraryRef: LibraryRef, _ cb: @Sendable (borrowing Project, borrowing any Library) async throws -> Result) async throws -> Result {
-    return try await self.withProject(libraryRef.project) { (project: borrowing Project) in
-      return try await project.withLibrary(named: libraryRef.name) { (lib: borrowing any Library) in
-        return try await cb(project, lib)
-      }
-    }
-  }
-
-  //public func withTarget<Result>(_ target: TargetRef, _ cb: @Sendable (borrowing any Target) async throws -> Result) async throws -> Result {
-  //  return try await self.withProject(index: target.project) { (project: borrowing Project) async throws -> Result in
-  //    return try await project.withTarget(named: target.name, cb)
-  //  }
-  //}
-
   enum BuildError: Error {
     case noTarget(named: String)
     case noDefaultTarget
@@ -117,24 +52,10 @@ public struct Beaver: ~Copyable, Sendable {
 
   public func build(_ targetRef: TargetRef) async throws {
     try await self.withTarget(targetRef) { (target: borrowing any Target) async throws in
-      await MessageHandler.enableIndicators()
-      //let dependencyGraph = try await DependencyGraph(startingFromTarget: selectedTargetName, inProject: targetRef.project, context: self)
-      let dependencyGraph = try await DependencyGraph(startingFrom: targetRef, context: self)
-      try await self.build(dependencyGraph: dependencyGraph)
-      await MessageHandler.closeIndicators()
-    }
-  }
-
-  private func build(dependencyGraph: consuming DependencyGraph) async throws {
-    let builder = try await DependencyBuilder(dependencyGraph, context: self)
-    try await builder.run(context: self)
-  }
-
-  @available(*, deprecated, message: "Use Dependency instead")
-  public func build(_ library: LibraryRef) async throws {
-    try await self.withProject(index: library.project) { (proj: borrowing Project) async throws -> Void in
-      try await proj.withLibrary(named: library.name) { (library: borrowing any Library) async throws -> Void in
-        try await library.build(baseDir: proj.baseDir, buildDir: proj.buildDir, context: self)
+      try await MessageHandler.withIndicators {
+        let dependencyGraph = try await DependencyGraph(startingFrom: targetRef, context: self)
+        let builder = try await DependencyBuilder(dependencyGraph, context: self)
+        try await builder.run(context: self)
       }
     }
   }

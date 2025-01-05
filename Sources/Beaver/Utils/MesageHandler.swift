@@ -66,6 +66,13 @@ struct MessageHandler {
     }
   }
 
+  public static func withIndicators<Result, E>(_ cb: () async throws(E) -> Result) async rethrows -> Result {
+    await self.enableIndicators()
+    let value = try await cb()
+    await self.closeIndicators()
+    return value
+  }
+
   public static func getSpinner(targetRef: TargetRef) async -> ProgressBar? {
     return await self.data.read { data in data.targetToSpinner[targetRef] }
   }
@@ -77,24 +84,6 @@ struct MessageHandler {
         data.targetToSpinner[targetRef] = spinner
       }
     }
-  }
-
-  @available(*, deprecated)
-  public static func print(_ message: String, task: ProgressBar) async {
-    if let progress = Self.progress {
-      // TODO!
-      progress.println(message)
-    } else {
-      IO.print(message, to: IOStream.stderr)
-    }
-  }
-
-  @available(*, deprecated)
-  public static func print(_ message: String, targetRef: TargetRef) async throws(NoTaskError) {
-    guard let task = await self.data.read({ $0.targetToSpinner[targetRef] }) else {
-      throw NoTaskError(id: targetRef)
-    }
-    await self.print(message, task: task)
   }
 
   private static func checkContext(_ context: MessageVisibility?) -> Bool {

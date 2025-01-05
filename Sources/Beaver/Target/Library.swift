@@ -55,7 +55,7 @@ public struct LibraryRef: Sendable, Hashable {
         self.project = defaultProject
       case 2:
         self.name = String(components[1])
-        guard let projectRef = await context.getProjectRef(byName: String(components[0])) else {
+        guard let projectRef = await context.projectRef(name: String(components[0])) else {
           throw ParsingError.unknownProject(String(components[0]))
         }
         self.project = projectRef
