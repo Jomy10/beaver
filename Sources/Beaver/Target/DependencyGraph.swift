@@ -32,24 +32,24 @@ extension Tree.Node {
   }
 }
 
-public struct TargetRef: Identifiable, Hashable, Equatable, Sendable {
-  public let name: String
-  public let project: ProjectRef
+//public struct TargetRef: Identifiable, Hashable, Equatable, Sendable {
+//  public let name: String
+//  public let project: ProjectRef
 
-  public var id: Self {
-    self
-  }
+//  public var id: Self {
+//    self
+//  }
 
-  public init(_ libRef: borrowing LibraryRef) {
-    self.name = libRef.name
-    self.project = libRef.project
-  }
+//  public init(_ libRef: borrowing LibraryRef) {
+//    self.name = libRef.name
+//    self.project = libRef.project
+//  }
 
-  public init(name: String, project: ProjectRef) {
-    self.name = name
-    self.project = project
-  }
-}
+//  public init(name: String, project: ProjectRef) {
+//    self.name = name
+//    self.project = project
+//  }
+//}
 
 /// A Tree structure showing the dependency graph
 ///
@@ -62,29 +62,52 @@ public struct TargetRef: Identifiable, Hashable, Equatable, Sendable {
 struct DependencyGraph: ~Copyable, @unchecked Sendable {
   let root: Node<TargetRef>
 
-  private static func constructTree(forTarget target: String, inProject project: ProjectRef, context: borrowing Beaver) async throws -> Node<TargetRef> {
-    let root = UnsafeSendable(Node(TargetRef(name: target, project: project)))
+  enum CreationError: Error {
+    case noTarget(named: String)
+  }
 
-    try await context.withProject(index: project) { (project: borrowing Project) async throws -> Void in
-      try await project.withTarget(named: target) { (target: borrowing any Target) async throws -> Void in
-        for dependency in target.dependencies {
-          let node = try await constructTree(forTarget: dependency.name, inProject: dependency.project, context: context)
-          root.value.append(child: node)
-        }
+  private static func constructTree(forTarget target: TargetRef, context: borrowing Beaver) async throws -> Node<TargetRef> {
+    //let target = TargetRef(name: targetIndex, project: project)
+    let root = Node(target)
+
+    try await context.withTarget(target) { (target: borrowing any Target) async throws -> Void in
+      for dependency in target.dependencies {
+        let node = try await Self.constructTree(forTarget: dependency.library, context: context)
+        root.append(child: node)
       }
     }
+    //try await context.withProject(project) { (project: borrowing Project) async throws -> Void in
+    //  try await project.withTarget(targetIndex) { (target: borrowing any Target) async throws -> Void in
+    //    for dependency in target.dependencies {
+    //      let node = try await constructTree(forTarget: dependency.library, inProject: dependency.library.project, context: context)
+    //      root.value.append(child: node)
+    //    }
+    //  }
+    //}
 
-    return root.value
+    return root
   }
 
   init(startingFromTarget target: String, inProject project: ProjectRef, context: borrowing Beaver) async throws {
+    guard let targetIndex = await context.withProject(project, { (project: borrowing Project) in
+      return await project.targetIndex(name: target)
+    }) else {
+      throw CreationError.noTarget(named: target)
+    }
+    try await self.init(startingFrom: TargetRef(target: targetIndex, project: project), context: context)
+    //self.root = try await Self.constructTree(forTarget: TargetRef(target: targetIndex, project: project), context: context)
+  }
+
+  init(startingFrom target: TargetRef, context: borrowing Beaver) async throws {
     await MessageHandler.trace("Resolving dependencies...")
-    self.root = try await Self.constructTree(forTarget: target, inProject: project, context: context)
+    self.root = try await Self.constructTree(forTarget: target, context: context)
   }
 }
 
 // TODO: check circular references!!
 // in the current implementation this will cause an infinite loop
+
+// TODO: Change Node's type to (TargetRef, ArtifactType) --> Only build necessary artifacts ??
 
 /// Uses a dependency graph to determine how to build dependencies
 ///
@@ -123,9 +146,9 @@ actor DependencyBuilder {
   }
 
   public init(_ graph: borrowing DependencyGraph, context: borrowing Beaver) async throws {
-    self.dependencies = try await graph.root.breadthFirst.reversed().uniqueKeepingOrder
+    self.dependencies = await graph.root.breadthFirst.reversed().uniqueKeepingOrder
       .asyncFilter { node in
-        try await context.isBuildable(target: node.element)
+        await context.isBuildable(target: node.element)
       }
       .map { node in
         Dependency(node: node, status: .waiting)
@@ -170,7 +193,6 @@ actor DependencyBuilder {
 
   public func run(context: borrowing Beaver) async throws {
     let ctxPtr = UnsafeSendable(withUnsafePointer(to: context) { $0 }) // we assure that the pointer won't be used after this function returns
-    await MessageHandler.trace("Building order: \(self.dependencies.map { $0.node.element.name })")
     while true {
       /// Start as much dependencies as possible concurrently
       for (i, dependency) in self.dependencies.enumerated() {
@@ -180,11 +202,9 @@ actor DependencyBuilder {
 
         /// If this node has no dependencies, or if all if its dependencies are built, then we can built this one
         if dependency.node.children.count == 0 || dependency.node.children.first(where: { !self.isDone($0) }) == nil {
-          let (target, project) = try await context.withProject(index: dependency.node.element.project) { (project: borrowing Project) in
+          let (target, project) = await context.withProjectAndTarget(dependency.node.element) { (project: borrowing Project, target: borrowing any Target) in
             (
-              UnsafeSendable(try await project.withTarget(named: dependency.node.element.name) { (target: borrowing any Target) in
-                return withUnsafePointer(to: target) { $0 }
-              }),
+              UnsafeSendable(withUnsafePointer(to: target) { $0 }),
               UnsafeSendable(withUnsafePointer(to: project) { $0 })
             )
           }
@@ -215,33 +235,27 @@ actor DependencyBuilder {
       })!
       switch (result) {
         case .failure(let error):
+          // Finish
           let index = self.dependencies.firstIndex(where: { dep in dep.node.element == error.target })!
           self.dependencies[index].status = .error
-          let targetDesc = if context.currentProjectIndex == error.target.project {
-            error.target.name
-          } else {
-            try await context.withProject(index: error.target.project) { $0.name } + ":" + error.target.name
-          }
-          let spinner = await MessageHandler.getSpinner(targetRef: error.target)!
-          await spinner.finish(message: "Building \(targetDesc): \("ERROR".red())")
-          await MessageHandler.print("[\("ERROR".red())] Building \(targetDesc)\n\(String(describing: error.error))")
+
+          // Message
+          let targetDesc = await error.target.description(context: context)!
+          let spinner = await MessageHandler.getSpinner(targetRef: error.target)
+          //await spinner.finish(message: "Building \(targetDesc): \("ERROR".red())")
+          await spinner?.finish()
+          await MessageHandler.print("[\(DependencyStatus.error)] Building \(targetDesc)\n\(String(describing: error.error))")
         case .success(let result):
+          // Finish
           let index = self.dependencies.firstIndex(where: { dep in dep.node.element == result.target })!
           self.dependencies[index].status = result.status
 
-          let targetDesc = if context.currentProjectIndex == result.target.project {
-            result.target.name
-          } else {
-            try await context.withProject(index: result.target.project) { $0.name } + ":" + result.target.name
-          }
-          let statusString = switch (result.status) {
-            case .cancelled: "CANCELLED".yellow()
-            case .done: "DONE".green()
-            default: fatalError("Beaver bug: \(result.status) is not a valid successful finish status")
-          }
+          // Message
+          let targetDesc = await result.target.description(context: context)!
           let spinner = await MessageHandler.getSpinner(targetRef: result.target)
-          await spinner?.finish(message: "Building \(targetDesc) \(statusString)")
-          await MessageHandler.print("[\(statusString)] Building \(targetDesc)")
+          //await spinner?.finish(message: "Building \(targetDesc) \(statusString)")
+          await spinner?.finish()
+          await MessageHandler.print("[\(result.status)] Building \(targetDesc)") // TODO: get message from spinner if possible?
       }
       if self.areAllBuilt() {
         break
@@ -257,7 +271,8 @@ actor DependencyBuilder {
     priority: TaskPriority = .high
   ) {
     Task.detached(priority: priority) {
-      let targetRef = TargetRef(name: target.value.pointee.name, project: projectIndex)
+      let targetRef = TargetRef(target: target.value.pointee.id, project: project.value.pointee.id)
+      //let targetRef = TargetRef(name: target.value.pointee.name, project: projectIndex)
       do {
         await MessageHandler.addTask(
           "Building \(context.value.pointee.currentProjectIndex == projectIndex ? "" : project.value.pointee.name + ":")\(target.value.pointee.name)",
@@ -277,6 +292,18 @@ actor DependencyBuilder {
       if !target.value.pointee.spawnsMoreThreadsWithGlobalThreadManager {
         GlobalThreadCounter.releaseProcess()
       }
+    }
+  }
+}
+
+extension DependencyBuilder.DependencyStatus: CustomStringConvertible {
+  public var description: String {
+    switch (self) {
+      case .done: "DONE".green()
+      case .started: "STARTED".blue()
+      case .waiting: "WAITING".blue()
+      case .error: "ERR".red()
+      case .cancelled: "CANCELLED".yellow()
     }
   }
 }

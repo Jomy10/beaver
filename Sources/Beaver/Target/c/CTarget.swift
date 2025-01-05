@@ -44,17 +44,17 @@ extension CTarget {
   }
 
   public func artifactOutputDir(projectBuildDir: URL, forArtifact artifact: ArtifactType?) async throws -> URL {
-    projectBuildDir.appending(path: self.name).appending(path: "artifacts")
+    projectBuildDir.appending(path: "artifacts")
   }
 
-  public func allLinkerFlags(context: borrowing Beaver, visited: inout Set<LibraryRef>) async throws -> [String] {
+  public func allLinkerFlags(context: borrowing Beaver, visited: inout Set<Dependency>) async throws -> [String] {
     let visitedPtr = UnsafeSendable(withUnsafeMutablePointer(to: &visited) { $0 })
     let ctxPtr = UnsafeSendable(withUnsafePointer(to: context) { $0 })
     var flags: [String] = []
     for dep in self.dependencies {
       if visited.contains(dep) { continue }
       visited.insert(dep)
-      flags.append(contentsOf: try await context.withProjectAndLibrary(dep) { (project: borrowing Project, lib: borrowing any Library) async throws -> [String] in
+      flags.append(contentsOf: try await context.withProjectAndLibrary(dep.library) { (project: borrowing Project, lib: borrowing any Library) async throws -> [String] in
         (try await lib.allLinkerFlags(context: ctxPtr.value.pointee, visited: &visitedPtr.value.pointee))
           + [lib.linkFlag(), "-L" + (try await lib.artifactOutputDir(projectBuildDir: project.buildDir, forArtifact: dep.artifact).path)]
       })
@@ -68,7 +68,7 @@ extension CTarget {
     return try await self.persistedStorage.storingOrRetrieving(
       key: .languages,
       try await self.dependencies.asyncFlatMap { dep in
-        try await ctxPtr.value.pointee.withLibrary(dep) { library in
+        try await ctxPtr.value.pointee.withLibrary(dep.library) { library in
           var languages = try await library.languages(context: ctxPtr.value.pointee)
           languages.append(library.language)
           return languages
@@ -100,7 +100,7 @@ extension CTarget {
   func privateCflags(context: borrowing Beaver) async throws -> [String] {
     var dependencyCflags: [String] = []
     for dependency in self.dependencies {
-      dependencyCflags.append(contentsOf: try await context.withLibrary(dependency) { lib in return try await lib.publicCflags() })
+      dependencyCflags.append(contentsOf: try await context.withLibrary(dependency.library) { lib in return try await lib.publicCflags() })
     }
     return self.extraCflags.private + dependencyCflags + (self.language.cflags() ?? [])
   }
@@ -111,7 +111,7 @@ extension CTarget {
     } else {
       var dependencyHeaders: [URL] = []
       for dependency in self.dependencies {
-        dependencyHeaders.append(contentsOf: try await context.withLibrary(dependency) { lib in return try await lib.publicHeaders(baseDir: baseDir) })
+        dependencyHeaders.append(contentsOf: try await context.withLibrary(dependency.library) { lib in return try await lib.publicHeaders(baseDir: baseDir) })
       }
       //let headers = (try await self.headers.private?.files(baseURL: baseDir).reduce(into: [URL]()) { $0.append($1) } ?? []).map { $0.dirURL! }.unique + dependencyHeaders
       let headers = (try await self.headers.privateHeaders(baseDir: baseDir) ?? []) + dependencyHeaders
@@ -124,7 +124,7 @@ extension CTarget {
 
   /// output directory where object files are stored
   func objectBuildDir(projectBuildDir: URL) -> URL {
-    projectBuildDir.appending(path: self.name).appending(path: "objects")
+    projectBuildDir.appending(path: "objects").appending(path: self.name)
   }
 
   /// Get the path to the object output file for a given source file `file`

@@ -3,15 +3,17 @@ import Foundation
 public protocol Target: ~Copyable, Sendable {
   associatedtype ArtifactType: Equatable, Sendable
 
+  var id: Int { get set }
   var name: String { get }
   var description: String? { get }
   var homepage: URL? { get }
   var version: Version? { get }
   var language: Language { get }
   var artifacts: [ArtifactType] { get }
-  var dependencies: [LibraryRef] { get }
+  var dependencies: [Dependency] { get }
 
   /// Use the dependency graph to build this target
+  @available(*, deprecated)
   var useDependencyGraph: Bool { get }
   /// When using dependency graph, set this if this target spawns multiple threads in the `build` command
   var spawnsMoreThreadsWithGlobalThreadManager: Bool { get }
@@ -28,7 +30,7 @@ public protocol Target: ~Copyable, Sendable {
 
   /// Provide all linker flags for linking this target.
   /// Used internally in linking phase
-  func allLinkerFlags(context: borrowing Beaver, visited: inout Set<LibraryRef>) async throws -> [String]
+  func allLinkerFlags(context: borrowing Beaver, visited: inout Set<Dependency>) async throws -> [String]
   /// All languages that are present in this library/executable and its dependencies.
   /// This is used to determine addition linker flags
   func languages(context: borrowing Beaver) async throws -> [Language]
@@ -56,7 +58,7 @@ extension Target {
 
   public func languages(context: borrowing Beaver) async throws -> [Language] {
     return try await self.dependencies.asyncFlatMap { dep in
-      return try await context.withLibrary(dep) { library in
+      return try await context.withLibrary(dep.library) { library in
         var dependencyLanguages = try await library.languages(context: context)
         dependencyLanguages.append(library.language)
         return dependencyLanguages

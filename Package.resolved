@@ -1,5 +1,5 @@
 {
-  "originHash" : "d320718288012bdac31b5ec41df13391dbac4a04381cc41756c2f80fc2f3993c",
+  "originHash" : "37b100172f4f88805740e9331eb2c2b9a2edb34425e3d4a229ccca581c7107a2",
   "pins" : [
     {
       "identity" : "colorizeswift",
@@ -29,6 +29,15 @@
       }
     },
     {
+      "identity" : "sqlite.swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/stephencelis/SQLite.swift",
+      "state" : {
+        "revision" : "a95fc6df17d108bd99210db5e8a9bac90fe984b8",
+        "version" : "0.15.3"
+      }
+    },
+    {
       "identity" : "swift-atomics",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-atomics",
@@ -53,15 +62,6 @@
       "state" : {
         "revision" : "f8d3495325bfd1a53f37ece5a244f28d1d857879",
         "version" : "0.1.0"
-      }
-    },
-    {
-      "identity" : "taskprogress",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Jomy10/TaskProgress",
-      "state" : {
-        "branch" : "master",
-        "revision" : "7b6786b2e5336690ffd5d84df53755242510d541"
       }
     },
     {

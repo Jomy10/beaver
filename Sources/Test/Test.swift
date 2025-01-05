@@ -58,9 +58,10 @@ struct Test {
     await mutCtx.addProject(Project(
       name: "Libraries",
       baseDir: URL(filePath: "Tests/BeaverTests/resources/multiProject/Libraries"),
-      buildDir: URL(filePath: ".build/tests/multiProject/Libraries")
+      buildDir: URL(filePath: ".build/tests/multiProject/Libraries"),
+      context: mutCtx
     ))
-    try await mutCtx.withCurrentProject { (proj: inout Project) in
+    try await mutCtx.withCurrentProject { @Sendable (proj: inout Project) in
       await proj.addTarget(try CLibrary(
         name: "Logger",
         description: "Logging implementation",
@@ -82,12 +83,13 @@ struct Test {
     await mutCtx.addProject(Project(
       name: "Main",
       baseDir: URL(filePath: "Tests/BeaverTests/resources/multiProject/Main"),
-      buildDir: URL(filePath: ".build/tests/multiProject/Main")
+      buildDir: URL(filePath: ".build/tests/multiProject/Main"),
+      context: mutCtx
     ))
-    let loggerDep: LibraryRef = try await LibraryRef("Libraries:Logger", defaultProject: mutCtx.currentProjectIndex!, context: mutCtx)
-    let cxxvecDep: LibraryRef = try await LibraryRef("Libraries:CXXVec", defaultProject: mutCtx.currentProjectIndex!, context: mutCtx)
-    try await mutCtx.withCurrentProject { (proj: inout Project) in
-      await proj.addTarget(try CExecutable(
+    let loggerDep = try await mutCtx.dependency("Libraries:Logger")
+    let cxxvecDep = try await mutCtx.dependency("Libraries:CXXVec")
+    try await mutCtx.withCurrentProject { @Sendable (proj: inout Project) in
+      _ = await proj.addTarget(try CExecutable(
         name: "Main",
         sources: "*.c",
         dependencies: [loggerDep, cxxvecDep]
@@ -95,7 +97,7 @@ struct Test {
     }
 
     let ctx = consume mutCtx
-    try await ctx.build("Main")
+    try await ctx.build(targetName: "Main")
 
     //try await ctx.withCurrentProject { (proj: borrowing Project) in
     //  try await proj.withExecutable(named: "Main") { (target: borrowing any Executable) in
