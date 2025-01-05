@@ -26,7 +26,11 @@ const ProgressBar* _Nonnull indicators_register_spinner(
 
 void progress_bar_set_message(const ProgressBar* _Nonnull, const char* _Nonnull message);
 
+char* _Nonnull progress_bar_message(const ProgressBar* _Nonnull);
+
 void progress_bar_finish(const ProgressBar* _Nonnull, const char* _Nullable);
+
+void rs_cstring_destroy(char* _Nonnull);
 
 // bool progress_is_color_enabled(const Progress* _Nonnull);
 

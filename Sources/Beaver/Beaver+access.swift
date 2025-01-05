@@ -80,4 +80,13 @@ extension Beaver {
       }
     }
   }
+
+  public func withProjectAndTargetPointer<Result>(_ target: TargetRef, _ cb: (UnsafePointer<Project>, UnsafePointer<any Target>) async throws -> Result) async rethrows -> Result {
+    return try await self.projects.read { projects in
+      let projectPointer = withUnsafePointer(to: projects.buffer[target.project]) { $0 }
+      return try await projectPointer.pointee.withTargetPointer(target.target) { targetPointer in
+        try await cb(projectPointer, targetPointer)
+      }
+    }
+  }
 }

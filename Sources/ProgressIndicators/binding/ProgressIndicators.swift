@@ -106,7 +106,15 @@ public actor ProgressBar {
     self.setMessage(components.map { String(describing: $0) }.joined(separator: separator))
   }
 
+  public lazy var message: String = {
+    let cstr = ProgressIndicatorsFFI.progress_bar_message(self.ptr!)
+    let str = String(cString: cstr)
+    rs_cstring_destroy(cstr);
+    return str
+  }()
+
   public func finish(message: String? = nil) {
+    let currentMessage = self.message
     message.withCString { messagePtr in
       ProgressIndicatorsFFI.progress_bar_finish(self.ptr!, messagePtr)
     }
