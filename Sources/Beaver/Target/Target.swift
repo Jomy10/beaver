@@ -1,7 +1,7 @@
 import Foundation
 
 public protocol Target: ~Copyable, Sendable {
-  associatedtype ArtifactType: Equatable, Sendable
+  associatedtype ArtifactType: ArtifactTypeProtocol
 
   var id: Int { get set }
   var name: String { get }

@@ -64,8 +64,6 @@ struct MessageHandler {
     await Self.data.write { data in
       data.targetToSpinner.removeAll()
     }
-    //await self.data.write { data in data.indicatorsEnabled = false }
-    //ProgressIndicators.global.setCanClose()
   }
 
   public static func getSpinner(targetRef: TargetRef) async -> ProgressBar? {
@@ -84,7 +82,6 @@ struct MessageHandler {
   @available(*, deprecated)
   public static func print(_ message: String, task: ProgressBar) async {
     if let progress = Self.progress {
-      //task.setMessage(message)
       // TODO!
       progress.println(message)
     } else {

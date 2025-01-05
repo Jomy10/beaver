@@ -3,7 +3,7 @@
 #![allow(unused_parens)]
 
 use std::sync::{Arc, Mutex};
-use std::ffi::{self, CStr};
+use std::ffi::{self, CStr, CString};
 use std::borrow::Cow;
 
 #[repr(C)]
@@ -125,6 +125,11 @@ impl ProgressBar {
     }
 
     #[inline]
+    fn message(self: Arc<ProgressBar>) -> String {
+        self.progress_bar.message()
+    }
+
+    #[inline]
     fn finish(
         self: Arc<ProgressBar>,
         message: Option<Cow<'static, str>>,
@@ -133,7 +138,7 @@ impl ProgressBar {
         if let Some(message) = message {
             self.progress_bar.finish_with_message(message);
         } else {
-            self.progress_bar.finish();
+            self.progress_bar.finish_and_clear();
         }
     }
 }
@@ -204,10 +209,22 @@ pub unsafe extern "C" fn progress_bar_set_message(pb: *const ProgressBar, messag
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn progress_bar_message(pb: *const ProgressBar) -> *mut ffi::c_char {
+    Arc::increment_strong_count(pb);
+    let pb = Arc::from_raw(pb);
+    CString::new(pb.message()).unwrap().into_raw()
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn progress_bar_finish(pb: *const ProgressBar, message: *const ffi::c_char) {
     let pb = Arc::from_raw(pb);
     let message = if message.is_null() { None } else { Some(CStr::from_ptr(message)) };
     pb.finish(message.map(|e| Cow::Owned(String::from(e.to_str().unwrap()))));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn rs_cstring_destroy(ptr: *mut ffi::c_char) {
+    _ = CString::from_raw(ptr);
 }
 
 // pub struct Progress {

@@ -1,8 +1,6 @@
 import Foundation
 
-public protocol Library: Target {
-  associatedtype ArtifactType = LibraryArtifactType
-
+public protocol Library: Target where ArtifactType == LibraryArtifactType {
   /// Flags to use when linking to this library.
   ///
   /// When linking a program, all linkerflags of all dependencies should be used
@@ -21,20 +19,6 @@ extension Library {
   public func linkFlag() -> String {
     "-l\(self.name)"
   }
-}
-
-public enum LibraryArtifactType: Equatable, Hashable, Sendable {
-  /// A dynamic library callable through C
-  case dynlib
-  case staticlib
-  case pkgconfig
-  // framework/xcframework: see https://bitmountn.com/difference-between-framework-and-xcframework-in-ios/
-  /// macOS framework
-  case framework
-  case xcframework
-  /// A dynamic library callable through the specified `Language`
-  case dynamiclanglib(Language)
-  case staticlanglib(Language)
 }
 
 @available(*, deprecated, message: "Use Dependency instead")

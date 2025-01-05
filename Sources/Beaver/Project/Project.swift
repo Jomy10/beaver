@@ -96,6 +96,13 @@ public struct Project: ~Copyable, Sendable {
     }
   }
 
+  public func withTargetPointer<Result>(_ index: Int, _ cb: (UnsafePointer<any Target>) async throws -> Result) async rethrows -> Result {
+    return try await self.targets.read { targets in
+      let targetPointer = withUnsafePointer(to: targets.buffer[index]) { $0 }
+      return try await cb(targetPointer)
+    }
+  }
+
   // Retrieve data //
 
   public func targetIndex(name: String) async -> Int? {
