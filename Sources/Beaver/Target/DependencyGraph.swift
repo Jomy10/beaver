@@ -285,16 +285,18 @@ actor DependencyBuilder {
           "Building \(context.value.pointee.currentProjectIndex == dependency.target.project ? "" : project.name + ":")\(target.name)",
           targetRef: dependency.target
         )
+        var built = false
         switch (dependency.artifact) {
           case .library(let artifactType):
             //(target as! any Library)._build(artifact: artifactType, baseDir: project.baseDir, buildDir: project.buildDir, context: context.value.pointee)
             //try await build(target as! any Library, artifact: artifactType, baseDir: project.baseDir, buildDir: project.buildDir, context: context.value.pointee)
-            try await (target as! any Library).build(artifact: artifactType, baseDir: project.baseDir, buildDir: project.buildDir, context: context.value.pointee)
+            built = try await (target as! any Library).build(artifact: artifactType, baseDir: project.baseDir, buildDir: project.buildDir, context: context.value.pointee)
           case .executable(let artifactType):
-            try await (target as! any Executable).build(artifact: artifactType, baseDir: project.baseDir, buildDir: project.buildDir, context: context.value.pointee)
+            built = try await (target as! any Executable).build(artifact: artifactType, baseDir: project.baseDir, buildDir: project.buildDir, context: context.value.pointee)
           case nil:
             try await target.build(baseDir: project.baseDir, buildDir: project.buildDir, context: context.value.pointee)
         }
+        _ = built // TODO
 
         if !target.spawnsMoreThreadsWithGlobalThreadManager {
           GlobalThreadCounter.releaseProcess()
@@ -336,11 +338,5 @@ extension DependencyBuilder.DependencyStatus: CustomStringConvertible {
       case .error: "ERR".red()
       case .cancelled: "CANCELLED".yellow()
     }
-  }
-}
-
-extension Library {
-  func _build(artifact: LibraryArtifactType, baseDir: borrowing URL, buildDir: borrowing URL, context: borrowing Beaver) async throws where ArtifactType == LibraryArtifactType {
-    try await self.build(artifact: artifact, baseDir: baseDir, buildDir: buildDir, context: context)
   }
 }

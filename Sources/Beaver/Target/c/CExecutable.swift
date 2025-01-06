@@ -68,7 +68,7 @@ public struct CExecutable: CTarget, Executable {
     }
   }
 
-  public func build(artifact: ExecutableArtifactType, baseDir: borrowing URL, buildDir projectBuildDir: borrowing URL, context: borrowing Beaver) async throws {
+  public func build(artifact: ExecutableArtifactType, baseDir: borrowing URL, buildDir projectBuildDir: borrowing URL, context: borrowing Beaver) async throws -> Bool {
     let (objects, rebuild) = try await self.buildObjects(baseDir: baseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
     if rebuild {
       try await self.buildExecutable(objects: objects, baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
@@ -76,6 +76,7 @@ public struct CExecutable: CTarget, Executable {
     if artifact == .app {
       fatalError("unimplemented")
     }
+    return rebuild
   }
 
   func buildExecutable(objects: borrowing [URL], baseDir: URL, projectBuildDir: URL, context: borrowing Beaver) async throws {

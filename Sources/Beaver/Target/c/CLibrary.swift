@@ -90,7 +90,7 @@ public struct CLibrary: CTarget, Library {
     baseDir: borrowing URL,
     buildDir projectBuildDir: borrowing URL,
     context: borrowing Beaver
-  ) async throws {
+  ) async throws -> Bool {
     if try await self.collectSources(baseDir: baseDir).count == 0 {
       throw ValidationError.noSources
     }
@@ -105,17 +105,19 @@ public struct CLibrary: CTarget, Library {
         if rebuild {
           try await self.buildDynamicLibrary(objects: objects, baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
         }
+        return rebuild
       case .staticlib:
         let (objects, rebuild) = try await self.buildObjects(baseDir: baseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
         if rebuild {
           try await self.buildStaticLibrary(objects: objects, baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
         }
+        return rebuild
       case .pkgconfig:
-        MessageHandler.warn("Unimplemented artifact: \(artifact)")
+        fatalError("Unimplemented artifact: \(artifact)")
       case .framework:
-        MessageHandler.warn("Unimplemented artifact: \(artifact)")
+        fatalError("Unimplemented artifact: \(artifact)")
       case .xcframework:
-        MessageHandler.warn("Unimplemented artifact: \(artifact)")
+        fatalError("Unimplemented artifact: \(artifact)")
       case .dynamiclanglib(_): fallthrough
       case .staticlanglib(_):
         throw BuildError.unsupportedArtifact

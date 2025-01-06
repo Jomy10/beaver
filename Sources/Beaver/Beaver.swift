@@ -5,7 +5,8 @@ public struct Beaver: ~Copyable, Sendable {
   public private(set) var currentProjectIndex: ProjectRef? = nil
   public var cacheDir: URL = URL.currentDirectory()
   public var optimizeMode: OptimizationMode
-  var fileCache: FileCache
+  var cacheFile: URL
+  var fileCache: FileCache?
 
   //public struct Settings: ~Copyable, Sendable {
   //  /// The amount of c objects to compile per thread.
@@ -18,20 +19,28 @@ public struct Beaver: ~Copyable, Sendable {
   public init(
     enableColor: Bool? = nil,
     optimizeMode: OptimizationMode = .debug,
-    cacheFile: URL = URL.currentDirectory().appending(path: ".beaver/cache")
-  ) {
+    cacheFile: URL = URL.currentDirectory().appending(path: ".beaver").appending(path: "cache")
+  ) throws {
     self.projects = AsyncRWLock(NonCopyableArray(withCapacity: 3))
     self.optimizeMode = optimizeMode
-    if !cacheFile.dirURL!.exists {
-      try! FileManager.default.createDirectory(at: cacheFile.dirURL!, withIntermediateDirectories: true)
+    self.cacheFile = cacheFile
+    self.fileCache = nil
+    let cacheFileBaseURL = cacheFile.dirURL!
+    if !cacheFileBaseURL.exists {
+      try FileManager.default.createDirectory(at: cacheFileBaseURL, withIntermediateDirectories: true)
     }
-    self.fileCache = try! FileCache(cacheFile: cacheFile)
-    try! self.fileCache.selectConfiguration(mode: self.optimizeMode)
+    //try! self.fileCache.selectConfiguration(mode: self.optimizeMode)
     GlobalThreadCounter.setMaxProcesses(ProcessInfo.processInfo.activeProcessorCount)
     MessageHandler.setColorEnabled(enableColor) // TODO: allow --(no-)color (if not specified, pass nil)
 
     // TODO: if script file changed, or any of the requires; rebuild
     // At the end of execution, save all of the files the script requires into cache and retrieve them the next time Beaver is used
+  }
+
+  /// Should be called after all configuration has been set and targets have been declared
+  public mutating func finalize() throws {
+    self.fileCache = try FileCache(cacheFile: self.cacheFile)
+    try self.fileCache?.selectConfiguration(mode: self.optimizeMode)
   }
 
   @discardableResult
@@ -52,22 +61,46 @@ public struct Beaver: ~Copyable, Sendable {
     case noDefaultTarget
   }
 
-  public func build(targetName: String) async throws {
-    guard let currentProject = self.currentProjectIndex else {
-      throw BuildError.noDefaultTarget
-    }
-    guard let index = await self.targetIndex(name: targetName, project: currentProject) else {
-      throw BuildError.noTarget(named: targetName)
-    }
-    try await self.build(TargetRef(target: index, project: self.currentProjectIndex!))
+  public func build(targetName: String, artifact: ArtifactType? = nil) async throws {
+    try await self.build(try await self.evaluateTarget(targetName: targetName), artifact: artifact)
   }
 
-  public func build(_ targetRef: TargetRef) async throws {
+  public func build(_ targetRef: TargetRef, artifact: ArtifactType? = nil) async throws {
     try await self.withTarget(targetRef) { (target: borrowing any Target) async throws in
       try await MessageHandler.withIndicators {
-        let dependencyGraph = try await DependencyGraph(startingFrom: targetRef, context: self)
+        let dependencyGraph = try await DependencyGraph(startingFrom: targetRef, artifact: artifact, context: self)
         let builder = try await DependencyBuilder(dependencyGraph, context: self)
         try await builder.run(context: self)
+      }
+    }
+  }
+
+  public func run(targetName: String, args: [String] = []) async throws {
+    try await self.run(try await self.evaluateTarget(targetName: targetName), args: args)
+  }
+
+  public func run(_ targetRef: TargetRef, args: [String] = []) async throws {
+    try await self.build(targetRef, artifact: .executable(.executable))
+    let executableURL = try await self.withProjectAndExecutable(targetRef) { (project: borrowing Project, executable: borrowing any Executable) async throws in
+      try await executable.artifactURL(projectBuildDir: project.buildDir, .executable)
+    }
+    try await Tools.exec(executableURL, args)
+  }
+
+  public func clean(projectName: String) async throws {
+    try await self.clean(await self.projectRef(name: projectName))
+  }
+
+  public func clean(_ projectRef: ProjectRef? = nil) async throws {
+    if let projectRef = projectRef {
+      try await self.withProject(projectRef) { (project: borrowing Project) in
+        MessageHandler.print("Cleaning \(project.name)...")
+        try await project.clean(context: self)
+      }
+    } else {
+      MessageHandler.print("Cleaning all targets...")
+      try await self.loopProjects { (project: borrowing Project) in
+        try await project.clean(context: self)
       }
     }
   }
