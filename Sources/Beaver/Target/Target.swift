@@ -5,6 +5,8 @@ public protocol Target: ~Copyable, Sendable {
 
   var id: Int { get set }
   var projectId: Int { get set }
+  var ref: TargetRef { get }
+
   var name: String { get }
   var description: String? { get }
   var homepage: URL? { get }
@@ -38,6 +40,8 @@ public protocol Target: ~Copyable, Sendable {
   /// All languages that are present in this library/executable and its dependencies.
   /// This is used to determine addition linker flags
   func languages(context: borrowing Beaver) async throws -> [Language]
+
+  func clean(buildDir: borrowing URL, context: borrowing Beaver) async throws
 }
 
 struct NonBuildableTargetError: Error {
@@ -45,18 +49,21 @@ struct NonBuildableTargetError: Error {
 }
 
 extension Target {
+  public var ref: TargetRef {
+    TargetRef(target: self.id, project: self.projectId)
+  }
   public var spawnsMoreThreadsWithGlobalThreadManager: Bool { false }
 
   /// Implementation for build, calling all artifacts synchronously
   public func buildArtifactsSync(baseDir: borrowing URL, buildDir: borrowing URL, context: borrowing Beaver) async throws {
     for artifact in self.artifacts {
-      try await self.build(artifact: artifact, baseDir: baseDir, buildDir: buildDir, context: context)
+      _ = try await self.build(artifact: artifact, baseDir: baseDir, buildDir: buildDir, context: context)
     }
   }
 
   public func buildArtifactsAsync(baseDir: URL, buildDir: URL, context: borrowing Beaver) async throws {
     try await borrow2N(self, context, n: self.artifacts.count) { (i, target, context) in
-      try await target.build(artifact: target.artifacts[i], baseDir: copy baseDir, buildDir: copy buildDir, context: context)
+      _ = try await target.build(artifact: target.artifacts[i], baseDir: copy baseDir, buildDir: copy buildDir, context: context)
     }
   }
 

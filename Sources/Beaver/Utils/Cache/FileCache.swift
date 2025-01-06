@@ -60,7 +60,7 @@ struct FileCache: Sendable {
     try self.csourceFiles.createIfNotExists(self.db)
 
     #if DEBUG
-    db.trace { msg in
+    self.db.trace { msg in
       MessageHandler.trace(msg, context: .sql)
     }
     #endif
@@ -83,14 +83,21 @@ struct FileCache: Sendable {
     }
   }
 
-  /// Get the id for the specified target
-  func getTarget(_ target: TargetRef) throws -> Int64 {
-    let targetId = try db.pluck(self.targets.table.select(self.targets.id.qualified)
+  func getTargetIfExists(_ target: TargetRef) throws -> Int64? {
+    guard let row = (try db.pluck(self.targets.table.select(self.targets.id.qualified)
       .where(self.targets.project.qualified == target.project)
       .where(self.targets.target.qualified == target.target))
+    ) else {
+      return nil
+    }
+    return row[self.targets.id.unqualified]
+  }
 
+  /// Get the id for the specified target
+  func getTarget(_ target: TargetRef) throws -> Int64 {
+    let targetId = try self.getTargetIfExists(target)
     if let targetId = targetId {
-      return targetId[self.targets.id.unqualified]
+      return targetId
     } else {
       return try db.run(self.targets.table.insert([
         self.targets.project.unqualified <- target.project,
@@ -176,41 +183,53 @@ struct FileCache: Sendable {
       error = _error
     }
 
-    while true {
-      do {
-        try db.run(inputFiles.table.drop())
-
-        /// Update all files that were built successfully
-        for (fileColumnId, setter) in updateValues {
-          if let fileColumnId = fileColumnId {
-            try db.run(self.files.table.where(self.files.id.unqualified == fileColumnId).update(setter))
-          } else {
-            let id = try db.run(self.files.table.insert(setter))
-            try db.run(self.csourceFiles.table.insert([
-              self.csourceFiles.fileId.unqualified <- id,
-              self.csourceFiles.configId.unqualified <- configId,
-              self.csourceFiles.targetId.unqualified <- targetId,
-              self.csourceFiles.objectType.unqualified <- objectType
-            ]))
-          }
-        }
-
-        break
-      } catch SQLite.Result.error(message: _, code: let code, statement: _) where code == 6 /*SQLITE_LOCKED*/ {
-        await Task.yield() // retry
-      } catch let _error {
-        if let error = error {
-          MessageHandler.error(error.localizedDescription)
-        }
-        throw _error
+    // Update all files that were built successfully
+    for (fileColumnId, setter) in updateValues {
+      if let fileColumnId = fileColumnId {
+        try db.run(self.files.table.where(self.files.id.unqualified == fileColumnId).update(setter))
+      } else {
+        let id = try db.run(self.files.table.insert(setter))
+        try db.run(self.csourceFiles.table.insert([
+          self.csourceFiles.fileId.unqualified <- id,
+          self.csourceFiles.configId.unqualified <- configId,
+          self.csourceFiles.targetId.unqualified <- targetId,
+          self.csourceFiles.objectType.unqualified <- objectType
+        ]))
       }
     }
 
+    // throw error if any occured
     if let error = error {
       throw error
     }
 
     return returnValue
+  }
+
+  /// Returns false if nothing had to be removed
+  @discardableResult
+  func removeTarget(target: TargetRef) throws -> Bool {
+    guard let targetId = try self.getTargetIfExists(target) else {
+      return false
+    }
+    let files = try (self.db.prepareRowIterator(self.files.table
+      .select(self.files.id.qualified)
+      .join(self.csourceFiles.table, on: self.csourceFiles.fileId.qualified == self.files.id.qualified)))
+        .map { row in
+          row[self.files.id.unqualified]
+        }
+    if files.count > 0 {
+      try self.db.run(self.files.table
+        .where(files.contains(self.files.id.qualified))
+        .delete())
+    }
+    try self.db.run(self.csourceFiles.table
+      .where(self.csourceFiles.targetId.unqualified == targetId)
+      .delete())
+    try self.db.run(self.targets.table
+      .where(self.targets.id.unqualified == targetId)
+      .delete())
+    return true
   }
 }
 

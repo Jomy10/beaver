@@ -13,12 +13,12 @@ struct TableColumn<ColumnType: SQLite.Value> {
 
 protocol SQLTableProtocol: Sendable {
   var table: Table { get }
-  func truncate() throws
+  func truncate(_ db: Connection) throws
 }
 
 extension SQLTableProtocol {
-  func truncate() throws {
-    self.table.delete()
+  func truncate(_ db: Connection) throws {
+    try db.run(self.table.delete())
   }
 }
 

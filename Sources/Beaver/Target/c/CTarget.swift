@@ -43,7 +43,7 @@ extension CTarget {
     try await self.buildArtifactsAsync(baseDir: baseDir, buildDir: buildDir, context: context)
   }
 
-  public func artifactOutputDir(projectBuildDir: URL, forArtifact artifact: ArtifactType?) async throws -> URL {
+  public func artifactOutputDir(projectBuildDir: URL, forArtifact artifact: ArtifactType? = nil) async throws -> URL {
     projectBuildDir.appending(path: "artifacts")
   }
 
@@ -75,6 +75,23 @@ extension CTarget {
         }
       }.unique
     )
+  }
+
+  public func clean(buildDir: borrowing URL, context: borrowing Beaver) async throws {
+    let objectDir = self.objectBuildDir(projectBuildDir: buildDir)
+    let artifactDir = try await self.artifactOutputDir(projectBuildDir: buildDir)
+    // TODO: option to use `trashItem` instead of remove?
+    if objectDir.exists {
+      for file in try FileManager.default.contentsOfDirectory(atPath: objectDir.path) {
+        try FileManager.default.removeItem(at: objectDir.appending(path: file))
+      }
+    }
+    if artifactDir.exists {
+      for file in try FileManager.default.contentsOfDirectory(atPath: artifactDir.path) {
+        try? FileManager.default.removeItem(at: artifactDir.appending(path: file))
+      }
+    }
+    try context.fileCache!.removeTarget(target: self.ref)
   }
 
   // Default implementations for Library (also used for building of executables) //
@@ -159,7 +176,7 @@ extension CTarget {
     //  return try await self.buildObject(baseDir: baseDir, buildDir: objectBuildDir, file: source, cflags: cflags, type: type, context: contextPtr.pointee)
     //}
     var anyChanged = false
-    let objectFiles = try await context.fileCache.loopSourceFiles(
+    let objectFiles = try await context.fileCache!.loopSourceFiles(
       self.collectSources(baseDir: baseDir),
       target: TargetRef(target: self.id, project: self.projectId),
       artifact: artifact.asArtifactType()
@@ -254,13 +271,5 @@ extension CTarget {
       key: .sources,
       try await self._sources.files(baseURL: baseDir).reduce(into: [URL](), { $0.append($1) })
     )
-  // TODO: rework
-  //  if let sources: [URL] = try await self.persistedStorage.getElement(withKey: .sources) {
-  //    return sources
-  //  } else {
-  //    let sources: [URL] = try await self._sources.files(baseURL: baseDir).reduce(into: [URL](), { $0.append($1) })
-  //    await self.persistedStorage.store(value: sources, key: .sources)
-  //    return sources
-  //  }
   }
 }
