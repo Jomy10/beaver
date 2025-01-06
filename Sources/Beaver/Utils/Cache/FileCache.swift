@@ -5,19 +5,26 @@ import Foundation
 import timespec
 import Platform
 
+// TODO: Store artifacts a target depends on in cache, when changed recompile the target's artifact
+
 /// ```mermaid
 /// erDiagram
 ///
-/// SourceFile {
+/// File {
+/// 	int id
 /// 	string filename
 /// 	data hash
+/// }
+///
+/// CSourceFile {
+/// 	int fileID
 /// 	int configID
 /// 	int targetID
-/// 	int artifactType
+/// 	int objectType
 /// }
 ///
 /// Configuration {
-///  int id
+///   int id
 /// 	string mode
 /// }
 ///
@@ -27,8 +34,9 @@ import Platform
 /// 	int target
 /// }
 ///
-/// SourceFile }o--|| Configuration: configID
-/// SourceFile }o--|| Target: targetID
+/// File ||--|| CSourceFile: fileID
+/// CSourceFile }o--|| Configuration: configID
+/// CSourceFile }o--|| Target: targetID
 /// ```
 struct FileCache: Sendable {
   let db: Connection
@@ -38,8 +46,6 @@ struct FileCache: Sendable {
   let targets: TargetTable
 
   var configurationId: Int64? = nil
-
-  let inputFilesTempLock: NSLock = NSLock()
 
   init(cacheFile: URL) throws {
     self.db = try Connection(cacheFile.path)
@@ -138,6 +144,7 @@ struct FileCache: Sendable {
           && self.csourceFiles.objectType.qualified == objectType
       )
 
+    // TODO: also retry on locked
     var updateValues: [(Int64?, [Setter])] = []
     var returnValue: [Result] = []
     var error: (any Error)? = nil
