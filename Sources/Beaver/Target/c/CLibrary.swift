@@ -3,6 +3,7 @@ import Platform
 
 public struct CLibrary: CTarget, Library {
   public var id: Int = -1
+  public var projectId: Int = -1
   public let name: String
   public var description: String?
   public var version: Version?
@@ -80,28 +81,41 @@ public struct CLibrary: CTarget, Library {
     case unsupportedArtifact
   }
 
+  enum ValidationError: Error {
+    case noSources
+  }
+
   public func build(
     artifact: LibraryArtifactType,
     baseDir: borrowing URL,
     buildDir projectBuildDir: borrowing URL,
     context: borrowing Beaver
   ) async throws {
+    if try await self.collectSources(baseDir: baseDir).count == 0 {
+      throw ValidationError.noSources
+    }
+
     switch (artifact) {
       case .dynlib:
         #if os(Windows)
         try await self.build(artifact: .staticlib, baseDir: baseDir, buildDir: projectBuildDir, context: context)
+        #else
+        let (objects, rebuild) = try await self.buildObjects(baseDir: baseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
         #endif
-        let objects = try await self.buildObjects(baseDir: baseDir, projectBuildDir: projectBuildDir, type: .dynamic, context: context)
-        try await self.buildDynamicLibrary(objects: objects, baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
+        if rebuild {
+          try await self.buildDynamicLibrary(objects: objects, baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
+        }
       case .staticlib:
-        let objects = try await self.buildObjects(baseDir: baseDir, projectBuildDir: projectBuildDir, type: .static, context: context)
-        try await self.buildStaticLibrary(objects: objects, baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
+        let (objects, rebuild) = try await self.buildObjects(baseDir: baseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
+        if rebuild {
+          try await self.buildStaticLibrary(objects: objects, baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
+        }
       case .pkgconfig:
-        await MessageHandler.warn("Unimplemented artifact: \(artifact)")
+        MessageHandler.warn("Unimplemented artifact: \(artifact)")
       case .framework:
-        await MessageHandler.warn("Unimplemented artifact: \(artifact)")
+        MessageHandler.warn("Unimplemented artifact: \(artifact)")
       case .xcframework:
-        await MessageHandler.warn("Unimplemented artifact: \(artifact)")
+        MessageHandler.warn("Unimplemented artifact: \(artifact)")
       case .dynamiclanglib(_): fallthrough
       case .staticlanglib(_):
         throw BuildError.unsupportedArtifact

@@ -54,7 +54,7 @@ extension Language {
       case .cxx:
         return Self.cxxLinkerFlags(targetLanguage: targetLanguage)
       case .swift:
-        Task { await MessageHandler.warn("Unimplemented: Swift") }
+        MessageHandler.warn("Unimplemented: Swift")
         break
     }
     return nil

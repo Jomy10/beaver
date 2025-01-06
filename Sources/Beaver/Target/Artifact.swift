@@ -1,10 +1,19 @@
 public protocol ArtifactTypeProtocol: Equatable, Hashable, Sendable {
   func asArtifactType() -> ArtifactType
+  /// The object type which needs to be compiled for this artifact
+  var cObjectType: CObjectType? { get }
 }
 
 public enum ArtifactType: Equatable, Hashable, Sendable {
   case executable(ExecutableArtifactType)
   case library(LibraryArtifactType)
+
+  var cObjectType: CObjectType? {
+    switch (self) {
+      case .executable(let artifact): artifact.cObjectType
+      case .library(let artifact): artifact.cObjectType
+    }
+  }
 }
 
 public enum ExecutableArtifactType: ArtifactTypeProtocol, Equatable, Hashable, Sendable {
@@ -14,6 +23,10 @@ public enum ExecutableArtifactType: ArtifactTypeProtocol, Equatable, Hashable, S
 
   public func asArtifactType() -> ArtifactType {
     .executable(self)
+  }
+
+  public var cObjectType: CObjectType? {
+    return .static
   }
 }
 
@@ -33,4 +46,17 @@ public enum LibraryArtifactType: ArtifactTypeProtocol, Equatable, Hashable, Send
   public func asArtifactType() -> ArtifactType {
     .library(self)
   }
+
+  public var cObjectType: CObjectType? {
+    switch (self) {
+      case .dynlib: return .dynamic
+      case .staticlib: return .static
+      default: return nil
+    }
+  }
+}
+
+public enum CObjectType: Equatable, Hashable, Sendable {
+  case dynamic
+  case `static`
 }

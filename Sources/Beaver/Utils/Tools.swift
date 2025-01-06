@@ -25,9 +25,9 @@ struct Tools {
       if let tool = ProcessInfo.processInfo.environment[envName] {
         let toolURL = URL(fileURLWithPath: tool)
         if !FileManager.default.isExecutableFile(atPath: toolURL.path) {
-          Task { await MessageHandler.warn("Environment variable \"\(envName)\" exists, but doesn't point to a valid executable") }
+          MessageHandler.warn("Environment variable \"\(envName)\" exists, but doesn't point to a valid executable")
         } else if toolURL.isDirectory {
-          Task { await MessageHandler.warn("Environment variable \"\(envName)\" exists, but points to a directory") }
+          MessageHandler.warn("Environment variable \"\(envName)\" exists, but points to a directory")
         } else {
           return toolURL
         }
@@ -81,9 +81,7 @@ struct Tools {
       if data.count == 0 {
         handle.readabilityHandler = nil
       } else {
-        Task {
-          await MessageHandler.print(String(data: data, encoding: .utf8)!, to: .stderr, context: .shellOutputStderr)
-        }
+        MessageHandler.print(String(data: data, encoding: .utf8)!, to: .stderr, context: .shellOutputStderr)
       }
     }
     stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
@@ -91,9 +89,7 @@ struct Tools {
       if data.count == 0 {
         handle.readabilityHandler = nil
       } else {
-        Task {
-          await MessageHandler.print(String(data: data, encoding: .utf8)!, to: .stdout, context: .shellOutputStdout)
-        }
+        MessageHandler.print(String(data: data, encoding: .utf8)!, to: .stdout, context: .shellOutputStdout)
       }
     }
 
@@ -103,7 +99,7 @@ struct Tools {
     task.arguments = args
     task.currentDirectoryURL = baseDir
     task.environment = ProcessInfo.processInfo.environment
-    await MessageHandler.print((cmdURL.path + " " + args.joined(separator: " ")).darkGray(), to: .stderr, context: .shellCommand)
+    MessageHandler.print((cmdURL.path + " " + args.joined(separator: " ")).darkGray(), to: .stderr, context: .shellCommand)
     try task.run()
     task.waitUntilExit()
 

@@ -45,7 +45,7 @@ elsif argv[0] == "debug"
 end
 
 mode_flag = "-c #{mode} "
-if command != "build" || command != "run" || command != "test"
+if command != "build" && command != "run" && command != "test"
   mode_flag = ""
 end
 
