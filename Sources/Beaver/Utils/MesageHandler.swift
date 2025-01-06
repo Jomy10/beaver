@@ -36,9 +36,17 @@ struct MessageHandler {
     static let shellOutputStderr  = Self(rawValue: 1 << 1)
     static let shellOutputStdout  = Self(rawValue: 1 << 2)
     static let trace              = Self(rawValue: 1 << 3)
-    static let warning            = Self(rawValue: 1 << 4)
+    static let debug              = Self(rawValue: 1 << 4)
+    static let info               = Self(rawValue: 1 << 5)
+    static let warning            = Self(rawValue: 1 << 6)
+    static let error              = Self(rawValue: 1 << 7)
+    static let sql                = Self(rawValue: 1 << 8)
 
-    static let `default`: Self = [.shellCommand, .shellOutputStderr, .shellOutputStdout, .trace, .warning]
+    #if DEBUG
+    static let `default`: Self = [.shellCommand, .shellOutputStderr, .shellOutputStdout, .trace, .debug, .info, .warning, .error, .sql]
+    #else
+    static let `default`: Self = [.shellCommand, .shellOutputStderr, .shellOutputStdout, .info, .warning, .error]
+    #endif
   }
 
   public nonisolated(unsafe) static var terminalColorEnabled: Bool = {
@@ -87,6 +95,7 @@ struct MessageHandler {
   }
 
   private static func checkContext(_ context: MessageVisibility?) -> Bool {
+    if context?.rawValue == 0 { return true }
     if let context = context {
       return self.messageVisibility.contains(context)
     } else {
@@ -94,7 +103,7 @@ struct MessageHandler {
     }
   }
 
-  public static func print(_ message: String, context: MessageVisibility? = nil) async {
+  public static func print(_ message: String, context: MessageVisibility? = nil) {
     if !Self.checkContext(context) { return }
 
     if let progress = Self.progress {
@@ -105,7 +114,7 @@ struct MessageHandler {
     }
   }
 
-  public static func print(_ message: String, to stream: IOStream, context: MessageVisibility? = nil) async {
+  public static func print(_ message: String, to stream: IOStream, context: MessageVisibility? = nil) {
     if !Self.checkContext(context) { return }
 
     if let progress = Self.progress {
@@ -117,28 +126,40 @@ struct MessageHandler {
   }
 
   public enum LogLevel {
+    case trace
     case warning
     case error
-    case trace
 
     var format: String {
       switch (self) {
+        case .trace: "TRACE".bold()
         case .warning: "WARN".yellow()
         case .error: "ERR".red()
-        case .trace: "TRACE".bold()
+      }
+    }
+
+    var messageVisibility: MessageVisibility {
+      switch (self) {
+        case .trace: .trace
+        case .warning: .warning
+        case .error: .error
       }
     }
   }
 
-  public static func log(_ message: String, level: LogLevel, context: MessageVisibility? = nil) async {
-    await self.print("[\(level.format)] \(message)", context: context)
+  public static func log(_ message: String, level: LogLevel, context: MessageVisibility? = nil) {
+    self.print("[\(level.format)] \(message)", context: (context ?? []).union(level.messageVisibility))
   }
 
-  public static func warn(_ message: String, context: MessageVisibility? = nil) async {
-    await self.log(message, level: .warning, context: context ?? .warning)
+  public static func warn(_ message: String, context: MessageVisibility? = nil) {
+    self.log(message, level: .warning, context: context)
   }
 
-  public static func trace(_ message: String, context: MessageVisibility? = nil) async {
-    await self.log(message, level: .trace, context: context ?? .trace)
+  public static func trace(_ message: String, context: MessageVisibility? = nil) {
+    self.log(message, level: .trace, context: context)
+  }
+
+  public static func error(_ message: String, context: MessageVisibility? = nil) {
+    self.log(message, level: .error, context: context)
   }
 }

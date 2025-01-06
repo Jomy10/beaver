@@ -2,6 +2,7 @@ import Foundation
 
 public struct CExecutable: CTarget, Executable {
   public var id: Int = -1
+  public var projectId: Int = -1
   public let name: String
   public var description: String?
   public var version: Version?
@@ -68,12 +69,12 @@ public struct CExecutable: CTarget, Executable {
   }
 
   public func build(artifact: ExecutableArtifactType, baseDir: borrowing URL, buildDir projectBuildDir: borrowing URL, context: borrowing Beaver) async throws {
-    switch (artifact) {
-      case .executable:
-        let objects = try await self.buildObjects(baseDir: baseDir, projectBuildDir: projectBuildDir, type: .static, context: context)
-        try await self.buildExecutable(objects: objects, baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
-      case .app:
-        fatalError("unimplemented")
+    let (objects, rebuild) = try await self.buildObjects(baseDir: baseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
+    if rebuild {
+      try await self.buildExecutable(objects: objects, baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
+    }
+    if artifact == .app {
+      fatalError("unimplemented")
     }
   }
 
@@ -87,26 +88,9 @@ public struct CExecutable: CTarget, Executable {
 
     var visited: Set<Dependency> = Set()
     let dependenciesLinkerFlags: [String] = try await self.allLinkerFlags(context: context, visited: &visited)
-    //var libraryLinkPaths: Set<URL> = Set()
-    //for dependency in self.dependencies {
-    //  //dependenciesLinkerFlags.append(contentsOf: try await context.withLibrary(dependency) { lib in return try await lib.linkerFlags() })
-    //  let (path, flags) = try await context.withProject(index: dependency.project) { (proj: borrowing Project) in
-    //    try await proj.withLibrary(named: dependency.name) { (lib: borrowing any Library) in
-    //      return (
-    //        try await lib.artifactOutputDir(projectBuildDir: proj.buildDir, forArtifact: dependency.artifact),
-    //        try await lib.linkerFlags()
-    //      )
-    //    }
-    //  }
-    //  dependenciesLinkerFlags.append(contentsOf: flags)
-    //  libraryLinkPaths.insert(path)
-    //}
 
-    //let objectBuildDr = self.objectBuildDir(projectBuildDir: projectBuildDir)
-    //let objectFiles = (await sources.async.map { (source: URL) in return await self.objectFile(baseDir: baseDir, buildDir: objectBuildDir, file: source, type: .static).path }.reduce(into: [String](), { $0.append($1) }))
     let dependencyLanguages = try await self.languages(context: context)
     let args: [String] = objects.map { $0.path }
-      //+ libraryLinkPaths.map { "-L\($0.path)" }
       + dependenciesLinkerFlags
       + dependencyLanguages.compactMap { $0.linkerFlags(targetLanguage: self.language) }.flatMap { $0 }
       + ["-o", outputFile.path]

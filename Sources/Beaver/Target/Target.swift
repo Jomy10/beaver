@@ -4,6 +4,7 @@ public protocol Target: ~Copyable, Sendable {
   associatedtype ArtifactType: ArtifactTypeProtocol
 
   var id: Int { get set }
+  var projectId: Int { get set }
   var name: String { get }
   var description: String? { get }
   var homepage: URL? { get }
@@ -22,11 +23,14 @@ public protocol Target: ~Copyable, Sendable {
   var buildableTarget: Bool { get }
 
   func build(baseDir: borrowing URL, buildDir: borrowing URL, context: borrowing Beaver) async throws
-  func build(artifact: ArtifactType, baseDir: borrowing URL, buildDir: borrowing URL, context: borrowing Beaver) async throws
+  /// Builds the specified artifact
+  ///
+  /// # Returns
+  /// True if the artifact was rebuilt, false if no source files were changed and thus the artifact was not created again
+  func build(artifact: ArtifactType, baseDir: borrowing URL, buildDir: borrowing URL, context: borrowing Beaver) async throws -> Bool
 
   func artifactOutputDir(projectBuildDir: URL, forArtifact artifact: ArtifactType?) async throws -> URL
   func artifactURL(projectBuildDir: URL, _ artifact: ArtifactType) async throws -> URL
-
 
   /// Provide all linker flags for linking this target.
   /// Used internally in linking phase

@@ -99,7 +99,7 @@ struct DependencyGraph: ~Copyable, @unchecked Sendable {
   }
 
   init(startingFrom target: TargetRef, artifact: ArtifactType? = nil, context: borrowing Beaver) async throws {
-    await MessageHandler.trace("Resolving dependencies...")
+    MessageHandler.trace("Resolving dependencies...")
     self.root = try await Self.constructTree(forTarget: target, artifact: artifact, context: context)
   }
 }
@@ -203,7 +203,7 @@ actor DependencyBuilder {
   }
 
   public func run(context: borrowing Beaver) async throws {
-    await MessageHandler.trace("Building targets...")
+    MessageHandler.trace("Building targets...")
 
     let ctxPtr = UnsafeSendable(withUnsafePointer(to: context) { $0 }) // we assure that the pointer won't be used after this function returns
     while true {
@@ -250,7 +250,7 @@ actor DependencyBuilder {
           let spinner = await MessageHandler.getSpinner(targetRef: result.dependency.target)
           //await spinner.finish(message: "Building \(targetDesc): \("ERROR".red())")
           await spinner?.finish()
-          await MessageHandler.print("[\(DependencyStatus.error)] Building \(targetDesc)\n\(String(describing: error))")
+          MessageHandler.print("[\(DependencyStatus.error)] Building \(targetDesc)\n\(String(describing: error))")
         case .success(let newStatus):
           // Finish
           let index = self.dependencies.firstIndex(where: { dep in dep.node.element == result.dependency })!
@@ -261,7 +261,7 @@ actor DependencyBuilder {
           let spinner = await MessageHandler.getSpinner(targetRef: result.dependency.target)
           //await spinner?.finish(message: "Building \(targetDesc) \(statusString)")
           await spinner?.finish()
-          await MessageHandler.print("[\(newStatus)] Building \(targetDesc)") // TODO: get message from spinner if possible?
+           MessageHandler.print("[\(newStatus)] Building \(targetDesc)") // TODO: get message from spinner if possible?
       }
       if self.areAllBuilt() {
         break
@@ -344,7 +344,3 @@ extension Library {
     try await self.build(artifact: artifact, baseDir: baseDir, buildDir: buildDir, context: context)
   }
 }
-
-//func build<TargetType: Target>(_ target: any TargetType, artifact: TargetType.ArtifactType, baseDir: borrowing URL, buildDir: borrowing URL, context: borrowing Beaver) async throws {
-//  try await target.build(artifact: artifact, buildDir: buildDir, baseDir: baseDir, context: context)
-//}

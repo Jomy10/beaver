@@ -27,6 +27,7 @@ public struct Project: ~Copyable, Sendable {
       let id = targets.count
       var target = target.take()!
       target.id = id
+      target.projectId = self.id
       targets.append(target)
       return id
     }

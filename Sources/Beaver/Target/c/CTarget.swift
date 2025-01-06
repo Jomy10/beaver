@@ -9,11 +9,6 @@ enum CTargetStorageKey: Equatable, Hashable {
   case sources
 }
 
-enum CObjectType: Equatable, Hashable {
-  case dynamic
-  case `static`
-}
-
 protocol CTarget: Target {
   var persistedStorage: PersistedStorage<CTargetStorageKey> { get }
   var _sources: Files { get }
@@ -23,6 +18,11 @@ protocol CTarget: Target {
 
   /// Execute a shell command with the given compiler for the specified language of self
   func executeCC(_ args: [String]) async throws
+}
+
+enum CTargetValidationError: Error {
+  case noSources
+  case collectionError(any Error)
 }
 
 struct UnsupportedArtifact<ArtifactType: Sendable & Equatable>: Error & Sendable {
@@ -141,8 +141,10 @@ extension CTarget {
   /// Build all objects of this target
   ///
   /// # Returns
-  /// the object files created
-  func buildObjects(baseDir: URL, projectBuildDir: URL, type: CObjectType, context: borrowing Beaver) async throws -> [URL] {
+  /// - the object files created
+  /// - wether any of these object files were rebuilt
+  func buildObjects(baseDir: URL, projectBuildDir: URL, artifact: ArtifactType, context: borrowing Beaver) async throws -> ([URL], Bool) {
+    let type = artifact.cObjectType!
     //await self.persistedStorage.store(value: [URL:URL](), key: .objects) // to store in `objectFile` --> initialize once per artifact, this also means artifacts can't be built in parallell
     let cflags = (try await self.publicCflags())
       + (try await self.privateCflags(context: context))
@@ -150,9 +152,29 @@ extension CTarget {
       + (try await self.privateHeaders(baseDir: baseDir, context: context)).map { "-I\($0.path)" }
     let objectBuildDir = self.objectBuildDir(projectBuildDir: projectBuildDir)
     let contextPtr = withUnsafePointer(to: context) { $0 }
-    return try await self.loopSources(baseDir: baseDir) { source in
-      return try await self.buildObject(baseDir: baseDir, buildDir: objectBuildDir, file: source, cflags: cflags, type: type, context: contextPtr.pointee)
+    //return try await context.fileCache.loopChangedSourceFiles(
+    //  self.collectSources(baseDir: baseDir),
+    //  target: TargetRef(target: self.id, project: self.projectId), artifact: .library(type == .dynamic ? .dynlib : .staticlib)
+    //) { source in
+    //  return try await self.buildObject(baseDir: baseDir, buildDir: objectBuildDir, file: source, cflags: cflags, type: type, context: contextPtr.pointee)
+    //}
+    var anyChanged = false
+    let objectFiles = try await context.fileCache.loopSourceFiles(
+      self.collectSources(baseDir: baseDir),
+      target: TargetRef(target: self.id, project: self.projectId),
+      artifact: artifact.asArtifactType()
+    ) { (source, changed) async throws -> URL in
+      if changed {
+        anyChanged = true
+        return try await self.buildObject(baseDir: baseDir, buildDir: objectBuildDir, file: source, cflags: cflags, type: type, context: contextPtr.pointee)
+      } else {
+        return await self.objectFile(baseDir: baseDir, buildDir: objectBuildDir, file: source, type: type)
+      }
     }
+    return (objectFiles, anyChanged)
+    //return try await self.loopSources(baseDir: baseDir) { source in
+    //  return try await self.buildObject(baseDir: baseDir, buildDir: objectBuildDir, file: source, cflags: cflags, type: type, context: contextPtr.pointee)
+    //}
   }
 
   /// # Parameters
@@ -227,8 +249,11 @@ extension CTarget {
     //}
   }
 
-  func collectSources(baseDir: borrowing URL) async throws -> [URL] {
-    try await self._sources.files(baseURL: baseDir).reduce(into: [URL](), { $0.append($1) })
+  func collectSources(baseDir: URL) async throws -> [URL] {
+    return try await self.persistedStorage.storingOrRetrieving(
+      key: .sources,
+      try await self._sources.files(baseURL: baseDir).reduce(into: [URL](), { $0.append($1) })
+    )
   // TODO: rework
   //  if let sources: [URL] = try await self.persistedStorage.getElement(withKey: .sources) {
   //    return sources

@@ -33,6 +33,7 @@ let package = Package(
       dependencies: [
         "Platform",
         "ProgressIndicators",
+        "timespec",
         .product(name: "Semver", package: "Semver"),
         .product(name: "Glob", package: "swift-glob"),
         .product(name: "ColorizeSwift", package: "ColorizeSwift"),
@@ -53,6 +54,11 @@ let package = Package(
       dependencies: [
         "CPlatform"
       ]
+    ),
+    .target(
+      name: "timespec",
+      path: "deps/timespec",
+      publicHeadersPath: "."
     ),
     .systemLibrary(
       name: "ProgressIndicatorsFFI",
