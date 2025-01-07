@@ -15,10 +15,17 @@ jobs:
         run: |
           set PATH="%PATH%;C:\Swift\bin"
           setx /M PATH "%PATH%;C:\Swift\bin"
+
       - name: Swift Version
         run: swift --version
+      - name: Ruby Version
+        run: ruby --version
+      - name: Rust Version
+        run: |
+          rustc --version
+          cargo --version
 
       - name: Build
-        run: swift build
+        run: ruby build.rb
       - name: Test
-        run: swift test
+        run: ruby build.rb test
