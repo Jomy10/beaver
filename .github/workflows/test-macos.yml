@@ -11,7 +11,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ruby-version: ["3.1", "3.2", "3.3", "3.4"]
+        ruby-version:
+          - full: "3.1.6"
+            short: "3.1"
+          - full: "3.2.6"
+            short: "3.2"
+          - full: "3.3.6"
+            short: "3.3"
+          - full: "3.4.1"
+            short: "3.4"
     name: Build and test
     runs-on: macos-latest
 
@@ -27,9 +35,9 @@ jobs:
       # Install the specified ruby version and set up PKG_CONFIG_PATH to point to the correct directory
       - name: Install ruby
         run: |
-          ruby-build -d ${{ matrix.ruby-version }} ~/.rubies
-          echo "PKG_CONVIG_PATH=${PKG_CONFIG_PATH:${PKG_CONFIG_PATH}:}$(realpath ~/.rubies/${{ matrix.ruby-version }}/lib/pkgconfig)" >> $GITHUB_ENV
-          chruby ${{ matrix.ruby-version }}
+          ruby-build -d ${{ matrix.ruby-version.full }} ~/.rubies
+          echo "PKG_CONVIG_PATH=${PKG_CONFIG_PATH:${PKG_CONFIG_PATH}:}$(realpath ~/.rubies/${{ matrix.ruby-version.full }}/lib/pkgconfig)" >> $GITHUB_ENV
+          chruby ${{ matrix.ruby-version.full }}
 
       - name: Swift Version
         run: swift --version
@@ -41,7 +49,7 @@ jobs:
           cargo --version
 
       - name: Configure
-        run: ruby configure.rb pkgconfig ${{ matrix.ruby-version }}
+        run: ruby configure.rb pkgconfig ${{ matrix.ruby-version.short }}
       - name: Build
         run: ruby build.rb
       - name: Test
