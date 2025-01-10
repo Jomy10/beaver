@@ -1,12 +1,31 @@
 import Foundation
+import Utils
+import Atomics
 
 public struct Beaver: ~Copyable, Sendable {
   var projects: AsyncRWLock<NonCopyableArray<Project>>
-  public private(set) var currentProjectIndex: ProjectRef? = nil
+  //public private(set) var currentProjectIndex: ProjectRef? = nil
+  private var currentProjectIndexAtomic: ManagedAtomic<ProjectRef> = ManagedAtomic(-1)
+  public var currentProjectIndex: ProjectRef? {
+    get {
+      let idx = self.currentProjectIndexAtomic.load(ordering: .sequentiallyConsistent)
+      if idx == -1 { return nil }
+      return idx
+    }
+  }
   public var cacheDir: URL = URL.currentDirectory()
   public var optimizeMode: OptimizationMode
   var cacheFile: URL
   var fileCache: FileCache?
+
+  private func setCurrentProjectIndex(_ idx: ProjectRef) async {
+    while true {
+      let val = self.currentProjectIndexAtomic.load(ordering: .relaxed)
+      let (done, _) = self.currentProjectIndexAtomic.weakCompareExchange(expected: val, desired: idx, ordering: .sequentiallyConsistent)
+      if (done) { break }
+      await Task.yield()
+    }
+  }
 
   //public struct Settings: ~Copyable, Sendable {
   //  /// The amount of c objects to compile per thread.
@@ -51,7 +70,7 @@ public struct Beaver: ~Copyable, Sendable {
       var project = project.take()!
       project.id = id
       projects.append(project)
-      self.currentProjectIndex = id
+      await self.setCurrentProjectIndex(id)
       return id
     }
   }

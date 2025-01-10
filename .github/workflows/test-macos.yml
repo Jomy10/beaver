@@ -26,6 +26,8 @@ jobs:
           rustc --version
           cargo --version
 
+      - name: Configure
+        run: ruby configure.rb
       - name: Build
         run: ruby build.rb
       - name: Test

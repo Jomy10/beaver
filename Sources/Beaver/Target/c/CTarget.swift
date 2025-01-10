@@ -1,5 +1,6 @@
 import Foundation
 import Platform
+import Utils
 
 enum CTargetStorageKey: Equatable, Hashable {
   case publicHeaders
@@ -35,8 +36,21 @@ struct UnsupportedArtifact<ArtifactType: Sendable & Equatable>: Error & Sendable
 
 extension CTarget {
   // Default implementations for Target //
+  public static var arguments: [Argument] {[
+    .init("name", mandatory: true),
+    .init("description"),
+    .init("version"),
+    .init("homepage"),
+    .init("language"),
+    .init("artifacts"),
+    .init("sources", mandatory: true),
+    .init("headers"),
+    .init("cflags"),
+    .init("linkerFlags"),
+    .init("dependencies"),
+  ]}
+
   public var buildableTarget: Bool { true }
-  public var useDependencyGraph: Bool { true }
   public var spawnsMoreThreadsWithGlobalThreadManager: Bool { true }
 
   public func build(baseDir: borrowing URL, buildDir: borrowing URL, context: borrowing Beaver) async throws {

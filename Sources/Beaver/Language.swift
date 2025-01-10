@@ -69,6 +69,18 @@ extension Language {
   }
 }
 
+extension Language: CustomStringConvertible {
+  public var description: String {
+    switch (self) {
+      case .c: "C"
+      case .cxx: "C++"
+      case .objc: "Obj-C"
+      case .objcxx: "Obj-C++"
+      case .swift: "Swift"
+    }
+  }
+}
+
 //extension Language: Equatable, Hashable {
 //  public static func ==(lhs: Self, rhs: Self) -> Bool {
 //    switch (lhs) {

@@ -5,19 +5,31 @@ public final class Rc<T: ~Copyable> {
     self.inner = consume value
   }
 
-  public func withInner<ResultType>(_ cb: (borrowing T) throws -> ResultType) rethrows -> ResultType {
+  private init() {
+    self.inner = nil
+  }
+
+  public static func uninitialized() -> Self {
+    self.init()
+  }
+
+  public func initialize(_ value: consuming T) {
+    self.inner = consume value
+  }
+
+  public func withInner<ResultType: ~Copyable>(_ cb: (borrowing T) throws -> ResultType) rethrows -> ResultType {
     try cb(self.inner!)
   }
 
-  public func withInner<ResultType>(_ cb: (inout T) throws -> ResultType) rethrows -> ResultType {
+  public func withInner<ResultType: ~Copyable>(_ cb: (inout T) throws -> ResultType) rethrows -> ResultType {
     try cb(&self.inner!)
   }
 
-  public func withInner<ResultType>(_ cb: (borrowing T) async throws -> ResultType) async rethrows -> ResultType {
+  public func withInner<ResultType: ~Copyable>(_ cb: (borrowing T) async throws -> ResultType) async rethrows -> ResultType {
     try await cb(self.inner!)
   }
 
-  public func withInner<ResultType>(_ cb: (inout T) async throws -> ResultType) async rethrows -> ResultType {
+  public func withInner<ResultType: ~Copyable>(_ cb: (inout T) async throws -> ResultType) async rethrows -> ResultType {
     try await cb(&self.inner!)
   }
 

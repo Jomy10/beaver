@@ -11,3 +11,6 @@ TODO.md
 /.ropeproject
 
 /target
+/Packages
+
+/test.rb

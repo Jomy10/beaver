@@ -1,3 +1,4 @@
+import Utils
 
 func borrowN<NC: ~Copyable, Result>(_ nc: borrowing NC, n: Int, _ cb: (Int, borrowing NC) throws -> Result) rethrows -> [Result] {
   try (0..<n).map { i in

@@ -83,6 +83,14 @@ public struct NonCopyableArray<Element: ~Copyable>: ~Copyable {
     }
   }
 
+  public func map<Result>(_ cb: (borrowing Element) async throws -> Result) async rethrows -> [Result] {
+    var res: [Result] = []
+    for i in self.indices {
+      await res.append(try self.withElement(i, cb))
+    }
+    return res
+  }
+
   public var startIndex: Int { 0 }
   public var endIndex: Int { self.count }
   public var indices: Range<Int> { 0..<self.endIndex }

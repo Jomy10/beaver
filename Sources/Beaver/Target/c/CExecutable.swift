@@ -17,6 +17,8 @@ public struct CExecutable: CTarget, Executable {
   var extraCflags: Flags
   var extraLinkerFlags: [String]
 
+  public static let defaultArtifacts: [ExecutableArtifactType] = [.executable]
+
   public init(
     name: String,
     description: String? = nil,

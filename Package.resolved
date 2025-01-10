@@ -1,6 +1,15 @@
 {
-  "originHash" : "5998b0d8b96f1daa4798fc23da3cfc7bf16396fe76af1466c1981fa55b7de8ac",
+  "originHash" : "84cb5c9861699193fc819411421d2ec23fe8388820b2ebf9c156c333fac104c3",
   "pins" : [
+    {
+      "identity" : "asyncobjects",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/SwiftyLab/AsyncObjects.git",
+      "state" : {
+        "revision" : "93aacfba87d738ac94fb50c2a6768c43ec9d42eb",
+        "version" : "2.1.0"
+      }
+    },
     {
       "identity" : "colorizeswift",
       "kind" : "remoteSourceControl",
@@ -8,6 +17,24 @@
       "state" : {
         "revision" : "4e7daa138510b77a3cce9f6a31a116f8536347dd",
         "version" : "1.7.0"
+      }
+    },
+    {
+      "identity" : "cruby",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/johnfairh/CRuby",
+      "state" : {
+        "revision" : "07ee7e6c164d7d234785319e81a83c8e4d321d3f",
+        "version" : "2.1.0"
+      }
+    },
+    {
+      "identity" : "queuer",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/FabrizioBrancati/Queuer.git",
+      "state" : {
+        "revision" : "8bf0b4cae3893f970e733025646d07fe8a39fb15",
+        "version" : "3.0.1"
       }
     },
     {
@@ -35,6 +62,15 @@
       "state" : {
         "revision" : "a95fc6df17d108bd99210db5e8a9bac90fe984b8",
         "version" : "0.15.3"
+      }
+    },
+    {
+      "identity" : "swift-async-algorithms",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-async-algorithms",
+      "state" : {
+        "revision" : "4c3ea81f81f0a25d0470188459c6d4bf20cf2f97",
+        "version" : "1.0.3"
       }
     },
     {

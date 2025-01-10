@@ -3,6 +3,11 @@ public struct TargetRef: Identifiable, Hashable, Equatable, Sendable {
   public let project: ProjectRef
 
   public var id: Self { self }
+
+  public init(target: Int, project: ProjectRef) {
+    self.target = target
+    self.project = project
+  }
 }
 
 extension TargetRef {
@@ -37,7 +42,7 @@ public struct Dependency: Hashable, Equatable, Sendable {
 }
 
 extension Beaver {
-  public func dependency(_ target: String, artifact: LibraryArtifactType = .staticlib) async throws -> Dependency {
+  public func evaluateTarget(targetName target: String) async throws -> TargetRef {
     let components = target.split(separator: ":")
     switch (components.count) {
       case 0:
@@ -50,7 +55,7 @@ extension Beaver {
           let projectName = await self.projectName(currentProject)!
           throw Dependency.ParsingError.unknownTarget(name: target, inProject: projectName)
         }
-        return Dependency(library: TargetRef(target: targetIndex, project: currentProject), artifact: artifact)
+        return TargetRef(target: targetIndex, project: currentProject)
       case 2:
         let name = String(components[1])
         let projectName = String(components[0])
@@ -60,9 +65,13 @@ extension Beaver {
         guard let targetIndex = await self.targetIndex(name: name, project: projectIndex) else {
           throw Dependency.ParsingError.unknownTarget(name: name, inProject: projectName)
         }
-        return Dependency(library: TargetRef(target: targetIndex, project: projectIndex), artifact: artifact)
+        return TargetRef(target: targetIndex, project: projectIndex)
       default:
         throw Dependency.ParsingError.malformed(target)
     }
+  }
+
+  public func dependency(_ target: String, artifact: LibraryArtifactType = .staticlib) async throws -> Dependency {
+    return Dependency(library: try await self.evaluateTarget(targetName: target), artifact: artifact)
   }
 }
