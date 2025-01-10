@@ -1,9 +1,7 @@
 def try_require(gem)
   begin
-    Gem::Specification.find_by_name(gem)
     require gem
-    return true
-  rescue
+  rescue LoadError
     return false
   end
 end
