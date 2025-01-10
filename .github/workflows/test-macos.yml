@@ -38,8 +38,8 @@ jobs:
           ruby-build -d ${{ matrix.ruby-version.full }} ~/.rubies
           echo "PKG_CONVIG_PATH=${PKG_CONFIG_PATH:${PKG_CONFIG_PATH}:}$(realpath ~/.rubies/${{ matrix.ruby-version.full }}/lib/pkgconfig)" >> $GITHUB_ENV
 
-      - name: Available ruby versions
-        run: chruby
+      # - name: Available ruby versions
+      #   run: chruby
       - name: Swift Version
         run: swift --version
       - name: Ruby Version
