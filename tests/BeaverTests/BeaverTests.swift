@@ -33,7 +33,7 @@ import Platform
   var mutCtx = Beaver()
   await mutCtx.addProject(Project(
   name: "Adder",
-  baseDir: URL(filePath: "Tests/BeaverTests/resources/exampleCProjectAdder"),
+  baseDir: URL(filePath: "Tests/resources/exampleCProjectAdder"),
   buildDir: URL(filePath: ".build/tests/exampleCProjectAdder"),
   targets: NonCopyableArray()
     .appending(try CLibrary(
@@ -73,7 +73,7 @@ import Platform
   var mutCtx = Beaver()
   await mutCtx.addProject(Project(
     name: "Libraries",
-    baseDir: URL(filePath: "Tests/BeaverTests/resources/multiProject/Libraries"),
+    baseDir: URL(filePath: "Tests/resources/multiProject/Libraries"),
     buildDir: URL(filePath: ".build/tests/multiProject/Libraries")
   ))
   try await mutCtx.withCurrentProject { (proj: inout Project) in
@@ -97,7 +97,7 @@ import Platform
 
   await mutCtx.addProject(Project(
     name: "Main",
-    baseDir: URL(filePath: "Tests/BeaverTests/resources/multiProject/Main"),
+    baseDir: URL(filePath: "Tests/resources/multiProject/Main"),
     buildDir: URL(filePath: ".build/tests/multiProject/Main")
   ))
   let loggerDep: LibraryRef = try await LibraryRef("Libraries:Logger", defaultProject: mutCtx.currentProjectIndex!, context: mutCtx)

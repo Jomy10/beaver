@@ -1,4 +1,5 @@
 public protocol ArtifactTypeProtocol: Equatable, Hashable, Sendable {
+  init?(_ string: String)
   func asArtifactType() -> ArtifactType
   /// The object type which needs to be compiled for this artifact
   var cObjectType: CObjectType? { get }
@@ -21,6 +22,14 @@ public enum ExecutableArtifactType: ArtifactTypeProtocol, Equatable, Hashable, S
   /// a macOS app
   case app
 
+  public init?(_ string: String) {
+    switch (string) {
+      case "executable": self = .executable
+      case "app": self = .app
+      default: return nil
+    }
+  }
+
   public func asArtifactType() -> ArtifactType {
     .executable(self)
   }
@@ -42,6 +51,17 @@ public enum LibraryArtifactType: ArtifactTypeProtocol, Equatable, Hashable, Send
   /// A dynamic library callable through the specified `Language`
   case dynamiclanglib(Language)
   case staticlanglib(Language)
+
+  public init?(_ string: String) {
+    switch (string) {
+      case "dynlib": self = .dynlib
+      case "staticlib": self = .staticlib
+      case "pkgconfig": self = .pkgconfig
+      case "framework": self = .framework
+      case "xcframework": self = .xcframework
+      default: return nil
+    }
+  }
 
   public func asArtifactType() -> ArtifactType {
     .library(self)

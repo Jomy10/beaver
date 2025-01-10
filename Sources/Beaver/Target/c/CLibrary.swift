@@ -18,6 +18,8 @@ public struct CLibrary: CTarget, Library {
   var extraCflags: Flags
   var extraLinkerFlags: [String]
 
+  public static let defaultArtifacts: [LibraryArtifactType] = [.dynlib, .staticlib, .pkgconfig]
+
   public init(
     // Info //
     name: String,

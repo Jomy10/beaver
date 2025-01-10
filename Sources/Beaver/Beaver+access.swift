@@ -1,6 +1,6 @@
 extension Beaver {
   // Access project //
-  enum ProjectAccessError: Error {
+  public enum ProjectAccessError: Error {
     case noDefaultProject
     case noProject(named: String)
   }

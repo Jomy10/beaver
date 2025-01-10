@@ -1,25 +1,4 @@
-def try_require(gem)
-  if Gem::Specification.find_by_name(gem)
-    require gem
-    return true
-  else
-    return false
-  end
-end
-
-$color = try_require 'colorize'
-
-def sh(cmd)
-  if $color
-    puts cmd.grey
-  else
-    puts cmd
-  end
-
-  system cmd
-
-  exit($?.to_i) unless $?.to_i == 0
-end
+require_relative 'build-utils.rb'
 
 command = "build"
 mode = :debug
@@ -53,4 +32,5 @@ end
 
 sh "cargo build #{mode == :release ? "--release" : ""}"
 
-sh "swift #{command} #{mode_flag}#{argv.size == 0 ? "" : argv.join(" ") + " " }-Xlinker -Ltarget/#{mode} -Xlinker -lprogress_indicators"
+sh "swift #{command} #{mode_flag}#{argv.size == 0 ? "" : argv.join(" ") + " " }-Xlinker -Ltarget/#{mode} -Xlinker -lprogress_indicators",
+    envPrepend: { "PKG_CONFIG_PATH" => File.join(Dir.pwd, "Packages/CRuby") }

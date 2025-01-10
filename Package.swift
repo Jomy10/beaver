@@ -24,16 +24,36 @@ let package = Package(
     .package(url: "https://github.com/mattcox/Tree.git", branch: "main"),
     .package(url: "https://github.com/apple/swift-collections.git", from: "1.1.4"),
     .package(url: "https://github.com/groue/Semaphore", from: "0.1.0"),
+    .package(url: "https://github.com/FabrizioBrancati/Queuer.git", from: "3.0.0"),
+    .package(url: "https://github.com/SwiftyLab/AsyncObjects.git", from: "2.1.0"),
+    .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.3"),
     //.package(url: "https://github.com/Jomy10/TaskProgress", branch: "master"),
     .package(url: "https://github.com/stephencelis/SQLite.swift", from: "0.15.3"),
+    //.package(url: "https://github.com/johnfairh/CRuby", from: "6.0.0"),
+    //.package(url: "https://github.com/johnfairh/RubyGateway", from: "6.0.0"),
+    .package(path: "../RubyGateway"),
   ],
   targets: [
+    .target(
+      name: "BeaverRuby",
+      dependencies: [
+        "Beaver",
+        "Utils",
+        //.product(name: "CRuby", package: "CRuby"),
+        .product(name: "AsyncObjects", package: "AsyncObjects"),
+        .product(name: "RubyGateway", package: "RubyGateway"),
+        .product(name: "Atomics", package: "swift-atomics"),
+        .product(name: "Queuer", package: "Queuer"),
+        .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+      ]
+    ),
     .target(
       name: "Beaver",
       dependencies: [
         "Platform",
         "ProgressIndicators",
         "timespec",
+        "Utils",
         .product(name: "Semver", package: "Semver"),
         .product(name: "Glob", package: "swift-glob"),
         .product(name: "ColorizeSwift", package: "ColorizeSwift"),
@@ -45,15 +65,23 @@ let package = Package(
         //.product(name: "TaskProgress", package: "TaskProgress"),
       ]
     ),
+    .target(
+      name: "Utils",
+      dependencies: [
+        .product(name: "Atomics", package: "swift-atomics"),
+      ]
+    ),
     // Platform-specific implementations in C
     .target(
-      name: "CPlatform"
+      name: "CPlatform",
+      path: "Sources/Platform/CPlatform"
     ),
     .target(
       name: "Platform",
       dependencies: [
         "CPlatform"
-      ]
+      ],
+      path: "Sources/Platform/Platform"
     ),
     .target(
       name: "timespec",
@@ -76,7 +104,8 @@ let package = Package(
         .product(name: "Tree", package: "tree"),
         .product(name: "Semaphore", package: "Semaphore"),
         "ProgressIndicators",
-        "ProgressIndicatorsFFI"
+        "ProgressIndicatorsFFI",
+        "BeaverRuby",
       ]
     ),
     .testTarget(

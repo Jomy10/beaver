@@ -4,6 +4,7 @@ import Collections
 import Atomics
 import Semaphore
 import ProgressIndicators
+import Utils
 //import TaskProgress
 
 extension Tree.Node: @retroactive CustomStringConvertible {

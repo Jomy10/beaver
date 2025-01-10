@@ -1,3 +1,5 @@
+import Utils
+
 final class PersistedStorage<Key: Hashable>: Sendable {
   private let storage: AsyncRWLock<[Key:(Any.Type, UnsafeMutableRawPointer)]>
 

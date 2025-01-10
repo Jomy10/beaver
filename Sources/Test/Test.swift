@@ -4,6 +4,9 @@ import Tree
 import Semaphore
 import ProgressIndicators
 import ProgressIndicatorsFFI
+import BeaverRuby
+import Utils
+import RubyGateway
 
 //extension Tree.Node: @retroactive CustomStringConvertible {
 //  public var description: String {
@@ -54,55 +57,64 @@ struct Test {
 
     ///////////
 
-    var mutCtx = Beaver()
-    await mutCtx.addProject(Project(
-      name: "Libraries",
-      baseDir: URL(filePath: "Tests/BeaverTests/resources/multiProject/Libraries"),
-      buildDir: URL(filePath: ".build/tests/multiProject/Libraries"),
-      context: mutCtx
-    ))
-    try await mutCtx.withCurrentProject { @Sendable (proj: inout Project) in
-      await proj.addTarget(try CLibrary(
-        name: "Logger",
-        description: "Logging implementation",
-        artifacts: [.staticlib],
-        sources: ["Logger/logger.c"],
-        headers: Headers(public: [proj.baseDir.appending(path: "Logger")])
-      ))
+    //var mutCtx = try Beaver()
+    //await mutCtx.addProject(Project(
+    //  name: "Libraries",
+    //  baseDir: URL(filePath: "Tests/BeaverTests/resources/multiProject/Libraries"),
+    //  buildDir: URL(filePath: ".build/tests/multiProject/Libraries"),
+    //  context: mutCtx
+    //))
+    //try await mutCtx.withCurrentProject { @Sendable (proj: inout Project) in
+    //  await proj.addTarget(try CLibrary(
+    //    name: "Logger",
+    //    description: "Logging implementation",
+    //    artifacts: [.staticlib],
+    //    sources: ["Logger/logger.c"],
+    //    headers: Headers(public: [proj.baseDir.appending(path: "Logger")])
+    //  ))
 
-      await proj.addTarget(try CLibrary(
-        name: "CXXVec",
-        description: "C API to vector of C++ standard library",
-        language: .cxx,
-        artifacts: [.staticlib],
-        sources: ["CXXVec/*.cpp"],
-        headers: Headers(public: [proj.baseDir.appending(path: "CXXVec")])
-      ))
-    }
-
-    await mutCtx.addProject(Project(
-      name: "Main",
-      baseDir: URL(filePath: "Tests/BeaverTests/resources/multiProject/Main"),
-      buildDir: URL(filePath: ".build/tests/multiProject/Main"),
-      context: mutCtx
-    ))
-    let loggerDep = try await mutCtx.dependency("Libraries:Logger")
-    let cxxvecDep = try await mutCtx.dependency("Libraries:CXXVec")
-    try await mutCtx.withCurrentProject { @Sendable (proj: inout Project) in
-      _ = await proj.addTarget(try CExecutable(
-        name: "Main",
-        sources: "*.c",
-        dependencies: [loggerDep, cxxvecDep]
-      ))
-    }
-
-    let ctx = consume mutCtx
-    try await ctx.build(targetName: "Main")
-
-    //try await ctx.withCurrentProject { (proj: borrowing Project) in
-    //  try await proj.withExecutable(named: "Main") { (target: borrowing any Executable) in
-    //    try await Tools.exec(target.artifactURL(projectBuildDir: proj.buildDir, .executable), [])
-    //  }
+    //  await proj.addTarget(try CLibrary(
+    //    name: "CXXVec",
+    //    description: "C API to vector of C++ standard library",
+    //    language: .cxx,
+    //    artifacts: [.staticlib],
+    //    sources: ["CXXVec/*.cpp"],
+    //    headers: Headers(public: [proj.baseDir.appending(path: "CXXVec")])
+    //  ))
     //}
+
+    //await mutCtx.addProject(Project(
+    //  name: "Main",
+    //  baseDir: URL(filePath: "Tests/BeaverTests/resources/multiProject/Main"),
+    //  buildDir: URL(filePath: ".build/tests/multiProject/Main"),
+    //  context: mutCtx
+    //))
+    //let loggerDep = try await mutCtx.dependency("Libraries:Logger")
+    //let cxxvecDep = try await mutCtx.dependency("Libraries:CXXVec")
+    //try await mutCtx.withCurrentProject { @Sendable (proj: inout Project) in
+    //  _ = await proj.addTarget(try CExecutable(
+    //    name: "Main",
+    //    sources: "*.c",
+    //    dependencies: [loggerDep, cxxvecDep]
+    //  ))
+    //}
+    //try mutCtx.finalize()
+
+    //let ctx = consume mutCtx
+    //try await ctx.build(targetName: "Main")
+    //try await ctx.clean()
+
+    let _context = UnsafeSendable(Rc(try Beaver()))
+    await _context.value.withInner { @Sendable (ctx: inout Beaver) in
+      let proj = Project(name: "test", context: ctx)
+      _ = await ctx.addProject(proj)
+    }
+    let queue = try executeRuby(
+      scriptFile: URL(filePath: "test.rb"),
+      context: _context
+    )
+    try await queue.wait()
+    let context = _context.value.take()!
+    print(await context.debugString)
   }
 }
