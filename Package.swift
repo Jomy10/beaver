@@ -139,7 +139,10 @@ let package = Package(
     //),
     .testTarget(
       name: "BeaverTests",
-      dependencies: ["Beaver"],
+      dependencies: [
+        "Beaver",
+        .product(name: "ColorizeSwift", package: "ColorizeSwift")
+      ],
       exclude: ["resources"]
     ),
   ]
