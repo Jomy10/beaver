@@ -1,7 +1,7 @@
 // swift-tools-version: 6.0
-// The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
+import CompilerPluginSupport
 
 let package = Package(
   name: "Beaver",
@@ -9,9 +9,11 @@ let package = Package(
   platforms: [.macOS(.v15)],
   products: [
     .executable(
+      name: "beaver",
+      targets: ["BeaverCLI"]),
+    .executable(
       name: "Test",
-      targets: ["Test"]
-    ),
+      targets: ["Test"]),
     .library(
       name: "Beaver",
       targets: ["Beaver"]),
@@ -29,11 +31,34 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.3"),
     //.package(url: "https://github.com/Jomy10/TaskProgress", branch: "master"),
     .package(url: "https://github.com/stephencelis/SQLite.swift", from: "0.15.3"),
-    //.package(url: "https://github.com/johnfairh/CRuby", from: "6.0.0"),
     //.package(url: "https://github.com/johnfairh/RubyGateway", from: "6.0.0"),
     .package(path: "../RubyGateway"),
+    .package(url: "https://github.com/apple/swift-syntax", from: "509.0.0"),
   ],
   targets: [
+    .executableTarget(
+      name: "BeaverCLI",
+      dependencies: [
+        "Beaver",
+        "BeaverRuby",
+        "Utils",
+        "CLIPackage",
+      ],
+      path: "Sources/BeaverCLI/BeaverCLI"
+    ),
+    .target(
+      name: "CLIPackage",
+      dependencies: ["CLIMacros"],
+      path: "Sources/BeaverCLI/CLIPackage"
+    ),
+    .macro(
+      name: "CLIMacros",
+      dependencies: [
+        .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+        .product(name: "SwiftCompilerPlugin", package: "swift-syntax")
+      ],
+      path: "Sources/BeaverCLI/CLIMacros"
+    ),
     .target(
       name: "BeaverRuby",
       dependencies: [
@@ -45,6 +70,9 @@ let package = Package(
         .product(name: "Atomics", package: "swift-atomics"),
         .product(name: "Queuer", package: "Queuer"),
         .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
+      ],
+      resources: [
+        .copy("lib")
       ]
     ),
     .target(

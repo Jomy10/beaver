@@ -80,6 +80,14 @@ public struct Beaver: ~Copyable, Sendable {
     case noDefaultTarget
   }
 
+  public func buildCurrentProject() async throws {
+    let targetRefs = try await self.withCurrentProject { (project: borrowing Project) in await project.targetRefs }
+
+    for targetRef in targetRefs {
+      try await self.build(targetRef)
+    }
+  }
+
   public func build(targetName: String, artifact: ArtifactType? = nil) async throws {
     try await self.build(try await self.evaluateTarget(targetName: targetName), artifact: artifact)
   }
@@ -128,7 +136,7 @@ public struct Beaver: ~Copyable, Sendable {
   func check() {}
 }
 
-public enum OptimizationMode: String, Sendable {
+public enum OptimizationMode: String, Sendable, Decodable, Hashable, Equatable {
   case debug
   case release
   // TODO: case custom(String)

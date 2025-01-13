@@ -21,6 +21,20 @@ public struct Project: ~Copyable, Sendable {
     self.targets = AsyncRWLock(targets)
   }
 
+  public static let arguments: [RubyArgument] = [
+    RubyArgument("name", mandatory: true),
+    RubyArgument("baseDir"),
+    RubyArgument("buildDir")
+  ]
+
+  public var targetRefs: [TargetRef] {
+    get async {
+      await self.targets.read { targets in
+        await targets.map { target in TargetRef(target: target.id, project: self.id) }
+      }
+    }
+  }
+
   @discardableResult
   public mutating func addTarget(_ target: consuming any Target) async -> TargetRef {
     var target: (any Target)? = target

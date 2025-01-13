@@ -105,10 +105,6 @@ struct Test {
     //try await ctx.clean()
 
     let _context = UnsafeSendable(Rc(try Beaver()))
-    await _context.value.withInner { @Sendable (ctx: inout Beaver) in
-      let proj = Project(name: "test", context: ctx)
-      _ = await ctx.addProject(proj)
-    }
     let queue = try executeRuby(
       scriptFile: URL(filePath: "test.rb"),
       context: _context

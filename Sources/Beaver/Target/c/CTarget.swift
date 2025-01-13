@@ -36,7 +36,7 @@ struct UnsupportedArtifact<ArtifactType: Sendable & Equatable>: Error & Sendable
 
 extension CTarget {
   // Default implementations for Target //
-  public static var arguments: [Argument] {[
+  public static var arguments: [RubyArgument] {[
     .init("name", mandatory: true),
     .init("description"),
     .init("version"),
@@ -195,6 +195,7 @@ extension CTarget {
       target: TargetRef(target: self.id, project: self.projectId),
       artifact: artifact.asArtifactType()
     ) { (source, changed) async throws -> URL in
+      // TODO: is objectFile not present? --> also build
       if changed {
         anyChanged = true
         return try await self.buildObject(baseDir: baseDir, buildDir: objectBuildDir, file: source, cflags: cflags, type: type, context: contextPtr.pointee)

@@ -156,3 +156,13 @@ struct Tools {
 
   static let ar: URL? = Tools.findTool(name: "ar", envName: "AR")
 }
+
+extension Process.TerminationReason: @retroactive CustomStringConvertible {
+  public var description: String {
+    switch (self) {
+      case .exit: "normal exit"
+      case .uncaughtSignal: "uncaught signal"
+      default: "unknown termination reason"
+    }
+  }
+}

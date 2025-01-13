@@ -52,9 +52,9 @@ public func print(_ msgs: String..., to stream: IOStream) {
   print(msgs.joined(separator: " "), to: &s)
 }
 
-struct IO {
-  public static func print(_ msgs: String..., to stream: IOStream) {
-    var s = stream
-    Swift.print(msgs.joined(separator: " "), to: &s)
-  }
-}
+//struct IO {
+//  public static func print(_ msgs: String..., to stream: IOStream) {
+//    var s = stream
+//    Swift.print(msgs.joined(separator: " "), to: &s)
+//  }
+//}

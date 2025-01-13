@@ -42,7 +42,7 @@ public protocol Target: ~Copyable, Sendable {
 
   func clean(buildDir: borrowing URL, context: borrowing Beaver) async throws
 
-  static var arguments: [Argument] { get }
+  static var arguments: [RubyArgument] { get }
 }
 
 struct NonBuildableTargetError: Error {
@@ -82,14 +82,4 @@ extension Target {
 /// An invalid language was passed to a target expecting a specific set of languages
 public struct InvalidLanguage: Error {
   let language: Language
-}
-
-public struct Argument {
-  public let name: String
-  public let mandatory: Bool
-
-  init(_ name: String, mandatory: Bool = false) {
-    self.name = name
-    self.mandatory = mandatory
-  }
 }
