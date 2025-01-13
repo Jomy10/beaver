@@ -1,4 +1,5 @@
 import Foundation
+import ColorizeSwift
 @testable import Beaver
 
 #if DEBUG
@@ -9,7 +10,8 @@ let optMode = "release"
 
 let beaverExeURL = URL(filePath: ".build/\(optMode)/beaver")
 
-func execOutput(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) async throws -> (stdout: String, stderr: String) {
+@discardableResult
+func execOutput(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) throws -> (stdout: String, stderr: String) {
   let task = Process()
   let stderrPipe = Pipe()
   let stdoutPipe = Pipe()
@@ -19,7 +21,7 @@ func execOutput(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirec
   task.arguments = args
   task.currentDirectoryURL = baseDir
   task.environment = [:]
-  print(cmdURL.path + " " + args.joined(separator: " "))
+  print((cmdURL.path + " " + args.joined(separator: " ")).darkGray())
   try task.run()
   task.waitUntilExit()
 
