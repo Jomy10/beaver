@@ -11,9 +11,9 @@ let package = Package(
     .executable(
       name: "beaver",
       targets: ["BeaverCLI"]),
-    .executable(
-      name: "Test",
-      targets: ["Test"]),
+    //.executable(
+    //  name: "Test",
+    //  targets: ["Test"]),
     .library(
       name: "Beaver",
       targets: ["Beaver"]),
@@ -32,7 +32,8 @@ let package = Package(
     //.package(url: "https://github.com/Jomy10/TaskProgress", branch: "master"),
     .package(url: "https://github.com/stephencelis/SQLite.swift", from: "0.15.3"),
     //.package(url: "https://github.com/johnfairh/RubyGateway", from: "6.0.0"),
-    .package(path: "../RubyGateway"),
+    //.package(path: "../RubyGateway"),
+    .package(url: "https://github.com/Jomy10/RubyGateway", branch: "main"),
     .package(url: "https://github.com/apple/swift-syntax", from: "509.0.0"),
   ],
   targets: [
@@ -125,17 +126,17 @@ let package = Package(
       dependencies: ["ProgressIndicatorsFFI"],
       path: "Sources/ProgressIndicators/binding"
     ),
-    .executableTarget(
-      name: "Test",
-      dependencies: [
-        "Beaver",
-        .product(name: "Tree", package: "tree"),
-        .product(name: "Semaphore", package: "Semaphore"),
-        "ProgressIndicators",
-        "ProgressIndicatorsFFI",
-        "BeaverRuby",
-      ]
-    ),
+    //.executableTarget(
+    //  name: "Test",
+    //  dependencies: [
+    //    "Beaver",
+    //    .product(name: "Tree", package: "tree"),
+    //    .product(name: "Semaphore", package: "Semaphore"),
+    //    "ProgressIndicators",
+    //    "ProgressIndicatorsFFI",
+    //    "BeaverRuby",
+    //  ]
+    //),
     .testTarget(
       name: "BeaverTests",
       dependencies: ["Beaver"],
