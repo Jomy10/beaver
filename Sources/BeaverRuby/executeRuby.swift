@@ -13,6 +13,7 @@ public func executeRuby(
   let scriptContents = try String(contentsOf: scriptFile, encoding: .utf8)
   let queue: SyncTaskQueue = SyncTaskQueue()
 
+  // TODO: also allow shorthand Library("name")
   let beaverModule = try Ruby.defineModule("Beaver")
   try beaverModule.defineMethod(
     "Project",
@@ -218,7 +219,10 @@ extension CExecutable {
 }
 
 extension Project {
-  init(_ args: borrowing [String: RbObject], context: borrowing Beaver) throws {
+  init(
+    _ args: borrowing [String: RbObject],
+    context: borrowing Beaver
+  ) throws {
     let name: String = try args["name"]!.convert()
     let baseDirArg = args["baseDir"]!
     let baseDir: URL = baseDirArg.isNil ? URL.currentDirectory() : URL(filePath: try baseDirArg.convert(to: String.self))
