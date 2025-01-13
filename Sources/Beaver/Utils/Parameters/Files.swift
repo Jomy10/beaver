@@ -1,6 +1,31 @@
 import Foundation
 import Glob
 
+// TODO: expand glob, then expand directories
+//public struct Files: Sendable {
+//  private var include: Storage
+//  private var exclude: Storage?
+//  private var includeHiddenFiles: Bool
+
+//  public init(
+//    include: Storage,
+//    exclude: Storage? = nil,
+//    includeHiddenFiles: Bool = false
+//  ) {
+//    self.include = include
+//    self.exclude = exclude
+//    self.includeHiddenFiles = includeHiddenFiles
+//  }
+
+//  public typealias Storage = [String]
+
+//  typealias ResultType = any AsyncSequence<URL, any Error>
+
+//  func files(baseURL: URL) throws -> ResultType {
+//  }
+//}
+
+// TODO: rewrite --> if !contains *; then expand directory if directory else expand glob
 public struct Files: Sendable {
   private var include: Storage
   private var exclude: Storage?
@@ -22,6 +47,7 @@ public struct Files: Sendable {
     case url(URL)
     case urlArray([URL])
 
+    @available(*, deprecated)
     public static func contentsOf(directory: URL) -> Self {
       return .url(directory)
     }
@@ -40,7 +66,7 @@ public struct Files: Sendable {
       case .url(let url):
         return self.filesFromURLS(self.expandURL(url))
       case .urlArray(let urls):
-        return self.filesFromURLS(urls)
+        return self.filesFromURLS(urls.flatMap { self.expandURL($0) })
     }
   }
 
@@ -74,6 +100,7 @@ public struct Files: Sendable {
 
   @inline(__always)
   private func expandURL(_ url: URL) -> [URL] {
+    MessageHandler.print("\(url) isDirectory: \(url.isDirectory)")
     if url.isDirectory {
       return url.recursiveContentsOfDirectory(skipHiddenFiles: !self.includeHiddenFiles)
     } else {

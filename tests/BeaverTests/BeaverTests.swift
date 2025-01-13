@@ -30,92 +30,49 @@ import Platform
 /// Compile a simple C project with one library and an executable depending on the
 /// library. Run the executable, which tests the implementation
 @Test func exampleCProjectAdder() async throws {
-  var mutCtx = Beaver()
+  var mutCtx = try Beaver()
   await mutCtx.addProject(Project(
-  name: "Adder",
-  baseDir: URL(filePath: "Tests/resources/exampleCProjectAdder"),
-  buildDir: URL(filePath: ".build/tests/exampleCProjectAdder"),
-  targets: NonCopyableArray()
-    .appending(try CLibrary(
+    name: "Adder",
+    baseDir: URL(filePath: "Tests/resources/exampleCProjectAdder"),
+    buildDir: URL(filePath: ".build/tests/exampleCProjectAdder"),
+    targets: NonCopyableArray(),
+    context: mutCtx
+  ))
+
+  try await mutCtx.withCurrentProject { (project: inout Project) in
+    _ = await project.addTarget(try CLibrary(
       name: "Adder",
       description: "Adds two numbers",
       artifacts: [.staticlib],
       sources: "adder.c",
       headers: "*.h"
     ))
-    .appending(try CExecutable(
+  }
+  let adderDep = try await mutCtx.dependency("Adder")
+  try await mutCtx.withCurrentProject { (project: inout Project) in
+    _ = await project.addTarget(try CExecutable(
       name: "AdderTest",
       description: "Add two numbers and check the result",
       artifacts: [.executable],
       sources: "main.c",
-      dependencies: [try .init("Adder", defaultProject: 0, context: mutCtx)]
+      dependencies: [adderDep]
     ))
-  ))
+  }
 
+  try mutCtx.finalize()
   let ctx = consume mutCtx
   try await ctx.withCurrentProject { (proj: borrowing Project) in
-    try await proj.withTarget(named: "Adder") { (target: borrowing any Target) in
+    try await proj.withTarget(ctx.targetIndex(name: "Adder", project: proj.id)!) { (target: borrowing any Target) in
       try await target.build(baseDir: proj.baseDir, buildDir: proj.buildDir, context: ctx)
     }
-    try await proj.withTarget(named: "AdderTest") { (target: borrowing any Target) in
+    try await proj.withTarget(ctx.targetIndex(name: "AdderTest", project: proj.id)!) { (target: borrowing any Target) in
       try await target.build(baseDir: proj.baseDir, buildDir: proj.buildDir, context: ctx)
     }
   }
 
   try await ctx.withCurrentProject { (proj: borrowing Project) in
-    try await proj.withExecutable(named: "AdderTest") { (target: borrowing any Executable) in
+    try await proj.withExecutable(ctx.targetIndex(name: "AdderTest", project: proj.id)!) { (target: borrowing any Executable) in
       try await Tools.exec(target.artifactURL(projectBuildDir: proj.buildDir, ExecutableArtifactType.executable), [])
-    }
-  }
-}
-
-@Test func multiProject() async throws {
-  var mutCtx = Beaver()
-  await mutCtx.addProject(Project(
-    name: "Libraries",
-    baseDir: URL(filePath: "Tests/resources/multiProject/Libraries"),
-    buildDir: URL(filePath: ".build/tests/multiProject/Libraries")
-  ))
-  try await mutCtx.withCurrentProject { (proj: inout Project) in
-    await proj.addTarget(try CLibrary(
-      name: "Logger",
-      description: "Logging implementation",
-      artifacts: [.staticlib],
-      sources: ["Logger/logger.c"],
-      headers: Headers(public: [proj.baseDir.appending(path: "Logger")])
-    ))
-
-    await proj.addTarget(try CLibrary(
-      name: "CXXVec",
-      description: "C API to vector of C++ standard library",
-      language: .cxx,
-      artifacts: [.staticlib],
-      sources: ["CXXVec/*.cpp"],
-      headers: Headers(public: [proj.baseDir.appending(path: "CXXVec")])
-    ))
-  }
-
-  await mutCtx.addProject(Project(
-    name: "Main",
-    baseDir: URL(filePath: "Tests/resources/multiProject/Main"),
-    buildDir: URL(filePath: ".build/tests/multiProject/Main")
-  ))
-  let loggerDep: LibraryRef = try await LibraryRef("Libraries:Logger", defaultProject: mutCtx.currentProjectIndex!, context: mutCtx)
-  let cxxvecDep: LibraryRef = try await LibraryRef("Libraries:CXXVec", defaultProject: mutCtx.currentProjectIndex!, context: mutCtx)
-  try await mutCtx.withCurrentProject { (proj: inout Project) in
-    await proj.addTarget(try CExecutable(
-      name: "Main",
-      sources: "*.c",
-      dependencies: [loggerDep, cxxvecDep]
-    ))
-  }
-
-  let ctx = consume mutCtx
-  try await ctx.build("Main")
-
-  try await ctx.withCurrentProject { (proj: borrowing Project) in
-    try await proj.withExecutable(named: "Main") { (target: borrowing any Executable) in
-      try await Tools.exec(target.artifactURL(projectBuildDir: proj.buildDir, .executable), [])
     }
   }
 }

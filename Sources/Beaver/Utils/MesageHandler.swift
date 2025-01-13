@@ -111,7 +111,7 @@ struct MessageHandler {
       //ProgressIndicators.global.globalMessage(message)
       progress.println(message)
     } else {
-      IO.print(message, to: IOStream.stderr)
+      Utils.print(message, to: IOStream.stderr)
     }
   }
 
@@ -122,7 +122,7 @@ struct MessageHandler {
       //ProgressIndicators.global.globalMessage(message)
       progress.println(message)
     } else {
-      IO.print(message, to: stream)
+      Utils.print(message, to: stream)
     }
   }
 

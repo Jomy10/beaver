@@ -20,6 +20,10 @@ public enum Version: Sendable {
     }
   }
 
+  public init<I: BinaryInteger>(_ semverComponents: (I, I, I)) {
+    self = .semver(Semver(major: Int(semverComponents.0), minor: Int(semverComponents.1), patch: Int(semverComponents.2)))
+  }
+
   public enum CreationError: Error {
     case invalidSemversion(String)
   }
