@@ -24,7 +24,7 @@ Project(name: "MainProject")
 
 C::Executable(
   name: "Main",
-  sources: "*.c",
+  sources: "main.c",
   dependencies: [
     "Libraries:Logger",
     "Libraries:CXXVec"

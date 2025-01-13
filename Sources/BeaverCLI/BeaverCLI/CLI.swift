@@ -6,8 +6,8 @@ import Utils
 
 // TODO: softSetup?
 
-@main
 @Cli
+@main
 struct BeaverCLI: Sendable {
   static let filenames = ["beaver", "Beaverfile", "beaver.rb", "beaver.build", "make.rb", "build.rb"]
 
@@ -93,7 +93,7 @@ struct BeaverCLI: Sendable {
       try await queue.wait()
       //deinitRuby()
     } catch let error as RbError {
-      let description = error.description
+      let description = error.errorDescription
       //deinitRuby()
       throw ExecutionError(description)
     } catch let error {
@@ -113,7 +113,7 @@ struct BeaverCLI: Sendable {
     var context = try await self.parseScript()
     try context.finalize()
 
-    print(await context.debugString)
+    //print(await context.debugString)
 
     if let target = target {
       try await context.build(targetName: target)
@@ -127,6 +127,16 @@ struct BeaverCLI: Sendable {
     try context.finalize()
 
     try await context.clean()
+  }
+}
+
+extension RbError {
+  var errorDescription: String {
+    if case .rubyException(let exc) = self {
+      exc.backtrace.joined(separator: "\n") + "\n" + exc.description
+    } else {
+      self.description
+    }
   }
 }
 
