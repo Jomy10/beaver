@@ -1,9 +1,5 @@
 import RubyGateway
 
-public protocol FailableRbObjectConvertible {
-  init(_ value: RbObject) throws
-}
-
 extension Result: @retroactive RbObjectConvertible
 where
   Success: FailableRbObjectConvertible,

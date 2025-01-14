@@ -5,9 +5,10 @@ public typealias RbError = RubyGateway.RbError
 struct RubyInitializeError: Error {}
 
 public func initRuby() throws {
-  if !Ruby.softSetup() {
-    throw RubyInitializeError()
-  }
+  //try RbGateway.vm.explicitSetup()
+  //if !Ruby.softSetup() {
+  //  throw RubyInitializeError()
+  //}
 }
 
 @discardableResult

@@ -13,6 +13,7 @@ extension Flags: RbObjectConvertible {
         guard let str = String(value) else { return nil }
         self.init(public: [str])
       case .T_HASH:
+        print("files")
         guard let hash = Dictionary<String, [String]>(value) else { return nil }
         self.init(
           public: hash["public"] ?? [],

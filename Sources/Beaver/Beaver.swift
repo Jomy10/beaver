@@ -33,6 +33,9 @@ public struct Beaver: ~Copyable, Sendable {
   //  /// spawned to compile the C target
   //  var cObjectsPerThread: Int = 10
   //}
+  public enum InitializationError: Error {
+    case fileCacheAlreadyInitialized
+  }
 
   // TODO: handle error
   public init(
@@ -44,10 +47,6 @@ public struct Beaver: ~Copyable, Sendable {
     self.optimizeMode = optimizeMode
     self.cacheFile = cacheFile
     self.fileCache = nil
-    let cacheFileBaseURL = cacheFile.dirURL!
-    if !cacheFileBaseURL.exists {
-      try FileManager.default.createDirectory(at: cacheFileBaseURL, withIntermediateDirectories: true)
-    }
     //try! self.fileCache.selectConfiguration(mode: self.optimizeMode)
     GlobalThreadCounter.setMaxProcesses(ProcessInfo.processInfo.activeProcessorCount)
     MessageHandler.setColorEnabled(enableColor) // TODO: allow --(no-)color (if not specified, pass nil)
@@ -60,6 +59,18 @@ public struct Beaver: ~Copyable, Sendable {
   public mutating func finalize() throws {
     self.fileCache = try FileCache(cacheFile: self.cacheFile)
     try self.fileCache?.selectConfiguration(mode: self.optimizeMode)
+
+    let cacheFileBaseURL = self.cacheFile.dirURL!
+    if !cacheFileBaseURL.exists {
+      try FileManager.default.createDirectory(at: cacheFileBaseURL, withIntermediateDirectories: true)
+    }
+  }
+
+  public mutating func setCacheFile(_ file: URL) throws(InitializationError) {
+    if self.fileCache != nil {
+      throw .fileCacheAlreadyInitialized
+    }
+    self.cacheFile = file
   }
 
   @discardableResult

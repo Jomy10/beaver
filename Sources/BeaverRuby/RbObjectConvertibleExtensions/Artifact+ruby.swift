@@ -1,6 +1,10 @@
 import RubyGateway
 import Beaver
 
+public protocol FailableRbObjectConvertible {
+  init(_ value: RbObject) throws
+}
+
 extension ArtifactTypeProtocol {
   public init?(_ value: RbObject) {
     if value.rubyType == .T_STRING || value.rubyType == .T_SYMBOL {

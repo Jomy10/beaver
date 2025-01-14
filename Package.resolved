@@ -1,5 +1,5 @@
 {
-  "originHash" : "694a3f8abcbddb34299d129354f2920319d1e0efd73fe84af1aeeb5af8615bc5",
+  "originHash" : "c3783e118de8cfac419ffaac18a279d3ecd92101df902bd1f8786bdc298b3583",
   "pins" : [
     {
       "identity" : "asyncobjects",
@@ -17,15 +17,6 @@
       "state" : {
         "revision" : "4e7daa138510b77a3cce9f6a31a116f8536347dd",
         "version" : "1.7.0"
-      }
-    },
-    {
-      "identity" : "cruby",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/johnfairh/CRuby",
-      "state" : {
-        "revision" : "07ee7e6c164d7d234785319e81a83c8e4d321d3f",
-        "version" : "2.1.0"
       }
     },
     {

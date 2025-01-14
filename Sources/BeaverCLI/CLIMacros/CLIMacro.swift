@@ -7,6 +7,7 @@ struct ArgumentDecl {
   var variableType: TypeSyntax
   var fullName: ExprSyntax
   var shortName: ExprSyntax? = nil
+  var negatable: ExprSyntax? = nil
   var help: ExprSyntax? = nil
   var defaultInitializer: ExprSyntax? = nil
 
@@ -20,6 +21,13 @@ struct ArgumentDecl {
         \(raw: name)(
           fullName: \(self.fullName),
           shortName: \(self.shortName ?? ExprSyntax("nil")),
+          \({
+            if let negatableExpr = self.negatable {
+              "negatable: \(negatableExpr),"
+            } else {
+              ""
+            }
+          }())
           help: \(self.help ?? ExprSyntax("nil"))
         )
         """
@@ -77,6 +85,9 @@ public struct CLIMacro: ExtensionMacro, MemberMacro {
           shortName: arguments.first { expr in
             expr.label?.text == "shortName"
           }?.expression,
+          negatable: arguments.first { expr in
+            expr.label?.text == "negatable"
+          }?.expression,
           help: arguments.first { expr in
             expr.label?.text == "help"
           }?.expression,
@@ -112,13 +123,13 @@ public struct CLIMacro: ExtensionMacro, MemberMacro {
 
       for argDecl in argumentDecls {
         let arg = if argDecl.isFlag {
-          "true"
+          "(\(argDecl.variableName) as! FlagDecl.Parsed).value"
         } else {
           "try \(argDecl.variableType)(argument: (\(argDecl.variableName) as! ArgumentDecl.Parsed).value)"
         }
 
         """
-        if \(argDecl.isFlag ? "parsed[\(argDecl.fullName)] != nil" : "let \(argDecl.variableName) = parsed[\(argDecl.fullName)]") {
+        if let \(argDecl.variableName) = parsed[\(argDecl.fullName)] {
           self.\(argDecl.variableName) = \(arg)
         }
         """
