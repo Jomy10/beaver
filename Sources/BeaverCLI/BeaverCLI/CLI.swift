@@ -3,8 +3,19 @@ import Beaver
 import BeaverRuby
 import CLIPackage
 import Utils
+import RubyGateway
 
-// TODO: softSetup?
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#elseif canImport(Musl)
+import Musl
+#elseif os(Windows)
+import ucrt
+#else
+#warning("Need implementation for current platform to determine terminal size")
+#endif
 
 @Cli
 @main
@@ -25,17 +36,37 @@ struct BeaverCLI: Sendable {
   )
   var file: URL? = nil
 
-  @Argument(name: "opt", shortName: "o")
-  var optimizationMode: OptimizationMode = .debug
+  @Argument(name: "opt", shortName: "c", help: "Optimization mode (`debug` or `release`) (default: `debug`)")
+  var _optimizationMode: OptimizationMode = .debug
 
-  @Flag(name: "version", shortName: "v")
+  @Flag(name: "optimize", shortName: "o", help: "Shorthand for `-c release`")
+  var optimize: Bool? = nil
+
+  @Flag(name: "color", help: "Enable color output (default: automatic)")
+  var color: Bool? = nil
+
+  @Flag(name: "version", shortName: "v", negatable: false, help: "Print the version of this tool and the used ruby version")
   var version: Bool = false
+
+  @Flag(name: "help", shortName: "h", negatable: false, help: "Show this help message")
+  var help: Bool = false
+
+  var optimizationMode: OptimizationMode {
+    switch (self.optimize) {
+      case nil:
+        return self._optimizationMode
+      case .some(true):
+        return .release
+      case .some(false):
+        return .debug
+    }
+  }
 
   static func main() async {
     do {
       let args = ProcessInfo.processInfo.arguments.dropFirst()
       var cli = try self.init(arguments: args)
-      try await cli.run()
+      try await cli.runCLI()
     } catch {
       print("\(error)", to: .stderr)
       exit(1)
@@ -56,11 +87,46 @@ struct BeaverCLI: Sendable {
     }
   }
 
-  mutating func run() async throws {
+  func parseScript() async throws -> Beaver {
+    let scriptFile = try self.getScriptFile()
+
+    let rcCtx = UnsafeSendable(Rc(try Beaver(
+      enableColor: self.color,
+      optimizeMode: self.optimizationMode
+    )))
+
+    do {
+      // Ruby code has to be executed on the main thread!
+      let queue = try await MainActor.run {
+        // TODO: passing arguments
+        try executeRuby(
+          scriptFile: scriptFile,
+          context: rcCtx
+        )
+      }
+      try await queue.wait() // Wait for method calls from ruby to finish setting up the context
+    } catch let error as RbError {
+      let description = await MainActor.run {
+        error.errorDescription
+      }
+      throw ExecutionError(description)
+    } catch let error {
+      throw error
+    }
+
+    return rcCtx.value.take()!
+  }
+
+  mutating func runCLI() async throws {
     let commandName = self.takeArgument() ?? "build"
 
     if self.version {
       self.printVersion()
+      return
+    }
+
+    if self.help {
+      self.printHelp()
       return
     }
 
@@ -79,41 +145,94 @@ struct BeaverCLI: Sendable {
     print("Ruby version: \(rubyVersionDescription())")
   }
 
-  func parseScript() async throws -> Beaver {
-    let scriptFile = try self.getScriptFile()
-
-    let rcCtx = Rc(try Beaver())
-
-    do {
-      // TODO: passing arguments
-      let queue = try executeRuby(
-        scriptFile: scriptFile,
-        context: UnsafeSendable(rcCtx)
-      )
-      try await queue.wait()
-      //deinitRuby()
-    } catch let error as RbError {
-      let description = error.errorDescription
-      //deinitRuby()
-      throw ExecutionError(description)
-    } catch let error {
-      //if rubyInit { deinitRuby() }
-      throw error
+  func printHelp() {
+    let terminalWidth: Int?
+    #if canImport(Darwin) || canImport(Glibc) || canImport(Musl)
+    var terminalSize: winsize? = winsize()
+    if ioctl(STDOUT_FILENO, TIOCGWINSZ, &terminalSize) != 0 {
+      terminalSize = nil
     }
+    terminalWidth = if let cols = terminalSize?.ws_col { Int(cols) } else { nil }
+    #elseif os(Windows)
+    let csbi = CONSOLE_SCREEN_BUFFER_INFO()
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)
+    terminalWidth = csbi.srWindow.Right - csbi.srWindow.Left + 1
+    #else
+    terminalWidth = nil
+    #endif
 
-    return rcCtx.take()!
+    let commandName = URL(filePath: ProcessInfo.processInfo.arguments.first!).lastPathComponent
+
+    print("""
+    [USAGE] \(commandName) [command] [options]
+
+    COMMANDS
+    """)
+    self.printHelpPart("build [target]", "Build a target", terminalWidth: terminalWidth)
+    self.printHelpPart("run [target]", "Run a target", terminalWidth: terminalWidth)
+    self.printHelpPart("clean", "Clean the build folder and cache", terminalWidth: terminalWidth)
+
+    print("\nOPTIONS")
+    for opt in Self._arguments {
+      self.printHelpPart({
+          var optPart = "--\(opt.negatable ? "[no-]" : "")\(opt.fullName)"
+          if let shortName = opt.shortName {
+            optPart += ", -\(shortName)"
+          }
+          if opt is ArgumentDecl {
+            optPart += " <arg>"
+          }
+          optPart += " "
+          return optPart
+        }(),
+        opt.help,
+        terminalWidth: terminalWidth
+      )
+    }
+  }
+
+  func printHelpPart(_ part: String, _ message: String?, terminalWidth: Int?) {
+    let messageStartIndex = if let terminalWidth = terminalWidth {
+      if terminalWidth <= 30 {
+        0
+      } else {
+        21
+      }
+    } else { 21 }
+    let argPartPrefix = "  "
+    let argPartPostfix = " "
+    let argPartSize = part.count + argPartPrefix.count + argPartPostfix.count
+    print(argPartPrefix + part + argPartPostfix, terminator: argPartSize > messageStartIndex || message == nil ? "\n" : "")
+    if let message = message {
+      let doPrint: (any StringProtocol, Int) -> () = { message, index in
+        let prefix = if argPartSize > messageStartIndex || index > 0 {
+          String(repeating: " ", count: messageStartIndex)
+        } else {
+          String(repeating: " ", count: messageStartIndex - argPartSize)
+        }
+        print(prefix + message)
+      }
+      if let terminalWidth = terminalWidth {
+        let messageSize = terminalWidth - messageStartIndex
+        var startIndex = message.startIndex
+        var index = 0
+        while startIndex < message.endIndex {
+          let endIndex = message.index(startIndex, offsetBy: messageSize, limitedBy: message.endIndex) ?? message.endIndex
+          doPrint(message[startIndex..<endIndex], index)
+          startIndex = endIndex
+          index += 1
+        }
+      } else {
+        doPrint(message, 0)
+      }
+    }
   }
 
   mutating func build() async throws {
-    //try initRuby()
-
     let target = self.takeArgument()
 
-    //var context = rcCtx.take()!
     var context = try await self.parseScript()
     try context.finalize()
-
-    //print(await context.debugString)
 
     if let target = target {
       try await context.build(targetName: target)
@@ -122,11 +241,20 @@ struct BeaverCLI: Sendable {
     }
   }
 
-  mutating func clean() async throws {
+  func clean() async throws {
+    //try Ruby.setup()
     var context = try await self.parseScript()
+
+    //if Ruby.cleanup() != 0 {
+    //  print("Couldn't cleanup ruby")
+    //}
     try context.finalize()
 
     try await context.clean()
+  }
+
+  mutating func run() async throws {
+    fatalError("unimplemented")
   }
 }
 

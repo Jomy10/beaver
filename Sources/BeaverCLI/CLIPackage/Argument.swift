@@ -3,6 +3,8 @@ public struct ArgumentDecl: Sendable, ArgumentProtocol {
   public var shortName: String?
   public var help: String?
 
+  public var negatable: Bool { false }
+
   public static let rangeSize: Int = 2
 
   public init(fullName: String, shortName: String?, help: String?) {

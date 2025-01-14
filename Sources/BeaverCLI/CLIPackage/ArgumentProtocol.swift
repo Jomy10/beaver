@@ -5,6 +5,8 @@ public protocol ArgumentProtocol: Sendable {
 
   var fullName: String { get }
   var shortName: String? { get }
+  var negatable: Bool { get }
+  var help: String? { get }
 
   static var rangeSize: Int { get }
 
@@ -25,15 +27,22 @@ extension ArgumentProtocol {
     let fullName = "--" + self.fullName
     if let index = array.firstIndex(where: { $0 == fullName }) {
       return index..<index.advanced(by: Self.rangeSize)
-    } else if let shortName = self.shortName {
+    }
+
+    if let shortName = self.shortName {
       let shortArg = "-" + shortName
       if let index = array.firstIndex(where: { $0 == shortArg }) {
         return index..<index.advanced(by: Self.rangeSize)
-      } else {
-        return nil
       }
-    } else {
-      return nil
     }
+
+    if negatable {
+      let fullName = "--no-" + self.fullName
+      if let index = array.firstIndex(where: { $0 == fullName }) {
+        return index..<index.advanced(by: Self.rangeSize)
+      }
+    }
+
+    return nil
   }
 }

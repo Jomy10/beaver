@@ -40,5 +40,3 @@ end
 sh "swift package update"
 sh "swift package edit CRuby", onError: :return
 sh "Packages/CRuby/cfg-cruby --mode #{mode} #{name == nil ? "" : "--name #{name}"} #{path == nil ? "" : "--path #{path}"}"
-
-File.read("")

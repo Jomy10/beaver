@@ -34,6 +34,7 @@ let package = Package(
     //.package(url: "https://github.com/johnfairh/RubyGateway", from: "6.0.0"),
     //.package(path: "../RubyGateway"),
     .package(url: "https://github.com/Jomy10/RubyGateway", branch: "main"),
+    //.package(url: "https://github.com/johnfairh/CRuby", from: "2.1.0"),
     .package(url: "https://github.com/apple/swift-syntax", from: "509.0.0"),
   ],
   targets: [
@@ -45,7 +46,8 @@ let package = Package(
         "Utils",
         "CLIPackage",
       ],
-      path: "Sources/BeaverCLI/BeaverCLI"
+      path: "Sources/BeaverCLI/BeaverCLI",
+      swiftSettings: [.define("RUBY_EXPLICIT_SETUP")]
     ),
     .target(
       name: "CLIPackage",
@@ -72,9 +74,8 @@ let package = Package(
         .product(name: "Queuer", package: "Queuer"),
         .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
       ],
-      resources: [
-        .copy("lib")
-      ]
+      resources: [.copy("lib")],
+      swiftSettings: [.define("RUBY_EXPLICIT_SETUP")]
     ),
     .target(
       name: "Beaver",

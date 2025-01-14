@@ -11,6 +11,7 @@ extension Headers: FailableRbObjectConvertible {
         let files = try Files(value)
         self.init(public: files)
       case .T_HASH:
+        print("headers")
         guard let hash = Dictionary<String, Result<Files, any Error>>(value) else {
           throw RbConversionError.unknownError
         }

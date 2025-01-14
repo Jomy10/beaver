@@ -47,7 +47,7 @@ For information on building this project, see [BUILDING.md](./BUILDING.md).
 ## Installing
 
 After configuring which ruby version to use as outlined in [Building](./BUILDING.md),
-run `ruby build.rb install`.
+run `ruby build.rb install release`.
 
 <!-- ## As a cmake replacement
 
