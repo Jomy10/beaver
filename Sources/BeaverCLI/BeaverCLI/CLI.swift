@@ -87,7 +87,9 @@ struct BeaverCLI: Sendable {
     }
   }
 
-  func parseScript() async throws -> Beaver {
+  func parseScript<C: Collection>(args: C) async throws -> Beaver
+  where C.Element == String
+  {
     let scriptFile = try self.getScriptFile()
 
     let rcCtx = UnsafeSendable(Rc(try Beaver(
@@ -135,6 +137,8 @@ struct BeaverCLI: Sendable {
         try await self.build()
       case "clean":
         try await self.clean()
+      case "run":
+        try await self.run()
       default:
         fatalError("unknown command \(commandName)")
     }
@@ -169,7 +173,7 @@ struct BeaverCLI: Sendable {
     COMMANDS
     """)
     self.printHelpPart("build [target]", "Build a target", terminalWidth: terminalWidth)
-    self.printHelpPart("run [target]", "Run a target", terminalWidth: terminalWidth)
+    self.printHelpPart("run [target]", "Run a target. Pass arguments to your executable using \"-- [args...]\"", terminalWidth: terminalWidth)
     self.printHelpPart("clean", "Clean the build folder and cache", terminalWidth: terminalWidth)
 
     print("\nOPTIONS")
@@ -193,11 +197,7 @@ struct BeaverCLI: Sendable {
 
   func printHelpPart(_ part: String, _ message: String?, terminalWidth: Int?) {
     let messageStartIndex = if let terminalWidth = terminalWidth {
-      if terminalWidth <= 30 {
-        0
-      } else {
-        21
-      }
+      if terminalWidth <= 30 { 0 } else { 21 }
     } else { 21 }
     let argPartPrefix = "  "
     let argPartPostfix = " "
@@ -231,7 +231,7 @@ struct BeaverCLI: Sendable {
   mutating func build() async throws {
     let target = self.takeArgument()
 
-    var context = try await self.parseScript()
+    var context = try await self.parseScript(args: self.leftoverArguments)
     try context.finalize()
 
     if let target = target {
@@ -242,19 +242,35 @@ struct BeaverCLI: Sendable {
   }
 
   func clean() async throws {
-    //try Ruby.setup()
-    var context = try await self.parseScript()
-
-    //if Ruby.cleanup() != 0 {
-    //  print("Couldn't cleanup ruby")
-    //}
+    var context = try await self.parseScript(args: self.leftoverArguments)
     try context.finalize()
 
     try await context.clean()
   }
 
   mutating func run() async throws {
-    fatalError("unimplemented")
+    let target = self.takeArgument()
+
+    let (args, leftover): ([String], DiscontiguousSlice<ArraySlice<String>>.SubSequence) = if let argsIndex: DiscontiguousSlice<ArraySlice<String>>.Index = self.leftoverArguments.firstIndex(of: "--") {
+      (
+        Array(self.leftoverArguments[self.leftoverArguments.index(after: argsIndex)..<self.leftoverArguments.endIndex]),
+        self.leftoverArguments[self.leftoverArguments.startIndex..<argsIndex]
+      )
+    } else {
+      (
+        [],
+        self.leftoverArguments
+      )
+    }
+
+    var context = try await self.parseScript(args: leftover)
+    try context.finalize()
+
+    if let target = target {
+      try await context.run(targetName: target, args: args)
+    } else {
+      try await context.run(args: args)
+    }
   }
 }
 

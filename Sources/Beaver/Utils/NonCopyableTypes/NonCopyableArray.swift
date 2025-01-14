@@ -33,6 +33,16 @@ public struct NonCopyableArray<Element: ~Copyable>: ~Copyable {
     return nil
   }
 
+  public func allIndexes(where fn: (borrowing Element) throws -> Bool) rethrows -> [Int] {
+    var indexes: [Int] = []
+    for index in self.indices {
+      if (try fn(self.buffer[index])) {
+        indexes.append(index)
+      }
+    }
+    return indexes
+  }
+
   public func withElement<Result>(_ idx: Int, _ cb: (borrowing Element) throws -> Result) rethrows -> Result {
     if idx < self.count {
       return try cb(self.buffer[idx])

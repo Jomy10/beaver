@@ -113,6 +113,35 @@ public struct Beaver: ~Copyable, Sendable {
     }
   }
 
+  enum RunError: Error {
+    case noExecutables
+    /// There is more than one executable present
+    case moreExecutables
+  }
+
+  public func run(args: [String] = []) async throws {
+    let targetRef = try await self.withCurrentProject { (project: borrowing Project) in
+      let index = try await project.targets.read { targets in
+        var indexes: [Int] = []
+        for targetIndex in targets.indices {
+          if targets.buffer[targetIndex] is any Executable {
+            indexes.append(targetIndex)
+          }
+        }
+        if indexes.count != 1 {
+          if indexes.count == 0 {
+            throw RunError.noExecutables
+          } else {
+            throw RunError.moreExecutables
+          }
+        }
+        return indexes.first!
+      }
+      return TargetRef(target: index, project: project.id)
+    }
+    try await self.run(targetRef, args: args)
+  }
+
   public func run(targetName: String, args: [String] = []) async throws {
     try await self.run(try await self.evaluateTarget(targetName: targetName), args: args)
   }

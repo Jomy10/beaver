@@ -13,7 +13,12 @@ import Platform
 /// File {
 /// 	int id
 /// 	string filename
-/// 	data hash
+/// 	int mtime
+/// 	int size
+/// 	int ino
+/// 	int mode
+/// 	int uid
+/// 	int gid
 /// }
 ///
 /// CSourceFile {
@@ -129,28 +134,6 @@ struct FileCache: Sendable {
     let targetId = try self.getTarget(target)
     let objectType = artifactType.cObjectType!
 
-    //let fileQuery = self.inputFiles
-    //let cachedFileQuery = self.files.table
-    //  .join(.inner,
-    //    self.csourceFiles.table,
-    //    on:
-    //         self.csourceFiles.fileId.qualified == self.files.id.qualified
-    //      && self.csourceFiles.configId.qualified == configId
-    //      && self.csourceFiles.targetId.qualified == targetId
-    //      && self.csourceFiles.objectType.qualified == objectType
-    //  ).alias("sub")
-    //let fileQuery = inputFiles.table
-    //  .select(
-    //    inputFiles.filename.qualified,
-    //    Table("sub")[self.files.id.unqualified],
-    //    Table("sub")[self.files.mtime.unqualified],
-    //    Table("sub")[self.files.size.unqualified],
-    //    Table("sub")[self.files.inodeNumber.unqualified],
-    //    Table("sub")[self.files.fileMode.unqualified],
-    //    Table("sub")[self.files.ownerUid.unqualified],
-    //    Table("sub")[self.files.ownerGid.unqualified]
-    //  )
-    //  .join(.leftOuter, cachedFileQuery, on: Table("sub")[self.files.filename.unqualified] == inputFiles.filename.qualified)
     let filesStmnt = try self.db.run("""
       select
         \(inputFiles.filename.qualified),
@@ -184,12 +167,10 @@ struct FileCache: Sendable {
       objectType.datatypeValue
     )
 
-    // TODO: also retry on locked
     var updateValues: [(Int64?, [Setter])] = []
     var returnValue: [Result] = []
     var error: (any Error)? = nil
     do {
-      //for file in try self.db.prepare(fileQuery)
       for fileStmnt in filesStmnt {
         let file: FileChecker.File = (
           filename: fileStmnt[0]! as! String,
@@ -222,8 +203,6 @@ struct FileCache: Sendable {
           ))
         }
       }
-
-      //assert(returnValue.count == filesStmnt.count)
     } catch let _error {
       error = _error
     }
