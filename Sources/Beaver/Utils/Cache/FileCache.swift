@@ -130,39 +130,84 @@ struct FileCache: Sendable {
     let objectType = artifactType.cObjectType!
 
     //let fileQuery = self.inputFiles
-    let fileQuery = inputFiles.table
-      .select(
-        inputFiles.filename.qualified,
-        self.files.id.qualified,
-        self.files.mtime.qualified,
-        self.files.size.qualified,
-        self.files.inodeNumber.qualified,
-        self.files.fileMode.qualified,
-        self.files.ownerUid.qualified,
-        self.files.ownerGid.qualified
-      )
-      .join(.leftOuter, self.files.table, on: self.files.filename.qualified == inputFiles.filename.qualified)
-      .join(.leftOuter,
-        self.csourceFiles.table,
-        on:
-             self.csourceFiles.fileId.qualified == self.files.id.qualified
-          && self.csourceFiles.configId.qualified == configId
-          && self.csourceFiles.targetId.qualified == targetId
-          && self.csourceFiles.objectType.qualified == objectType
-      )
+    //let cachedFileQuery = self.files.table
+    //  .join(.inner,
+    //    self.csourceFiles.table,
+    //    on:
+    //         self.csourceFiles.fileId.qualified == self.files.id.qualified
+    //      && self.csourceFiles.configId.qualified == configId
+    //      && self.csourceFiles.targetId.qualified == targetId
+    //      && self.csourceFiles.objectType.qualified == objectType
+    //  ).alias("sub")
+    //let fileQuery = inputFiles.table
+    //  .select(
+    //    inputFiles.filename.qualified,
+    //    Table("sub")[self.files.id.unqualified],
+    //    Table("sub")[self.files.mtime.unqualified],
+    //    Table("sub")[self.files.size.unqualified],
+    //    Table("sub")[self.files.inodeNumber.unqualified],
+    //    Table("sub")[self.files.fileMode.unqualified],
+    //    Table("sub")[self.files.ownerUid.unqualified],
+    //    Table("sub")[self.files.ownerGid.unqualified]
+    //  )
+    //  .join(.leftOuter, cachedFileQuery, on: Table("sub")[self.files.filename.unqualified] == inputFiles.filename.qualified)
+    let filesStmnt = try self.db.run("""
+      select
+        \(inputFiles.filename.qualified),
+        \(self.files.id.unqualified),
+        \(self.files.mtime.unqualified),
+        \(self.files.size.unqualified),
+        \(self.files.inodeNumber.unqualified),
+        \(self.files.fileMode.unqualified),
+        \(self.files.ownerUid.unqualified),
+        \(self.files.ownerGid.unqualified)
+      from "\(inputFiles.tableName)"
+      left outer join (
+        select
+          \(self.files.filename.qualified),
+          \(self.files.id.unqualified),
+          \(self.files.mtime.unqualified),
+          \(self.files.size.unqualified),
+          \(self.files.inodeNumber.unqualified),
+          \(self.files.fileMode.unqualified),
+          \(self.files.ownerUid.unqualified),
+          \(self.files.ownerGid.unqualified)
+        from File
+        inner join CSourceFile on \(self.csourceFiles.fileId.qualified) = \(self.files.id.qualified)
+                              and \(self.csourceFiles.configId.qualified) = ?
+                              and \(self.csourceFiles.targetId.qualified) = ?
+                              and \(self.csourceFiles.objectType.qualified) = ?
+      ) sub on sub.filename = \(inputFiles.filename.qualified)
+      """,
+      configId.datatypeValue,
+      targetId.datatypeValue,
+      objectType.datatypeValue
+    )
 
     // TODO: also retry on locked
     var updateValues: [(Int64?, [Setter])] = []
     var returnValue: [Result] = []
     var error: (any Error)? = nil
     do {
-      for file in try self.db.prepare(fileQuery) {
-        let filename: String = file[FileChecker.filename]
+      //for file in try self.db.prepare(fileQuery)
+      for fileStmnt in filesStmnt {
+        let file: FileChecker.File = (
+          filename: fileStmnt[0]! as! String,
+          id: fileStmnt[1].map { $0 as! Int64 },
+          mtime: fileStmnt[2].map { $0 as! Int64 },
+          size: fileStmnt[3].map { $0 as! Int64 },
+          ino: try fileStmnt[4].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) },
+          mode: try fileStmnt[5].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) },
+          uid: try fileStmnt[6].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) },
+          gid: try fileStmnt[7].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) }
+        )
+        let filename: String = file.filename
         let (changed, attrs) = try FileChecker.fileChanged(file: file)
 
+        MessageHandler.trace("\(filename) (\(changed ? "changed" : "not changed"))")
         returnValue.append(try await cb(URL(filePath: filename), changed))
         if changed {
-          let fileId = file[FileChecker.id]
+          let fileId = file.id
           updateValues.append((
             fileId,
             [
@@ -178,7 +223,7 @@ struct FileCache: Sendable {
         }
       }
 
-      assert(returnValue.count == files.count)
+      //assert(returnValue.count == filesStmnt.count)
     } catch let _error {
       error = _error
     }
@@ -261,18 +306,19 @@ struct StatError: Error, CustomStringConvertible {
 /// This approach is similar to `redo` as outlined in [this article](https://apenwarr.ca/log/20181113)
 /// (see redo: mtime dependencies done right)
 struct FileChecker {
-  static let filename = SQLite.Expression<String>("filename")
-  static let id = SQLite.Expression<Int64?>("id")
-  static let mtime = SQLite.Expression<Int64?>("mtime")
-  static let size = SQLite.Expression<Int64?>("size")
-  static let inodeNumer = SQLite.Expression<UInt64?>("ino")
-  static let fileMode = SQLite.Expression<UInt64?>("mode")
-  static let ownerUid = SQLite.Expression<UInt64?>("uid")
-  static let ownerGid = SQLite.Expression<UInt64?>("gid")
+  //static let filename = SQLite.Expression<String>("filename")
+  //static let id = SQLite.Expression<Int64?>("id")
+  //static let mtime = SQLite.Expression<Int64?>("mtime")
+  //static let size = SQLite.Expression<Int64?>("size")
+  //static let inodeNumer = SQLite.Expression<UInt64?>("ino")
+  //static let fileMode = SQLite.Expression<UInt64?>("mode")
+  //static let ownerUid = SQLite.Expression<UInt64?>("uid")
+  //static let ownerGid = SQLite.Expression<UInt64?>("gid")
+  typealias File = (filename: String, id: Int64?, mtime: Int64?, size: Int64?, ino: UInt64?, mode: UInt64?, uid: UInt64?, gid: UInt64?)
 
   /// Returns wether the file has changed and the new `stat` of the file
-  static func fileChanged(file: Row) throws -> (Bool, stat) {
-    let filename = file[Self.filename]
+  static func fileChanged(file: Self.File) throws -> (Bool, stat) {
+    let filename = file.filename
 
     var attrs = stat()
     try filename.withCString({ str in
@@ -285,42 +331,42 @@ struct FileChecker {
     })
 
     // File hasn't been cached yet
-    if file[id] == nil {
+    if file.id == nil {
       return (true, attrs)
     }
 
-    if let mtime = file[Self.mtime] {
+    if let mtime = file.mtime {
       let newMtime = Int64(timespec_to_ms(attrs.st_mtimespec))
       if mtime != newMtime { return (true, attrs) }
     } else {
       return (true, attrs)
     }
 
-    if let size = file[Self.size] {
+    if let size = file.size {
       if size != attrs.st_size { return (true, attrs) }
     } else {
       return (true, attrs)
     }
 
-    if let ino = file[Self.inodeNumer] {
+    if let ino = file.ino {
       if ino != attrs.st_ino { return (true, attrs) }
     } else {
       return (true, attrs)
     }
 
-    if let mode = file[Self.fileMode] {
+    if let mode = file.mode {
       if mode != attrs.st_mode { return (true, attrs) }
     } else {
       return (true, attrs)
     }
 
-    if let uid = file[Self.ownerUid] {
+    if let uid = file.uid {
       if uid != attrs.st_uid { return (true, attrs) }
     } else {
       return (true, attrs)
     }
 
-    if let gid = file[Self.ownerGid] {
+    if let gid = file.gid {
       if gid != attrs.st_gid { return (true, attrs) }
     } else {
       return (true, attrs)

@@ -13,6 +13,7 @@ struct TableColumn<ColumnType: SQLite.Value> {
 
 protocol SQLTableProtocol: Sendable {
   var table: Table { get }
+  var tableName: String { get }
   func truncate(_ db: Connection) throws
 }
 
@@ -41,7 +42,10 @@ struct FileTable: SQLTable {
   let ownerUid: TableColumn<UInt64>
   let ownerGid: TableColumn<UInt64>
 
+  let tableName: String
+
   init() {
+    self.tableName = "File"
     self.table = Table("File")
     self.id = TableColumn("id", self.table)
     self.filename = TableColumn("filename", self.table)
@@ -77,7 +81,10 @@ struct CSourceFileTable: SQLTable {
   let targetId: TableColumn<Int64>
   let objectType: TableColumn<CObjectType>
 
+  let tableName: String
+
   init() {
+    self.tableName = "CSourceFile"
     self.table = Table("CSourceFile")
     self.fileId = TableColumn("fileID", self.table)
     self.configId = TableColumn("configID", self.table)
@@ -117,7 +124,10 @@ struct ConfigurationTable: SQLTable {
   let id: TableColumn<Int64>
   let mode: TableColumn<OptimizationMode>
 
+  let tableName: String
+
   init() {
+    self.tableName = "Configuration"
     self.table = Table("Configuration")
     self.id = TableColumn("id", self.table)
     self.mode = TableColumn("mode", self.table)
@@ -137,7 +147,10 @@ struct TargetTable: SQLTable {
   let project: TableColumn<Int>
   let target: TableColumn<Int>
 
+  let tableName: String
+
   init() {
+    self.tableName = "Target"
     self.table = Table("Target")
     self.id = TableColumn("id", self.table)
     self.project = TableColumn("project", self.table)
@@ -157,8 +170,11 @@ struct TempInputFileTable: SQLTempTable {
   let table: Table
   let filename: TableColumn<String>
 
+  let tableName: String
+
   init() {
-    self.table = Table("InputFile_\(UUID())")
+    self.tableName = "InputFile_\(UUID())"
+    self.table = Table(self.tableName)
     self.filename = TableColumn("filename", self.table)
   }
 
