@@ -6,7 +6,7 @@ public protocol Cli {
   func validate() throws(ValidationError)
   mutating func takeArgument() -> String?
 
-  var leftoverArguments: DiscontiguousSlice<[String].SubSequence> { get set }
+  var leftoverArguments: DiscontiguousSlice<Array<String>.SubSequence> { get set }
 
   static func parseArguments<C: Collection>(_ arguments: borrowing C) throws -> (DiscontiguousSlice<C>, [String:any ParsedArgumentProtocol])
   where C.Element == String,
