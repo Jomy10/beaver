@@ -5,16 +5,32 @@ import Utils
 import AsyncAlgorithms
 import Atomics
 
+/// Errors for the ruby command line utility (e.g. `cmd`, `opt`, `arg`)
+enum CommandLineError: Error {
+  /// Expected arguments for function `opt` or `arg`
+  case noArgs
+}
+
 /// Initializes ruby environment and executes the given script file
-public func executeRuby(
+public func executeRuby<Args: Collection & BidirectionalCollection & Sendable>(
   scriptFile: URL,
+  args: Args,
   context: UnsafeSendable<Rc<Beaver>>
-) throws -> SyncTaskQueue {
+) throws -> SyncTaskQueue
+  where Args.Element == String
+{
   let scriptContents = try String(contentsOf: scriptFile, encoding: .utf8)
   let queue: SyncTaskQueue = SyncTaskQueue()
 
+  // Lock is probably not needed
+  let slice = try RWLock(MutableDiscontiguousSlice(args))
+
   // TODO: also allow shorthand Library("name")
   let beaverModule = try Ruby.defineModule("Beaver")
+
+  try loadCommandLineMethods(in: beaverModule, args: slice, queue: queue, context: context)
+
+  // Project //
   try beaverModule.defineMethod(
     "Project",
     argsSpec: RbMethodArgsSpec(

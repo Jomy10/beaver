@@ -4,7 +4,6 @@ import Atomics
 
 public struct Beaver: ~Copyable, Sendable {
   var projects: AsyncRWLock<NonCopyableArray<Project>>
-  //public private(set) var currentProjectIndex: ProjectRef? = nil
   private var currentProjectIndexAtomic: ManagedAtomic<ProjectRef> = ManagedAtomic(-1)
   public var currentProjectIndex: ProjectRef? {
     get {
@@ -13,10 +12,13 @@ public struct Beaver: ~Copyable, Sendable {
       return idx
     }
   }
-  public var cacheDir: URL = URL.currentDirectory()
+
   public var optimizeMode: OptimizationMode
+
   var cacheFile: URL
   var fileCache: FileCache?
+
+  var commands: Commands
 
   private func setCurrentProjectIndex(_ idx: ProjectRef) async {
     while true {
@@ -47,9 +49,10 @@ public struct Beaver: ~Copyable, Sendable {
     self.optimizeMode = optimizeMode
     self.cacheFile = cacheFile
     self.fileCache = nil
-    //try! self.fileCache.selectConfiguration(mode: self.optimizeMode)
+    self.commands = Commands()
+
     GlobalThreadCounter.setMaxProcesses(ProcessInfo.processInfo.activeProcessorCount)
-    MessageHandler.setColorEnabled(enableColor) // TODO: allow --(no-)color (if not specified, pass nil)
+    MessageHandler.setColorEnabled(enableColor)
 
     // TODO: if script file changed, or any of the requires; rebuild
     // At the end of execution, save all of the files the script requires into cache and retrieve them the next time Beaver is used
@@ -57,13 +60,13 @@ public struct Beaver: ~Copyable, Sendable {
 
   /// Should be called after all configuration has been set and targets have been declared
   public mutating func finalize() throws {
-    self.fileCache = try FileCache(cacheFile: self.cacheFile)
-    try self.fileCache?.selectConfiguration(mode: self.optimizeMode)
-
     let cacheFileBaseURL = self.cacheFile.dirURL!
     if !cacheFileBaseURL.exists {
       try FileManager.default.createDirectory(at: cacheFileBaseURL, withIntermediateDirectories: true)
     }
+
+    self.fileCache = try FileCache(cacheFile: self.cacheFile)
+    try self.fileCache?.selectConfiguration(mode: self.optimizeMode)
   }
 
   public mutating func setCacheFile(_ file: URL) throws(InitializationError) {
@@ -169,6 +172,50 @@ public struct Beaver: ~Copyable, Sendable {
       try await self.loopProjects { (project: borrowing Project) in
         try await project.clean(context: self)
       }
+    }
+  }
+
+  public mutating func addCommand(
+    _ name: String,
+    overwrite: Bool = false,
+    _ execute: @escaping Commands.Command
+  ) async throws {
+    if self.currentProjectIndex != nil {
+      try await self.withCurrentProject { (project: inout Project) async throws -> Void in
+        try await project.addCommand(name, overwrite: overwrite, execute)
+      }
+    } else {
+      try await self.commands.addCommand(name: name, overwrite: overwrite, execute: execute)
+    }
+  }
+
+  public func call(_ commandName: String) async throws {
+    if self.currentProjectIndex != nil {
+      try await self.withCurrentProject { (project: borrowing Project) async throws -> () in
+        try await project.call(commandName, context: self)
+      }
+    } else {
+      try await self.commands.call(commandName, context: self)
+    }
+  }
+
+  public func callDefault() async throws {
+    if self.currentProjectIndex != nil {
+      try await self.withCurrentProject { (project: borrowing Project) in
+        try await project.callDefault(context: self)
+      }
+    } else {
+      try await self.commands.callDefault(context: self)
+    }
+  }
+
+  public func isOverwritten(_ commandName: String) async -> Bool {
+    if self.currentProjectIndex != nil {
+      try! await self.withCurrentProject { (project: borrowing Project) in
+        await project.isOverwritten(commandName)
+      }
+    } else {
+      await self.commands.overwrites.contains(commandName)
     }
   }
 

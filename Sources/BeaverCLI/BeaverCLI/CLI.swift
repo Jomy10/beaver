@@ -68,7 +68,7 @@ struct BeaverCLI: Sendable {
       var cli = try self.init(arguments: args)
       try await cli.runCLI()
     } catch {
-      print("\(error)", to: .stderr)
+      print("error: \(error)", to: .stderr)
       exit(1)
     }
   }
@@ -87,7 +87,7 @@ struct BeaverCLI: Sendable {
     }
   }
 
-  func parseScript<C: Collection>(args: C) async throws -> Beaver
+  func runScript<C: Collection & BidirectionalCollection & Sendable>(args: C) async throws -> Beaver
   where C.Element == String
   {
     let scriptFile = try self.getScriptFile()
@@ -103,6 +103,7 @@ struct BeaverCLI: Sendable {
         // TODO: passing arguments
         try executeRuby(
           scriptFile: scriptFile,
+          args: args,
           context: rcCtx
         )
       }
@@ -119,8 +120,24 @@ struct BeaverCLI: Sendable {
     return rcCtx.value.take()!
   }
 
+  func getArguments() -> ([String], DiscontiguousSlice<ArraySlice<String>>.SubSequence) {
+    // collect arguments after --
+    if let argsIndex: DiscontiguousSlice<ArraySlice<String>>.Index = self.leftoverArguments.firstIndex(of: "--") {
+      (
+        Array(self.leftoverArguments[self.leftoverArguments.index(after: argsIndex)..<self.leftoverArguments.endIndex]),
+        self.leftoverArguments[self.leftoverArguments.startIndex..<argsIndex]
+      )
+    } else {
+      (
+        [],
+        self.leftoverArguments
+      )
+    }
+  }
+
   mutating func runCLI() async throws {
-    let commandName = self.takeArgument() ?? "build"
+    let explicitCommand = self.takeArgument()
+    let commandName = explicitCommand ?? "build"
 
     if self.version {
       self.printVersion()
@@ -132,15 +149,34 @@ struct BeaverCLI: Sendable {
       return
     }
 
-    switch (commandName) {
-      case "build":
-        try await self.build()
-      case "clean":
-        try await self.clean()
-      case "run":
-        try await self.run()
-      default:
-        fatalError("unknown command \(commandName)")
+    let (args, leftover) = self.getArguments()
+
+    //var commandOverwrites: Set<String> = Set()
+    var context = try await self.runScript(args: leftover)
+    try context.finalize()
+
+    if context.currentProjectIndex == nil {
+      if let commandName = explicitCommand {
+        try await context.call(commandName)
+      } else {
+        try await context.callDefault()
+        // No project and no command specified (warn)
+      }
+    } else {
+      if await context.isOverwritten(commandName) {
+        try await context.call(commandName)
+      } else {
+        switch (commandName) {
+          case "build":
+            try await self.build(context: context)
+          case "clean":
+            try await self.clean(context: context)
+          case "run":
+            try await self.run(args: args, context: context)
+          default:
+            try await context.call(commandName)
+        }
+      }
     }
   }
 
@@ -228,43 +264,20 @@ struct BeaverCLI: Sendable {
     }
   }
 
-  mutating func build() async throws {
-    let target = self.takeArgument()
-
-    var context = try await self.parseScript(args: self.leftoverArguments)
-    try context.finalize()
-
-    if let target = target {
+  mutating func build(context: borrowing Beaver) async throws {
+    if let target = self.takeArgument() {
       try await context.build(targetName: target)
     } else {
       try await context.buildCurrentProject()
     }
   }
 
-  func clean() async throws {
-    var context = try await self.parseScript(args: self.leftoverArguments)
-    try context.finalize()
-
+  func clean(context: borrowing Beaver) async throws {
     try await context.clean()
   }
 
-  mutating func run() async throws {
+  mutating func run(args: [String], context: borrowing Beaver) async throws {
     let target = self.takeArgument()
-
-    let (args, leftover): ([String], DiscontiguousSlice<ArraySlice<String>>.SubSequence) = if let argsIndex: DiscontiguousSlice<ArraySlice<String>>.Index = self.leftoverArguments.firstIndex(of: "--") {
-      (
-        Array(self.leftoverArguments[self.leftoverArguments.index(after: argsIndex)..<self.leftoverArguments.endIndex]),
-        self.leftoverArguments[self.leftoverArguments.startIndex..<argsIndex]
-      )
-    } else {
-      (
-        [],
-        self.leftoverArguments
-      )
-    }
-
-    var context = try await self.parseScript(args: leftover)
-    try context.finalize()
 
     if let target = target {
       try await context.run(targetName: target, args: args)

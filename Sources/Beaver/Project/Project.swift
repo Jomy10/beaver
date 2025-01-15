@@ -8,6 +8,8 @@ public struct Project: ~Copyable, Sendable {
   public var buildDir: URL
   public var targets: AsyncRWLock<NonCopyableArray<any Target>>
 
+  var commands: Commands
+
   public init(
     name: String,
     baseDir: URL = URL.currentDirectory(),
@@ -19,6 +21,7 @@ public struct Project: ~Copyable, Sendable {
     self.baseDir = baseDir
     self.buildDir = buildDir.appending(path: context.optimizeMode.rawValue)
     self.targets = AsyncRWLock(targets)
+    self.commands = Commands()
   }
 
   public static let arguments: [RubyArgument] = [
@@ -119,5 +122,26 @@ public struct Project: ~Copyable, Sendable {
     await self.targets.read { targets in
       targets.buffer[index].name
     }
+  }
+
+  // Commands //
+  public func addCommand(
+    _ name: String,
+    overwrite: Bool = false,
+    _ execute: @escaping Commands.Command
+  ) async throws {
+    try await self.commands.addCommand(name: name, overwrite: overwrite, execute: execute)
+  }
+
+  public func call(_ commandName: String, context: borrowing Beaver) async throws {
+    try await self.commands.call(commandName, context: context)
+  }
+
+  public func callDefault(context: borrowing Beaver) async throws {
+    try await self.commands.callDefault(context: context)
+  }
+
+  public func isOverwritten(_ commandName: String) async -> Bool {
+    await self.commands.overwrites.contains(commandName)
   }
 }

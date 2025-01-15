@@ -143,8 +143,7 @@ let package = Package(
       dependencies: [
         "Beaver",
         .product(name: "ColorizeSwift", package: "ColorizeSwift")
-      ],
-      exclude: ["resources"]
+      ]
     ),
   ]
 )

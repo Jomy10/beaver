@@ -76,7 +76,6 @@ struct DependencyFuture {
             throw Dependency.ParsingError.malformed(value.description)
         }
       case .T_HASH:
-        print("dependency")
         guard let hash = Dictionary<String, RbObject>(value) else {
           throw Dependency.ParsingError.malformed(value.description)
         }
