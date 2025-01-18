@@ -1,3 +1,5 @@
+import Foundation
+
 public struct TargetRef: Identifiable, Hashable, Equatable, Sendable {
   public let target: Int
   public let project: ProjectRef
@@ -22,14 +24,21 @@ extension TargetRef {
   }
 }
 
-public struct Dependency: Hashable, Equatable, Sendable {
-  let library: TargetRef
-  let artifact: LibraryArtifactType
+public struct LibraryTargetDependency: Hashable, Equatable, Sendable {
+  public let target: TargetRef
+  public let artifact: LibraryArtifactType
 
-  public init(library: TargetRef, artifact: LibraryArtifactType) {
-    self.library = library
+  public init(target: TargetRef, artifact: LibraryArtifactType) {
+    self.target = target
     self.artifact = artifact
   }
+}
+
+public enum Dependency: Hashable, Equatable, Sendable {
+  case library(LibraryTargetDependency)
+  case pkgconfig(String)
+  case system(String)
+  case customFlags(cflags: [String], linkerFlags: [String])
 
   public enum ParsingError: Error {
     case unexpectedNoComponents
@@ -39,6 +48,70 @@ public struct Dependency: Hashable, Equatable, Sendable {
     case unknownTarget(name: String, inProject: String)
     case noDefaultProject
   }
+}
+
+extension Dependency {
+  var isBuildable: Bool {
+    switch (self) {
+      case .library(_):
+        return true
+      case .pkgconfig(_): fallthrough
+      case .system(_): fallthrough
+      case .customFlags(cflags: _, linkerFlags: _):
+        return false
+    }
+  }
+
+  /// Both linker and header files
+  public func cflags(context: borrowing Beaver) async throws -> [String]? {
+    switch (self) {
+      case .library(let libTarget):
+        return try await context.withProjectAndLibrary(libTarget.target) { (project: borrowing Project, library: borrowing any Library) in
+          return try await library.publicCflags(projectBaseDir: project.baseDir)
+        }
+      case .pkgconfig(let name):
+        return Tools.parseArgs(try Tools.execWithOutput(Tools.pkgconfig!, [name, "--cflags", "--keep-system-cflags"]).stdout).map { String($0) }
+      case .system(_):
+        return nil
+      case .customFlags(cflags: let cflags, linkerFlags: _):
+        return cflags
+    }
+  }
+
+  public func linkerFlags(context: borrowing Beaver) async throws -> [String] {
+    switch (self) {
+      case .library(let libTarget):
+        return await context.withProjectAndLibrary(libTarget.target) { (project: borrowing Project, library: borrowing any Library) in
+          return library.linkAgainstLibrary(projectBuildDir: project.buildDir, artifact: libTarget.artifact)
+        }
+      case .pkgconfig(let name):
+        return Tools.parseArgs(try Tools.execWithOutput(Tools.pkgconfig!, [name, "--libs", "--keep-system-libs"]).stdout).map { String($0) }
+      case .system(let name):
+        return ["-l\(name)"]
+      case .customFlags(cflags: _, linkerFlags: let linkerFlags):
+        return linkerFlags
+    }
+  }
+
+  public func linkerFlags(context: borrowing Beaver, collectingLanguageIn langs: inout Set<Language>) async throws -> [String] {
+    switch (self) {
+      case .library(let libTarget):
+        return await context.withProjectAndLibrary(libTarget.target) { (project: borrowing Project, library: borrowing any Library) in
+          langs.insert(library.language)
+          return library.linkAgainstLibrary(projectBuildDir: project.buildDir, artifact: libTarget.artifact)
+        }
+      case .pkgconfig(let name):
+        return Tools.parseArgs(try Tools.execWithOutput(Tools.pkgconfig!, [name, "--libs", "--keep-system-libs"]).stdout).map { String($0) }
+      case .system(let name):
+        return ["-l\(name)"]
+      case .customFlags(cflags: _, linkerFlags: let linkerFlags):
+        return linkerFlags
+    }
+  }
+}
+
+extension Dependency: Identifiable {
+  public var id: Self { self }
 }
 
 extension Beaver {
@@ -72,6 +145,7 @@ extension Beaver {
   }
 
   public func dependency(_ target: String, artifact: LibraryArtifactType = .staticlib) async throws -> Dependency {
-    return Dependency(library: try await self.evaluateTarget(targetName: target), artifact: artifact)
+    return .library(LibraryTargetDependency(target: try await self.evaluateTarget(targetName: target), artifact: artifact))
+
   }
 }

@@ -51,7 +51,6 @@ public struct Beaver: ~Copyable, Sendable {
     self.fileCache = nil
     self.commands = Commands()
 
-    GlobalThreadCounter.setMaxProcesses(ProcessInfo.processInfo.activeProcessorCount)
     MessageHandler.setColorEnabled(enableColor)
 
     // TODO: if script file changed, or any of the requires; rebuild
@@ -107,13 +106,8 @@ public struct Beaver: ~Copyable, Sendable {
   }
 
   public func build(_ targetRef: TargetRef, artifact: ArtifactType? = nil) async throws {
-    try await self.withTarget(targetRef) { (target: borrowing any Target) async throws in
-      try await MessageHandler.withIndicators {
-        let dependencyGraph = try await DependencyGraph(startingFrom: targetRef, artifact: artifact, context: self)
-        let builder = try await DependencyBuilder(dependencyGraph, context: self)
-        try await builder.run(context: self)
-      }
-    }
+    let builder = try await TargetBuilder(target: targetRef, artifact: artifact, context: self)
+    await builder.build(context: self)
   }
 
   enum RunError: Error {
@@ -152,9 +146,9 @@ public struct Beaver: ~Copyable, Sendable {
   public func run(_ targetRef: TargetRef, args: [String] = []) async throws {
     try await self.build(targetRef, artifact: .executable(.executable))
     let executableURL = try await self.withProjectAndExecutable(targetRef) { (project: borrowing Project, executable: borrowing any Executable) async throws in
-      try await executable.artifactURL(projectBuildDir: project.buildDir, .executable)
+      executable.artifactURL(projectBuildDir: project.buildDir, artifact: .executable)!
     }
-    try await Tools.exec(executableURL, args)
+    try Tools.exec(executableURL, args)
   }
 
   public func clean(projectName: String) async throws {

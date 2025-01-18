@@ -1,3 +1,7 @@
+# An example of using libraries defined in another project.
+# You can also `require_relative "other/beaver.rb"` to import the
+# definitions of another project
+
 Project(
   name: "Libraries",
   baseDir: "Libraries"

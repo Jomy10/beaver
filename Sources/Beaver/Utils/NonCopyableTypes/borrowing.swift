@@ -28,7 +28,6 @@ func borrow2N<NC1: ~Copyable, NC2: ~Copyable>(
   let nc2Ptr = UnsafeSendable(withUnsafePointer(to: nc2) { $0 })
 
   let tasks = await (0..<n).asyncMap { i in
-    await GlobalThreadCounter.newProcess()
     return Task.detached(priority: .high) {
       try await cb(i, nc1Ptr.value.pointee, nc2Ptr.value.pointee)
     }

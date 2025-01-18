@@ -24,12 +24,6 @@ public struct Project: ~Copyable, Sendable {
     self.commands = Commands()
   }
 
-  public static let arguments: [RubyArgument] = [
-    RubyArgument("name", mandatory: true),
-    RubyArgument("baseDir"),
-    RubyArgument("buildDir")
-  ]
-
   public var targetRefs: [TargetRef] {
     get async {
       await self.targets.read { targets in
@@ -64,7 +58,7 @@ public struct Project: ~Copyable, Sendable {
   public func clean(context: borrowing Beaver) async throws {
     try await self.targets.read { targets in
       try await targets.forEach { target in
-        try await target.clean(buildDir: self.buildDir, context: context)
+        try await target.clean(projectBuildDir: self.buildDir, context: context)
       }
     }
   }

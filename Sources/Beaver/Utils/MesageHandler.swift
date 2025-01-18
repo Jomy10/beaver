@@ -16,11 +16,13 @@ import ucrt
 #endif
 
 struct MessageHandler {
+  @available(*, deprecated)
   private static let data: AsyncRWLock<Self.Data> = AsyncRWLock(.init())
   private nonisolated(unsafe) static var progress: ProgressIndicators? = nil
   /// Should only be used on the main thread by Beaver, so no locking mechanism is provided here
   private nonisolated(unsafe) static var messageVisibility: MessageVisibility = MessageVisibility.default
 
+  @available(*, deprecated)
   struct Data: ~Copyable {
     var targetToSpinner: [TargetRef:ProgressBar] = [:]
   }
@@ -64,28 +66,34 @@ struct MessageHandler {
     String.isColorizationEnabled = val ?? Self.terminalColorEnabled
   }
 
-  public static func enableIndicators() async {
+  public static func enableIndicators() {
     Self.progress = ProgressIndicators.start(stream: .stderr)
   }
 
-  public static func closeIndicators() async {
+  public static func closeIndicators() {
     Self.progress = nil
-    await Self.data.write { data in
-      data.targetToSpinner.removeAll()
-    }
+    //await Self.data.write { data in
+    //  data.targetToSpinner.removeAll()
+    //}
   }
 
   public static func withIndicators<Result, E>(_ cb: () async throws(E) -> Result) async rethrows -> Result {
-    await self.enableIndicators()
+    self.enableIndicators()
     let value = try await cb()
-    await self.closeIndicators()
+    self.closeIndicators()
     return value
   }
 
+  @available(*, deprecated)
   public static func getSpinner(targetRef: TargetRef) async -> ProgressBar? {
     return await self.data.read { data in data.targetToSpinner[targetRef] }
   }
 
+  public static func newSpinner(_ message: String) -> ProgressBar {
+    Self.progress!.registerSpinner(message: message)
+  }
+
+  @available(*, deprecated)
   public static func addTask(_ message: String, targetRef: TargetRef? = nil) async {
     let spinner = Self.progress!.registerSpinner(message: message)
     if let targetRef = targetRef {
@@ -130,10 +138,12 @@ struct MessageHandler {
     case trace
     case warning
     case error
+    case debug
 
     var format: String {
       switch (self) {
         case .trace: "TRACE".bold()
+        case .debug: "DEBUG".lightBlue()
         case .warning: "WARN".yellow()
         case .error: "ERR".red()
       }
@@ -142,6 +152,7 @@ struct MessageHandler {
     var messageVisibility: MessageVisibility {
       switch (self) {
         case .trace: .trace
+        case .debug: .debug
         case .warning: .warning
         case .error: .error
       }
@@ -152,12 +163,16 @@ struct MessageHandler {
     self.print("[\(level.format)] \(message)", context: (context ?? []).union(level.messageVisibility))
   }
 
-  public static func warn(_ message: String, context: MessageVisibility? = nil) {
-    self.log(message, level: .warning, context: context)
-  }
-
   public static func trace(_ message: String, context: MessageVisibility? = nil) {
     self.log(message, level: .trace, context: context)
+  }
+
+  public static func debug(_ message: String, context: MessageVisibility? = nil) {
+    self.log(message, level: .debug, context: context)
+  }
+
+  public static func warn(_ message: String, context: MessageVisibility? = nil) {
+    self.log(message, level: .warning, context: context)
   }
 
   public static func error(_ message: String, context: MessageVisibility? = nil) {

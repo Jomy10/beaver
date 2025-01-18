@@ -27,16 +27,16 @@ struct MutableDiscontiguousSlice<C: Collection & BidirectionalCollection>: Colle
     self.unavailableRanges = []
   }
 
-  func index(after index: Self.Index) -> Index {
-    var i = self.buffer.index(after: index)
+  func index(after index: Self.Index) -> Self.Index {
+    var i: Self.Index = self.buffer.index(after: index)
     while !self.indexAvailable(i) {
       i = self.buffer.index(after: i)
     }
     return i
   }
 
-  func index(before index: Self.Index) -> Index {
-    var i = self.buffer.index(after: index)
+  func index(before index: Self.Index) -> Self.Index {
+    var i: Self.Index = self.buffer.index(after: index)
     while !self.indexAvailable(i) {
       i = self.buffer.index(before: i)
     }
@@ -59,8 +59,7 @@ struct MutableDiscontiguousSlice<C: Collection & BidirectionalCollection>: Colle
     Self.Iterator(self)
   }
 
-  struct Iterator: IteratorProtocol
-  {
+  struct Iterator: IteratorProtocol {
     var idx: Index
     let buffer: MutableDiscontiguousSlice<C>
 
@@ -70,7 +69,8 @@ struct MutableDiscontiguousSlice<C: Collection & BidirectionalCollection>: Colle
     }
 
     mutating func next() -> Element? {
-      let ret = self.buffer[self.idx]
+      if self.idx >= self.buffer.endIndex { return nil }
+      let ret: Element = self.buffer[self.idx]
       self.idx = self.buffer.index(after: self.idx)
       return ret
     }

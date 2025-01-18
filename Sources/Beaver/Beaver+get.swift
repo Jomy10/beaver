@@ -26,18 +26,4 @@ extension Beaver {
       await project.targetName(ref.target)
     }
   }
-
-  func isBuildable(target: TargetRef) async -> Bool {
-    await self.withTarget(target) { (target: borrowing any Target) async in target.buildableTarget }
-  }
-
-  //public func evaluateTarget(targetName: String) async throws -> TargetRef {
-  //  guard let currentProject = self.currentProjectIndex else {
-  //    throw BuildError.noDefaultTarget
-  //  }
-  //  guard let index = await self.targetIndex(name: targetName, project: currentProject) else {
-  //    throw BuildError.noTarget(named: targetName)
-  //  }
-  //  return TargetRef(target: index, project: currentProject)
-  //}
 }
