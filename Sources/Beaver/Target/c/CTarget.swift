@@ -28,6 +28,14 @@ extension CTarget {
     try await self.buildArtifactsSync(baseDir: projectBaseDir, buildDir: projectBuildDir, context: context)
   }
 
+  public func buildAsync(
+    projectBaseDir: borrowing URL,
+    projectBuildDir: borrowing URL,
+    context: borrowing Beaver
+  ) async throws {
+    try await self.buildArtifactsAsync(baseDir: projectBaseDir, buildDir: projectBuildDir, context: context)
+  }
+
   public func clean(projectBuildDir: borrowing URL, context: borrowing Beaver) async throws {
     let objectDir = self.objectBuildDir(projectBuildDir: projectBuildDir)
     let artifactDir = self.artifactOutputDir(projectBuildDir: projectBuildDir, artifact: self.artifacts.first!)!

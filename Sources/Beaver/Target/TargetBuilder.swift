@@ -206,7 +206,7 @@ actor TargetBuilder {
         if let artifact = resultTargetArtifact {
           try await target.build(artifact: artifact, projectBaseDir: project.baseDir, projectBuildDir: project.buildDir, context: context.value.pointee)
         } else {
-          try await target.build(projectBaseDir: project.baseDir, projectBuildDir: project.buildDir, context: context.value.pointee)
+          try await target.buildAsync(projectBaseDir: project.baseDir, projectBuildDir: project.buildDir, context: context.value.pointee)
         }
         status = .done
         //if target is any Library {

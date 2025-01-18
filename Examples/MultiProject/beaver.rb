@@ -19,7 +19,7 @@ C::Library(
 C::Library(
   name: "Logger",
   description: "Logging implementation",
-  artifacts: [:staticlib],
+  artifacts: [:staticlib, :dynlib],
   sources: "Logger/*.c",
   headers: "Logger"
 )
