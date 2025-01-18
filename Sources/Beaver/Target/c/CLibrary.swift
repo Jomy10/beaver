@@ -161,6 +161,6 @@ public struct CLibrary: CTarget, Library {
     try FileManager.default.createDirectoryIfNotExists(at: buildBaseDir, withIntermediateDirectories: true)
 
     let outputFile = self.artifactURL(projectBuildDir: projectBuildDir, artifact: .staticlib)!
-    try Tools.exec(Tools.ar!, ["-rc", outputFile.path] + objects.map { $0.path })
+    try Tools.exec(Tools.ar!, ["-rc", outputFile.path] + objects.map { $0.path }, context: self.name)
   }
 }

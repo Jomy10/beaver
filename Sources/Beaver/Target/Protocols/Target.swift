@@ -1,4 +1,5 @@
 import Foundation
+import Utils
 
 /// A target which produces artifacts when building
 public protocol Target: ~Copyable, Sendable {
@@ -20,17 +21,28 @@ public protocol Target: ~Copyable, Sendable {
 
   var dependencies: [Dependency] { get }
 
+  /// Build all artifacts synchronously
   func build(
     projectBaseDir: borrowing URL,
     projectBuildDir: borrowing URL,
     context: borrowing Beaver
   ) async throws
+
+  /// Build all artifacts asynchronously
+  func buildAsync(
+    projectBaseDir: borrowing URL,
+    projectBuildDir: borrowing URL,
+    context: borrowing Beaver
+  ) async throws
+
+  /// Build the specific artifact
   func build(
     artifact: ArtifactType,
     projectBaseDir: borrowing URL,
     projectBuildDir: borrowing URL,
     context: borrowing Beaver
   ) async throws
+
   func clean(projectBuildDir: borrowing URL, context: borrowing Beaver) async throws
 
   func artifactOutputDir(projectBuildDir: borrowing URL, artifact: ArtifactType) -> URL?
@@ -44,6 +56,7 @@ extension Target {
   }
 
   // Build //
+  /// Builds the artifact specified by the artifact type. Panics if the wrong artifact type is given. Only used internally
   func build(
     artifact: eArtifactType,
     projectBaseDir: borrowing URL,
@@ -59,11 +72,16 @@ extension Target {
     }
   }
 
-  // TODO: rewrite
-  public func buildArtifactsAsync(baseDir: URL, buildDir: URL, context: borrowing Beaver) async throws {
-    // TODO: task queue
-    try await borrow2N(self, context, n: self.artifacts.count) { (i, target, context) in
-      _ = try await target.build(artifact: target.artifacts[i], projectBaseDir: copy baseDir, projectBuildDir: copy buildDir, context: context)
+  public func buildArtifactsAsync(baseDir: borrowing URL, buildDir: borrowing URL, context: borrowing Beaver) async throws {
+    let contextPtr = UnsafeSendable(withUnsafePointer(to: context) { $0 })
+    try await withThrowingTaskGroup(of: Void.self) { [baseDir = copy baseDir, buildDir = copy buildDir] group in
+      for i in 0..<self.artifacts.count {
+        group.addTask {
+          try await self.build(artifact: self.artifacts[i], projectBaseDir: baseDir, projectBuildDir: buildDir, context: contextPtr.value.pointee)
+        }
+      }
+
+      try await group.waitForAll()
     }
   }
 
