@@ -70,18 +70,56 @@ struct Tools {
     }
   }
 
-  // TODO: withPipes: (Pipe, Pipe)?
-  //       printingCommandTo: e.g. .stderr
-  static func exec(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) async throws {
+  static func execWithOutput(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) throws -> (stderr: String, stdout: String) {
     let task = Process()
     let stderrPipe = Pipe()
     let stdoutPipe = Pipe()
+    task.standardError = stderrPipe
+    task.standardOutput = stdoutPipe
+    task.executableURL = cmdURL
+    task.arguments = args
+    task.currentDirectoryURL = baseDir
+    task.environment = ProcessInfo.processInfo.environment
+
+    try task.run()
+    task.waitUntilExit()
+
+    if task.terminationStatus != 0 {
+      throw ProcessError(terminationStatus: task.terminationStatus, reason: task.terminationReason)
+    }
+
+    let stdout = String(data: try  stdoutPipe.fileHandleForReading.readToEnd()!, encoding: .utf8)!
+    let stderr = String(data: try  stderrPipe.fileHandleForReading.readToEnd()!, encoding: .utf8)!
+
+    return (stdout, stderr)
+  }
+
+  static func execWithExitCode(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) throws -> Int {
+    let task = Process()
+    task.executableURL = cmdURL
+    task.arguments = args
+    task.currentDirectoryURL = baseDir
+    task.environment = ProcessInfo.processInfo.environment
+
+    try task.run()
+    task.waitUntilExit()
+
+    return Int(task.terminationStatus)
+  }
+
+  // TODO: withPipes: (Pipe, Pipe)?
+  //       printingCommandTo: e.g. .stderr
+  static func exec(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory(), context: String? = nil) throws {
+    let task = Process()
+    let stderrPipe = Pipe()
+    let stdoutPipe = Pipe()
+    let contextStr: String? = if let context = context { "[\(context)] " } else { nil }
     stderrPipe.fileHandleForReading.readabilityHandler = { handle in
       let data: Data = handle.availableData
       if data.count == 0 {
         handle.readabilityHandler = nil
       } else {
-        MessageHandler.print(String(data: data, encoding: .utf8)!, to: .stderr, context: .shellOutputStderr)
+        MessageHandler.print(String(data: data, encoding: .utf8)!.prependingRowsIfNeeded(contextStr), to: .stderr, context: .shellOutputStderr)
       }
     }
     stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
@@ -89,7 +127,7 @@ struct Tools {
       if data.count == 0 {
         handle.readabilityHandler = nil
       } else {
-        MessageHandler.print(String(data: data, encoding: .utf8)!, to: .stdout, context: .shellOutputStdout)
+        MessageHandler.print(String(data: data, encoding: .utf8)!.prependingRowsIfNeeded(contextStr), to: .stdout, context: .shellOutputStdout)
       }
     }
 
@@ -99,7 +137,7 @@ struct Tools {
     task.arguments = args
     task.currentDirectoryURL = baseDir
     task.environment = ProcessInfo.processInfo.environment
-    MessageHandler.print((cmdURL.path + " " + args.joined(separator: " ")).darkGray(), to: .stderr, context: .shellCommand)
+    MessageHandler.print(((cmdURL.path + " " + args.joined(separator: " ")).prependingIfNeeded(contextStr)).darkGray(), to: .stderr, context: .shellCommand)
     try task.run()
     task.waitUntilExit()
 
@@ -155,6 +193,42 @@ struct Tools {
   static let lipo: URL? = Tools.findTool(name: "lipo")
 
   static let ar: URL? = Tools.findTool(name: "ar", envName: "AR")
+
+  static let pkgconfig: URL? = Tools.findTool(name: "pkgconf", envName: "PKG_CONFIG", aliases: ["pkg-config", "pkgconfig"])
+
+  /// String to argument string
+  static func parseArgs(_ input: String) -> [Substring] {
+    var output: [Substring] = []
+    var startIndex: String.Index = input.startIndex
+    var currentIndex: String.Index = input.startIndex
+    var searchingForNewWord = false
+    var openedString = false
+    var escape = false
+    while currentIndex < input.endIndex {
+      if escape {
+        currentIndex = input.index(after: currentIndex)
+        escape = false
+        continue
+      }
+      switch (input[currentIndex]) {
+        case " ":
+          if !searchingForNewWord {
+            output.append(input[startIndex..<currentIndex])
+          }
+          searchingForNewWord = true
+          startIndex = input.index(after: currentIndex)
+        case "\"":
+          openedString.toggle()
+        case "\\":
+          escape = true
+        default:
+          searchingForNewWord = false
+      }
+      currentIndex = input.index(after: currentIndex)
+    }
+    output.append(input[startIndex..<input.endIndex])
+    return output
+  }
 }
 
 extension Process.TerminationReason: @retroactive CustomStringConvertible {
@@ -164,5 +238,28 @@ extension Process.TerminationReason: @retroactive CustomStringConvertible {
       case .uncaughtSignal: "uncaught signal"
       default: "unknown termination reason"
     }
+  }
+}
+
+extension String {
+  func prependingIfNeeded(_ prefix: String?) -> String {
+    if let prefix = prefix {
+      prefix + self
+    } else {
+      self
+    }
+  }
+
+  func prependingRowsIfNeeded(_ prefix: String?) -> String {
+    if let prefix = prefix {
+      self.prependingRows(prefix)
+      //prefix + self.split(whereSeparator: \.isNewline).joined(separator: "\n" + prefix)
+    } else {
+      self
+    }
+  }
+
+  func prependingRows(_ prefix: String) -> String {
+    prefix + self.split(whereSeparator: \.isNewline).joined(separator: "\n" + prefix)
   }
 }

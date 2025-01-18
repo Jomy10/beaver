@@ -1,5 +1,6 @@
 import Atomics
 
+@available(*, deprecated)
 struct GlobalThreadCounter: Sendable {
   private static nonisolated(unsafe) var processes: ManagedAtomic<Int> = ManagedAtomic(0)
   private static nonisolated(unsafe) var maxProcesses: ManagedAtomic<Int> = ManagedAtomic(1)

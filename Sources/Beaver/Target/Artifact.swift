@@ -1,10 +1,14 @@
 public protocol ArtifactTypeProtocol: Equatable, Hashable, Sendable {
   init?(_ string: String)
+
   func asArtifactType() -> ArtifactType
   /// The object type which needs to be compiled for this artifact
   var cObjectType: CObjectType? { get }
+
+  //func as<ConcreteType: ArtifactTypeProtocol>(_ t: ConcreteType) -> ConcreteType
 }
 
+typealias eArtifactType = ArtifactType
 public enum ArtifactType: Equatable, Hashable, Sendable {
   case executable(ExecutableArtifactType)
   case library(LibraryArtifactType)
@@ -13,6 +17,13 @@ public enum ArtifactType: Equatable, Hashable, Sendable {
     switch (self) {
       case .executable(let artifact): artifact.cObjectType
       case .library(let artifact): artifact.cObjectType
+    }
+  }
+
+  func `as`<TargetType>(_ target: TargetType.Type = TargetType.self) -> TargetType? {
+    switch (self) {
+      case .executable(let artifact): artifact as? TargetType
+      case .library(let artifact): artifact as? TargetType
     }
   }
 }

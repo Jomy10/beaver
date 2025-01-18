@@ -1,60 +1,63 @@
 import Foundation
-import Platform
+import Utils
 
 public struct CLibrary: CTarget, Library {
-  public var id: Int = -1
-  public var projectId: Int = -1
   public let name: String
   public var description: String?
-  public var version: Version?
   public var homepage: URL?
+  public var version: Version?
+  public var license: String?
   public var language: Language
+
+  public var id: Int = -1
+  public var projectId: ProjectRef = -1
+
   public var artifacts: [LibraryArtifactType]
   public var dependencies: [Dependency]
 
-  var persistedStorage = try! PersistedStorage<CTargetStorageKey>()
-  var _sources: Files
-  var headers: Headers
-  var extraCflags: Flags
-  var extraLinkerFlags: [String]
+  public var sources: Files
+  public var headers: Headers
+  public var extraCFlags: Flags
+  public var extraLinkerFlags: [String]
 
   public static let defaultArtifacts: [LibraryArtifactType] = [.dynlib, .staticlib, .pkgconfig]
 
+  // TODO: necessary?
+  //public var storage: AsyncRWLock<Storage> = AsyncRWLock(Storage())
+
   public init(
-    // Info //
     name: String,
     description: String? = nil,
     version: Version? = nil,
     homepage: URL? = nil,
-
+    license: String? = nil,
     language: Language = .c,
-
-    artifacts: [LibraryArtifactType] = [.dynlib, .staticlib, .pkgconfig],
-
-    // C
-    sources: Files,
+    artifacts: [LibraryArtifactType] = Self.defaultArtifacts,
+    sources: Files = Files(),
     headers: Headers = Headers(),
     cflags: Flags = Flags(),
-    linkerFlags: [String] = [],
-
+    linkerFlags: [String],
     dependencies: [Dependency] = []
-  ) throws(InvalidLanguage) {
+  ) throws {
     self.name = name
     self.description = description
-    self.version = version
     self.homepage = homepage
+    self.version = version
+    self.license = license
     self.language = language
+    self.sources = sources
+    self.headers = headers
+    self.extraCFlags = cflags
+    self.extraLinkerFlags = linkerFlags
     self.artifacts = artifacts
     self.dependencies = dependencies
-    self._sources = sources
-    self.headers = headers
-    self.extraCflags = cflags
-    self.extraLinkerFlags = linkerFlags
 
-    if !Array<Language>([.c, .cxx, .objc, .objcxx]).contains(language) {
-      throw InvalidLanguage(language: language)
+    if !Self.allowedLanguages.contains(self.language) {
+      throw TargetValidationError(self, .invalidLanguage(self.language))
     }
   }
+
+  static let allowedLanguages: [Language] = [.c, .cxx, .objc, .objcxx]
 
   static let staticExt: String = ".a"
   #if canImport(Darwin)
@@ -65,8 +68,10 @@ public struct CLibrary: CTarget, Library {
   static let dynamicExt: String = ".so"
   #endif
 
-  public func artifactURL(projectBuildDir: URL, _ artifact: LibraryArtifactType) async throws -> URL {
-    let base = try await self.artifactOutputDir(projectBuildDir: projectBuildDir, forArtifact: artifact)
+  public func artifactURL(projectBuildDir: borrowing URL, artifact: LibraryArtifactType) -> URL? {
+    guard let base = self.artifactOutputDir(projectBuildDir: projectBuildDir, artifact: artifact) else {
+      return nil
+    }
     switch (artifact) {
       case .dynlib:
         return base.appending(path: "lib\(self.name)\(Self.dynamicExt)")
@@ -75,45 +80,32 @@ public struct CLibrary: CTarget, Library {
       case .pkgconfig:
         return base.appending(path: "lib\(self.name).pc")
       default:
-        throw UnsupportedArtifact(artifact)
+        return nil
     }
-  }
-
-  enum BuildError: Error {
-    case unsupportedArtifact
-  }
-
-  enum ValidationError: Error {
-    case noSources
   }
 
   public func build(
     artifact: LibraryArtifactType,
-    baseDir: borrowing URL,
-    buildDir projectBuildDir: borrowing URL,
+    projectBaseDir: borrowing URL,
+    projectBuildDir: borrowing URL,
     context: borrowing Beaver
-  ) async throws -> Bool {
-    if try await self.collectSources(baseDir: baseDir).count == 0 {
-      throw ValidationError.noSources
-    }
-
+  ) async throws {
     switch (artifact) {
       case .dynlib:
         #if os(Windows)
-        try await self.build(artifact: .staticlib, baseDir: baseDir, buildDir: projectBuildDir, context: context)
+        try await self.build(artifact: .staticlib, projectBaseDir: projectBaseDir, buildDir: projectBuildDir, context: context)
+        fatalError("unimplemented")
         #else
-        let (objects, rebuild) = try await self.buildObjects(baseDir: baseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
+        let (objects, rebuild) = try await self.buildObjects(projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
+        if rebuild {
+          try await self.buildDynamicLibrary(objects: objects, projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, context: context)
+        }
         #endif
-        if rebuild {
-          try await self.buildDynamicLibrary(objects: objects, baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
-        }
-        return rebuild
       case .staticlib:
-        let (objects, rebuild) = try await self.buildObjects(baseDir: baseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
+        let (objects, rebuild) = try await self.buildObjects(projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
         if rebuild {
-          try await self.buildStaticLibrary(objects: objects, baseDir: baseDir, projectBuildDir: projectBuildDir, context: context)
+          try self.buildStaticLibrary(objects: objects, projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, context: context)
         }
-        return rebuild
       case .pkgconfig:
         fatalError("Unimplemented artifact: \(artifact)")
       case .framework:
@@ -122,58 +114,53 @@ public struct CLibrary: CTarget, Library {
         fatalError("Unimplemented artifact: \(artifact)")
       case .dynamiclanglib(_): fallthrough
       case .staticlanglib(_):
-        throw BuildError.unsupportedArtifact
+        throw TargetValidationError(self, .unsupportedArtifact(artifact.asArtifactType()))
     }
   }
 
-  private func buildDynamicLibrary(objects objectFiles: borrowing [URL], baseDir: URL, projectBuildDir: URL, context: borrowing Beaver) async throws {
-    //let sources = try await self.collectSources(baseDir: baseDir)
-    let buildBaseDir = try await self.artifactOutputDir(projectBuildDir: projectBuildDir, forArtifact: .dynlib)
-    if !buildBaseDir.exists {
-      try FileManager.default.createDirectory(at: buildBaseDir, withIntermediateDirectories: true)
-    }
-    //let objectBuildDir = self.objectBuildDir(projectBuildDir: projectBuildDir)
-    //let objectFiles = await sources.async.map({ source in await self.objectFile(baseDir: baseDir, buildDir: objectBuildDir, file: source, type: .dynamic )}).map { $0.path }.reduce(into: [String](), { $0.append($1) })
-    let outputFile = try await self.artifactURL(projectBuildDir: projectBuildDir, .dynlib)
-    // TODO: append linker flags!!! --> linker flags of all dependencies (DependencyGraph!!)
+  public func linkAgainstLibrary(projectBuildDir: borrowing URL, artifact: LibraryArtifactType) -> [String] {
+    ["-L\(self.artifactOutputDir(projectBuildDir: projectBuildDir, artifact: artifact)!.path)", "-l\(self.name)"]
+  }
+
+  func buildDynamicLibrary(objects objectFiles: borrowing [URL], projectBaseDir: borrowing URL, projectBuildDir: borrowing URL, context: borrowing Beaver) async throws {
+    let buildBaseDir = self.artifactOutputDir(projectBuildDir: projectBuildDir, artifact: .dynlib)!
+    try FileManager.default.createDirectoryIfNotExists(at: buildBaseDir, withIntermediateDirectories: true)
+
+    let outputFile = self.artifactURL(projectBuildDir: projectBuildDir, artifact: .dynlib)!
+
     var args: [String]
     #if os(macOS)
-    // -fvisibility=hidden -> explicityly export symbols (see https://developer.apple.com/library/archive/documentation/DeveloperTools/Conceptual/DynamicLibraries/100-Articles/CreatingDynamicLibraries.html)
     args = ["-dynamiclib"]
     #elseif os(Windows)
     if !Platform.minGW {
-      MessageHandler.print("[WARN] not running in minGW on platform Windows (unip")
+      MessageHandler.print("[WARN] not running in minGW on platform Windows (unimplemented)")
     }
     args = ["-shared", "-Wl,--out-implib,\(try await self.artifactURL(projectBuildDir: projectBuildDir, .staticlib).path)"]
     #else
     args = ["-shared"]
     #endif
 
-    var visited: Set<Dependency> = Set()
-    let aargs: [String] = ["-o", outputFile.path]
-      + objectFiles.map { $0.path }
-      + (try await self.allLinkerFlags(context: context, visited: &visited))
-      + (try await self.languages(context: context).compactMap { lang in lang.linkerFlags(targetLanguage: self.language) }.flatMap { $0 })
-    try await self.executeCC(args + aargs)
-  }
-
-  private func buildStaticLibrary(objects: borrowing [URL], baseDir: URL, projectBuildDir: URL, context: borrowing Beaver) async throws {
-    //let sources = try await self.collectSources(baseDir: baseDir)
-    //let buildBaseDir = buildDir.appendingPathComponent("artifacts")
-    let buildBaseDir = try await self.artifactOutputDir(projectBuildDir: projectBuildDir, forArtifact: .staticlib)
-    if !buildBaseDir.exists {
-      try FileManager.default.createDirectory(at: buildBaseDir, withIntermediateDirectories: true)
+    var depLinkerFlags: [String] = []
+    var depLanguages: Set<Language> = []
+    let contextPtr = withUnsafePointer(to: context) { $0 }
+    try await self.loopUniqueDependenciesRecursive(context: context) { (dependency: Dependency) in
+      depLinkerFlags.append(contentsOf: try await dependency.linkerFlags(context: contextPtr.pointee, collectingLanguageIn: &depLanguages))
     }
-    let outputFile = try await self.artifactURL(projectBuildDir: projectBuildDir, .staticlib)
-    //let objectBuildDir = self.objectBuildDir(projectBuildDir: projectBuildDir)
-    try await Tools.exec(
-      Tools.ar!,
-      ["-rc", outputFile.path] + objects.map { $0.path }
+
+    args.append(contentsOf: ["-o", outputFile.path]
+      + objectFiles.map { $0.path }
+      + depLinkerFlags
+      + depLanguages.compactFlatMap { $0.linkerFlags(targetLanguage: self.language) }
     )
+
+    try self.executeCC(args)
   }
 
-  /// Flags for linking agains this library. Does not include any of the dependencies' libraries
-  public func linkerFlags() async throws -> [String] {
-    self.extraLinkerFlags + ["-l\(self.name)"]
+  func buildStaticLibrary(objects: borrowing [URL], projectBaseDir: borrowing URL, projectBuildDir: borrowing URL, context: borrowing Beaver) throws {
+    let buildBaseDir = self.artifactOutputDir(projectBuildDir: projectBuildDir, artifact: .staticlib)!
+    try FileManager.default.createDirectoryIfNotExists(at: buildBaseDir, withIntermediateDirectories: true)
+
+    let outputFile = self.artifactURL(projectBuildDir: projectBuildDir, artifact: .staticlib)!
+    try Tools.exec(Tools.ar!, ["-rc", outputFile.path] + objects.map { $0.path })
   }
 }

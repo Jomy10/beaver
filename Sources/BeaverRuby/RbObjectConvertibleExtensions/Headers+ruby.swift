@@ -6,17 +6,17 @@ extension Headers: FailableRbObjectConvertible {
     switch (value.rubyType) {
       case .T_NIL:
         self.init()
-      case .T_ARRAY: fallthrough
+      case .T_ARRAY:
+        self.init(public: try value.convert())
       case .T_STRING:
-        let files = try Files(value)
-        self.init(public: files)
+        self.init(public: [try value.convert(to: String.self)])
+        //let files = try Files(value)
+        //self.init(public: files)
       case .T_HASH:
-        guard let hash = Dictionary<String, Result<Files, any Error>>(value) else {
-          throw RbConversionError.unknownError
-        }
+        let hash = try value.convert(to: Dictionary<String, [String]>.self)
         self.init(
-          public: (try hash["public"]?.get()) ?? [],
-          private: (try hash["private"]?.get()) ?? []
+          public: hash["public"] ?? [String](),
+          private: hash["private"] ?? [String]()
         )
       default:
         throw RbConversionError.incompatible(from: value.rubyType, to: Self.self)

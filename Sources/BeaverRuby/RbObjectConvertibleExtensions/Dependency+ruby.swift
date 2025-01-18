@@ -10,16 +10,18 @@ struct DependencyFuture {
     case targetAndArtifact(targetName: String, artifactType: LibraryArtifactType)
     case targetAndProject(targetName: String, projectName: String)
     case targetProjectAndArtifact(targetName: String, projectName: String, artifactType: LibraryArtifactType)
+    case pkgconfig(String)
+    case system(String)
 
     func resolve(_ context: borrowing Beaver) async throws -> Dependency {
       switch (self) {
         case .target(let targetName):
           return try await context.dependency(targetName)
         case .targetAndArtifact(targetName: let targetName, artifactType: let artifactType):
-          return Dependency(
-            library: try await context.evaluateTarget(targetName: targetName),
+          return Dependency.library(LibraryTargetDependency(
+            target: try await context.evaluateTarget(targetName: targetName),
             artifact: artifactType
-          )
+          ))
         case .targetAndProject(targetName: let targetName, projectName: let projectName):
           guard let projectIndex = await context.projectRef(name: projectName) else {
             throw Dependency.ParsingError.unknownProject(projectName)
@@ -27,7 +29,10 @@ struct DependencyFuture {
           guard let targetIndex = await context.targetIndex(name: targetName, project: projectIndex) else {
             throw Dependency.ParsingError.unknownTarget(name: targetName, inProject: projectName)
           }
-          return Dependency(library: TargetRef(target: targetIndex, project: projectIndex), artifact: .staticlib)
+          return Dependency.library(LibraryTargetDependency(
+            target: TargetRef(target: targetIndex, project: projectIndex),
+            artifact: .staticlib
+          ))
         case .targetProjectAndArtifact(targetName: let targetName, projectName: let projectName, artifactType: let artifactType):
           guard let projectIndex = await context.projectIndex(name: projectName) else {
             throw Dependency.ParsingError.unknownProject(projectName)
@@ -36,10 +41,14 @@ struct DependencyFuture {
             throw Dependency.ParsingError.unknownTarget(name: targetName, inProject: projectName)
           }
 
-          return Dependency(
-            library: TargetRef(target: targetIndex, project: projectIndex),
+          return Dependency.library(LibraryTargetDependency(
+            target: TargetRef(target: targetIndex, project: projectIndex),
             artifact: artifactType
-          )
+          ))
+        case .pkgconfig(let name):
+          return Dependency.pkgconfig(name)
+        case .system(let name):
+          return Dependency.system(name)
       }
     }
   }
