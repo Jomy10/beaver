@@ -88,8 +88,8 @@ struct Tools {
       throw ProcessError(terminationStatus: task.terminationStatus, reason: task.terminationReason)
     }
 
-    let stdout = String(data: try  stdoutPipe.fileHandleForReading.readToEnd()!, encoding: .utf8)!
-    let stderr = String(data: try  stderrPipe.fileHandleForReading.readToEnd()!, encoding: .utf8)!
+    let stdout = if let data = try stdoutPipe.fileHandleForReading.readToEnd() { String(data: data, encoding: .utf8)! } else { String() }
+    let stderr = if let data = try stderrPipe.fileHandleForReading.readToEnd() { String(data: data, encoding: .utf8)! } else { String() }
 
     return (stdout, stderr)
   }

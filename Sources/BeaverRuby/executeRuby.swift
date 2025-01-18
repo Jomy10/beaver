@@ -30,6 +30,7 @@ public func executeRuby<Args: Collection & BidirectionalCollection & Sendable>(
   try loadCommandLineMethods(in: beaverModule, args: slice, queue: queue, context: context)
   try loadProjectMethod(in: beaverModule, queue: queue, context: context)
   try loadCMethods(in: beaverModule, queue: queue, context: context)
+  try loadDependencyMethods(in: beaverModule, queue: queue, context: context)
 
   let libFilePath = Bundle.module.path(forResource: "lib", ofType: "rb", inDirectory: "lib")!
   try Ruby.require(filename: libFilePath)

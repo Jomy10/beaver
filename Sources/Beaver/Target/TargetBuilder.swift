@@ -167,9 +167,9 @@ actor TargetBuilder {
       do {
         try await context.value.pointee.withProjectAndLibrary(target.target) { (project: borrowing Project, library: borrowing any Library) in
           let name = if project.id == context.value.pointee.currentProjectIndex {
-            "\(project.name):\(library.name)"
-          } else {
             library.name
+          } else {
+            "\(project.name):\(library.name)"
           }
           message = "Building \(name)"
           spinner = MessageHandler.newSpinner(message!)
@@ -194,6 +194,7 @@ actor TargetBuilder {
     var spinner: ProgressBar? = nil
     var message: String? = nil
     var status: BuildStatus? = nil
+    var postfix: String? = nil
 
     do {
       try await context.value.pointee.withProjectAndTarget(resultTarget) { (project: borrowing Project, target: borrowing any Target) in
@@ -225,9 +226,10 @@ actor TargetBuilder {
       }
     } catch let error {
       status = .error(error)
+      postfix = ": \(error)"
     }
     await spinner?.finish()
-    MessageHandler.print("[\(status!.formatted)] \(message!)")
+    MessageHandler.print("[\(status!.formatted)] \(message!)\(postfix ?? "")")
   }
 
   func build(context: borrowing Beaver) async {
