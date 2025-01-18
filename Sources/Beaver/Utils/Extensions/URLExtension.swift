@@ -2,12 +2,14 @@ import Foundation
 import Platform
 
 extension URL {
+  @available(*, deprecated, message: "Use FileManager.default.isDirectory(_:) from Utils")
   var isDirectory: Bool {
     var oisDir: ObjCBool = false
     if !FileManager.default.fileExists(atPath: self.path, isDirectory: &oisDir) { return false }
     return oisDir.boolValue
   }
 
+  @available(*, deprecated, message: "Use FileManager.default.exists(at:) from Utils")
   var exists: Bool {
     return FileManager.default.fileExists(atPath: self.path)
   }

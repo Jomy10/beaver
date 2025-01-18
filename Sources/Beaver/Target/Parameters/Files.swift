@@ -1,30 +1,6 @@
 import Foundation
 import Glob
 
-// TODO: expand glob, then expand directories
-//public struct Files: Sendable {
-//  private var include: Storage
-//  private var exclude: Storage?
-//  private var includeHiddenFiles: Bool
-
-//  public init(
-//    include: Storage,
-//    exclude: Storage? = nil,
-//    includeHiddenFiles: Bool = false
-//  ) {
-//    self.include = include
-//    self.exclude = exclude
-//    self.includeHiddenFiles = includeHiddenFiles
-//  }
-
-//  public typealias Storage = [String]
-
-//  typealias ResultType = any AsyncSequence<URL, any Error>
-
-//  func files(baseURL: URL) throws -> ResultType {
-//  }
-//}
-
 // TODO: rewrite --> if !contains *; then expand directory if directory else expand glob
 public struct Files: Sendable {
   private var include: Storage
@@ -43,19 +19,7 @@ public struct Files: Sendable {
     self.skipHiddenFiles = skipHiddenFiles
   }
 
-  //public enum Storage: Sendable {
-  //  case glob([String])
-  //  //case globArray([String])
-  //  case url([URL])
-  //  //case urlArray([URL])
-  //}
-
   typealias ResultType = AsyncThrowingFilterSequence<AsyncThrowingStream<URL, any Error>> //any AsyncSequence<URL, any Error>
-
-  //private enum StorageArray: Sendable {
-  //  case globs([String])
-  //  case urls([URL])
-  //}
 
   func files(baseDir: URL) throws -> ResultType? {
     if self.include.count == 0 { return nil }
@@ -67,9 +31,10 @@ public struct Files: Sendable {
   }
 
   func searchGlobs(include: [String], exclude: [String], baseDir: URL, skipHiddenFiles: Bool = true) throws -> AsyncThrowingStream<URL, any Error> {
-    Glob.search(
+    let include = try include.map { pat in try Self.patToGlob(pat, baseDir: baseDir) }
+    return Glob.search(
       directory: baseDir,
-      include: try include.map { pat in try Self.patToGlob(pat, baseDir: baseDir) },
+      include: include,
       exclude: try exclude.map { pat in try Self.patToGlob(pat, baseDir: baseDir) },
       includingPropertiesForKeys: [.isDirectoryKey],
       skipHiddenFiles: skipHiddenFiles

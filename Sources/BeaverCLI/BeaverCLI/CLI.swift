@@ -154,6 +154,7 @@ struct BeaverCLI: Sendable {
     //var commandOverwrites: Set<String> = Set()
     var context = try await self.runScript(args: leftover)
     try context.finalize()
+    //print(await context.customDebugString(withSources: false, withDependencies: true))
 
     if context.currentProjectIndex == nil {
       if let commandName = explicitCommand {

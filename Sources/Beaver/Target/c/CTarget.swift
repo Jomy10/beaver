@@ -190,6 +190,9 @@ extension CTarget {
     guard let sources = try await self.sources.files(baseDir: projectBaseDir)?.reduce(into: [URL](), { $0.append($1) }) else {
       throw TargetValidationError(self, .noSources)
     }
+    if sources.count == 0 {
+      throw TargetValidationError(self, .noSources)
+    }
     return sources
   }
 

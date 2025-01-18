@@ -9,4 +9,11 @@ def try_require(gem)
   end
 end
 
+# Dependency = Struct.new(:target, :project, :artifact)
+DependencyResolve = Struct.new(:inner, :artifact)
+
+def static(inner)
+  return DependencyResolve.new(inner, :staticlib)
+end
+
 # TODO: `sh` command that redirects to swift

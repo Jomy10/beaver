@@ -2,6 +2,7 @@
 # You can also `require_relative "other/beaver.rb"` to import the
 # definitions of another project
 
+# This can also be declared in another file and simple requiring that file (`require_relative "./path/to/file.rb"`)
 Project(
   name: "Libraries",
   baseDir: "Libraries"
