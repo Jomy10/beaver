@@ -119,7 +119,21 @@ public struct CLibrary: CTarget, Library {
   }
 
   public func linkAgainstLibrary(projectBuildDir: borrowing URL, artifact: LibraryArtifactType) -> [String] {
-    ["-L\(self.artifactOutputDir(projectBuildDir: projectBuildDir, artifact: artifact)!.path)", "-l\(self.name)"]
+    switch (artifact) {
+      case .dynlib:
+        return ["-L\(self.artifactOutputDir(projectBuildDir: projectBuildDir, artifact: artifact)!.path)", "-l\(self.name)"]
+      case .staticlib:
+        return [self.artifactURL(projectBuildDir: projectBuildDir, artifact: artifact)!.path]
+      case .framework:
+        return ["-F\(self.artifactOutputDir(projectBuildDir: projectBuildDir, artifact: artifact)!.path)", "-framework", self.name]
+      case .xcframework:
+        fatalError("todo")
+      case .pkgconfig:
+        fatalError("Can't link against pkgconfig (bug)")
+      case .staticlanglib(_): fallthrough
+      case .dynamiclanglib(_):
+        fatalError("Found incompatible artifact for \(Self.self) (bug)")
+    }
   }
 
   func buildDynamicLibrary(objects objectFiles: borrowing [URL], projectBaseDir: borrowing URL, projectBuildDir: borrowing URL, context: borrowing Beaver) async throws {

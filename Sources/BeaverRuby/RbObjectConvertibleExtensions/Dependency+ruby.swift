@@ -15,7 +15,7 @@ struct DependencyFuture {
     func resolve(_ context: borrowing Beaver) async throws -> Dependency {
       switch (self) {
         case .target(target: let targetName, project: nil, artifact: let artifact):
-          return try await context.dependency(targetName, artifact: artifact ?? .staticlib)
+          return try await context.dependency(targetName, artifact: artifact)
         case .target(target: let targetName, project: .some(let projectName), artifact: let artifact):
           guard let projectIndex = await context.projectRef(name: projectName) else {
             throw Dependency.ParsingError.unknownProject(projectName)
@@ -25,7 +25,7 @@ struct DependencyFuture {
           }
           return Dependency.library(LibraryTargetDependency(
             target: TargetRef(target: targetIndex, project: projectIndex),
-            artifact: artifact ?? .staticlib
+            artifact: artifact
           ))
         case .pkgconfig(name: let name, preferStatic: let preferStatic):
           if preferStatic {

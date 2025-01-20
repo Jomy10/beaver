@@ -86,13 +86,14 @@ public struct CExecutable: CTarget, Executable {
   ) async throws {
     let (objects, rebuild) = try await self.buildObjects(projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
     if rebuild {
-      try await self.buildExecutable(objects: objects, projectBaseDir: projectBaseDir, projectBuildDir: projectBaseDir, context: context)
+      try await self.buildExecutable(objects: objects, projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, context: context)
     }
     if artifact == .app {
       fatalError("unimplemented")
     }
   }
 
+  /// Link all objects and dependencies
   func buildExecutable(
     objects: borrowing [URL],
     projectBaseDir: borrowing URL,
