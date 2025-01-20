@@ -36,6 +36,7 @@ let package = Package(
     .package(url: "https://github.com/Jomy10/RubyGateway", branch: "main"),
     //.package(url: "https://github.com/johnfairh/CRuby", from: "2.1.0"),
     .package(url: "https://github.com/apple/swift-syntax", from: "509.0.0"),
+    .package(url: "https://github.com/krzyzanowskim/CryptoSwift", from: "1.8.4"),
   ],
   targets: [
     .executableTarget(
@@ -46,8 +47,7 @@ let package = Package(
         "Utils",
         "CLIPackage",
       ],
-      path: "Sources/BeaverCLI/BeaverCLI",
-      swiftSettings: [.define("RUBY_EXPLICIT_SETUP")]
+      path: "Sources/BeaverCLI/BeaverCLI"
     ),
     .target(
       name: "CLIPackage",
@@ -74,8 +74,7 @@ let package = Package(
         .product(name: "Queuer", package: "Queuer"),
         .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
       ],
-      resources: [.copy("lib")],
-      swiftSettings: [.define("RUBY_EXPLICIT_SETUP")]
+      resources: [.copy("lib")]
     ),
     .target(
       name: "Beaver",
@@ -92,6 +91,7 @@ let package = Package(
         .product(name: "Collections", package: "swift-collections"),
         .product(name: "Semaphore", package: "Semaphore"),
         .product(name: "SQLite", package: "SQLite.swift"),
+        .product(name: "CryptoSwift", package: "CryptoSwift"),
         //.product(name: "TaskProgress", package: "TaskProgress"),
       ]
     ),

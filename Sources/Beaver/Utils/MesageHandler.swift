@@ -116,14 +116,16 @@ public struct MessageHandler {
 
   public enum LogLevel {
     case trace
+    case debug
+    case info
     case warning
     case error
-    case debug
 
     var format: String {
       switch (self) {
         case .trace: "TRACE".bold()
         case .debug: "DEBUG".lightBlue()
+        case .info: "INFO".blue()
         case .warning: "WARN".yellow()
         case .error: "ERR".red()
       }
@@ -133,6 +135,7 @@ public struct MessageHandler {
       switch (self) {
         case .trace: .trace
         case .debug: .debug
+        case .info: .info
         case .warning: .warning
         case .error: .error
       }
@@ -149,6 +152,10 @@ public struct MessageHandler {
 
   public static func debug(_ message: String, context: MessageVisibility? = nil) {
     self.log(message, level: .debug, context: context)
+  }
+
+  public static func info(_ message: String, context: MessageVisibility? = nil) {
+    self.log(message, level: .info, context: context)
   }
 
   public static func warn(_ message: String, context: MessageVisibility? = nil) {
