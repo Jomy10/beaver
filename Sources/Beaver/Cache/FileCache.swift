@@ -4,6 +4,7 @@ import Foundation
 
 import timespec
 import Platform
+import CryptoSwift
 
 // TODO: Store artifacts a target depends on in cache, when changed recompile the target's artifact
 
@@ -49,20 +50,62 @@ struct FileCache: Sendable {
   let csourceFiles: CSourceFileTable
   let configurations: ConfigurationTable
   let targets: TargetTable
+  let globalConfigurations: GlobalConfigurationTable
+  var globalConfiguration: (buildId: Int, env: Data)?
 
   var configurationId: Int64? = nil
 
-  init(cacheFile: URL) throws {
+  init(
+    cacheFile: URL,
+    buildId: Int = BeaverConstants.buildId,
+    /// Compare the environment variables using by converting the dictionary as bytes to an md5 hash
+    env: Data = try! Data(PropertyListSerialization.data(
+      fromPropertyList: ProcessInfo.processInfo.arguments,
+      format: .binary,
+      options: 0
+    ).bytes.md5())
+  ) throws {
     self.db = try Connection(cacheFile.path)
     self.files = FileTable()
     self.csourceFiles = CSourceFileTable()
     self.configurations = ConfigurationTable()
     self.targets = TargetTable()
+    self.globalConfigurations = GlobalConfigurationTable()
+    self.globalConfiguration = nil
 
     try self.files.createIfNotExists(self.db)
     try self.configurations.createIfNotExists(self.db)
     try self.targets.createIfNotExists(self.db)
     try self.csourceFiles.createIfNotExists(self.db)
+    try self.globalConfigurations.createIfNotExists(self.db)
+
+    if let globConf = try db.pluck(self.globalConfigurations.table.limit(1)) {
+      self.globalConfiguration = (
+        buildId: globConf[self.globalConfigurations.buildId.unqualified],
+        env: globConf[self.globalConfigurations.environment.unqualified]
+      )
+
+      if self.globalConfiguration!.buildId != buildId {
+        try self.db.run(self.globalConfigurations.table
+          .update(self.globalConfigurations.buildId.unqualified <- buildId))
+          // TODO: rebuild the database
+        MessageHandler.info("Previous artifacts were built with a different version of Beaver. Objects will be rebuilt.")
+        try self.reset()
+      }
+
+      if self.globalConfiguration!.env.bytes != env.bytes {
+        try self.db.run(self.globalConfigurations.table
+          .update(self.globalConfigurations.environment.unqualified <- env))
+        MessageHandler.info("Environment variables were changed since last invocation. Cache has been reset.")
+        try self.reset()
+      }
+    } else {
+      try self.db.run(self.globalConfigurations.table
+        .insert(
+          self.globalConfigurations.buildId.unqualified <- buildId,
+          self.globalConfigurations.environment.unqualified <- env
+        ))
+    }
 
     #if DEBUG
     self.db.trace { msg in
@@ -134,6 +177,7 @@ struct FileCache: Sendable {
     let targetId = try self.getTarget(target)
     let objectType = artifactType.cObjectType!
 
+    // TODO: with
     let filesStmnt = try self.db.run("""
       select
         \(inputFiles.filename.qualified),
@@ -254,6 +298,13 @@ struct FileCache: Sendable {
       .where(self.targets.id.unqualified == targetId)
       .delete())
     return true
+  }
+
+  func reset() throws {
+    try self.db.run(self.files.table.delete())
+    try self.db.run(self.csourceFiles.table.delete())
+    try self.db.run(self.configurations.table.delete())
+    try self.db.run(self.targets.table.delete())
   }
 }
 

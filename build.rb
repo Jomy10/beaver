@@ -48,6 +48,15 @@ end
 
 sh "cargo build #{mode == :release ? "--release" : ""}"
 
+File.write(
+  "Sources/Beaver/Generated.swift",
+  <<-EOF
+struct BeaverConstants {
+  static let buildId = #{(4_294_967_296 * rand).round}
+}
+  EOF
+)
+
 sh "swift #{command} #{mode_flag}#{argv.size == 0 ? "" : argv.join(" ") + " " }-Xlinker -Ltarget/#{mode} -Xlinker -lprogress_indicators",
     envPrepend: { "PKG_CONFIG_PATH" => File.join(Dir.pwd, "Packages/CRuby") }
 

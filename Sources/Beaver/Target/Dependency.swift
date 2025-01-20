@@ -34,13 +34,15 @@ public struct LibraryTargetDependency: Hashable, Equatable, Sendable {
 
 public struct PkgConfigDependency: Hashable, Equatable, Sendable {
   private let name: String
+  private let preferStatic: Bool
 
   public enum ValidationError: Error {
     case notExists
   }
 
-  public init(name: String) throws {
+  public init(name: String, preferStatic: Bool = false) throws {
     self.name = name
+    self.preferStatic = preferStatic
 
     if try Tools.execWithExitCode(Tools.pkgconfig!, [name, "--exists"]) == 1 {
       throw ValidationError.notExists
@@ -57,8 +59,10 @@ public struct PkgConfigDependency: Hashable, Equatable, Sendable {
 
   var linkerFlags: [String] {
     get throws {
+      var args = [self.name, "--libs", "--keep-system-libs"]
+      if self.preferStatic { args.append("--static") }
       return Tools.parseArgs(
-        try Tools.execWithOutput(Tools.pkgconfig!, [self.name, "--libs", "--keep-system-libs"]).stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+        try Tools.execWithOutput(Tools.pkgconfig!, args).stderr.trimmingCharacters(in: .whitespacesAndNewlines)
       ).map { String($0) }
     }
   }
@@ -134,17 +138,12 @@ extension Dependency {
         }
       case .pkgconfig(let dep):
         return try dep.linkerFlags
-        //return Tools.parseArgs(try Tools.execWithOutput(Tools.pkgconfig!, [name, "--libs", "--keep-system-libs"]).stdout).map { String($0) }
       case .system(let name):
         return ["-l\(name)"]
       case .customFlags(cflags: _, linkerFlags: let linkerFlags):
         return linkerFlags
     }
   }
-}
-
-extension Dependency: Identifiable {
-  public var id: Self { self }
 }
 
 extension Beaver {
@@ -186,6 +185,18 @@ extension Beaver {
     }
     return .library(LibraryTargetDependency(
       target: target,
+      artifact: artifactType
+    ))
+  }
+
+  public func dependency(targetRef: TargetRef, artifact: LibraryArtifactType?) async throws -> Dependency {
+    let artifactType = if let artifact = artifact {
+      artifact
+    } else {
+      try await self.defaultLibraryArtifact(targetRef)
+    }
+    return Dependency.library(LibraryTargetDependency(
+      target: targetRef,
       artifact: artifactType
     ))
   }

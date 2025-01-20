@@ -23,68 +23,21 @@ struct DependencyFuture {
           guard let targetIndex = await context.targetIndex(name: targetName, project: projectIndex) else {
             throw Dependency.ParsingError.unknownTarget(name: targetName, inProject: projectName)
           }
-          return Dependency.library(LibraryTargetDependency(
-            target: TargetRef(target: targetIndex, project: projectIndex),
+          return try await context.dependency(
+            targetRef: TargetRef(target: targetIndex, project: projectIndex),
             artifact: artifact
-          ))
+          )
+          //return Dependency.library(LibraryTargetDependency(
+          //  target: TargetRef(target: targetIndex, project: projectIndex),
+          //  artifact: artifact
+          //))
         case .pkgconfig(name: let name, preferStatic: let preferStatic):
-          if preferStatic {
-            fatalError("unimplemented")
-          }
-          return Dependency.pkgconfig(try PkgConfigDependency(name: name))
+          return Dependency.pkgconfig(try PkgConfigDependency(name: name, preferStatic: preferStatic))
         case .system(name: let name):
           return Dependency.system(name)
       }
     }
   }
-
-  //enum Data {
-  //  case target(String)
-  //  case targetAndArtifact(targetName: String, artifactType: LibraryArtifactType)
-  //  case targetAndProject(targetName: String, projectName: String)
-  //  case targetProjectAndArtifact(targetName: String, projectName: String, artifactType: LibraryArtifactType)
-  //  case pkgconfig(String)
-  //  case system(String)
-
-  //  func resolve(_ context: borrowing Beaver) async throws -> Dependency {
-  //    switch (self) {
-  //      case .target(let targetName):
-  //        return try await context.dependency(targetName)
-  //      case .targetAndArtifact(targetName: let targetName, artifactType: let artifactType):
-  //        return Dependency.library(LibraryTargetDependency(
-  //          target: try await context.evaluateTarget(targetName: targetName),
-  //          artifact: artifactType
-  //        ))
-  //      case .targetAndProject(targetName: let targetName, projectName: let projectName):
-  //        guard let projectIndex = await context.projectRef(name: projectName) else {
-  //          throw Dependency.ParsingError.unknownProject(projectName)
-  //        }
-  //        guard let targetIndex = await context.targetIndex(name: targetName, project: projectIndex) else {
-  //          throw Dependency.ParsingError.unknownTarget(name: targetName, inProject: projectName)
-  //        }
-  //        return Dependency.library(LibraryTargetDependency(
-  //          target: TargetRef(target: targetIndex, project: projectIndex),
-  //          artifact: .staticlib
-  //        ))
-  //      case .targetProjectAndArtifact(targetName: let targetName, projectName: let projectName, artifactType: let artifactType):
-  //        guard let projectIndex = await context.projectIndex(name: projectName) else {
-  //          throw Dependency.ParsingError.unknownProject(projectName)
-  //        }
-  //        guard let targetIndex = await context.targetIndex(name: targetName, project: projectIndex) else {
-  //          throw Dependency.ParsingError.unknownTarget(name: targetName, inProject: projectName)
-  //        }
-
-  //        return Dependency.library(LibraryTargetDependency(
-  //          target: TargetRef(target: targetIndex, project: projectIndex),
-  //          artifact: artifactType
-  //        ))
-  //      case .pkgconfig(let name):
-  //        return Dependency.pkgconfig(name)
-  //      case .system(let name):
-  //        return Dependency.system(name)
-  //    }
-  //  }
-  //}
 
   public init(_ value: RbObject, context: UnsafeSendable<Rc<Beaver>>) throws {
     switch (value.rubyType) {
@@ -154,6 +107,8 @@ struct DependencyFuture {
           case .system(name: _):
             throw Dependency.ParsingError.malformed(value.description)
         }
+      // An integer means we have registered the dependency already in a function call.
+      // e.g. `pkgconfig("SDL2")` returns an integer
       case .T_BIGNUM: fallthrough
       case .T_FIXNUM:
         self.data = Self.registered[try value.convert(to: Int.self)]

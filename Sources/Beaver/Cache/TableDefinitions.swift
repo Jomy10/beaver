@@ -1,36 +1,6 @@
 import Foundation
 @preconcurrency import SQLite
 
-struct TableColumn<ColumnType: SQLite.Value> {
-  var qualified: SQLite.Expression<ColumnType>
-  var unqualified: SQLite.Expression<ColumnType>
-
-  init(_ columnName: String, _ table: borrowing Table) {
-    self.unqualified = SQLite.Expression<ColumnType>(columnName)
-    self.qualified = table[self.unqualified]
-  }
-}
-
-protocol SQLTableProtocol: Sendable {
-  var table: Table { get }
-  var tableName: String { get }
-  func truncate(_ db: Connection) throws
-}
-
-extension SQLTableProtocol {
-  func truncate(_ db: Connection) throws {
-    try db.run(self.table.delete())
-  }
-}
-
-protocol SQLTable: SQLTableProtocol {
-  func createIfNotExists(_ db: Connection) throws
-}
-
-protocol SQLTempTable: SQLTableProtocol {
-  func create(_ db: Connection) throws
-}
-
 struct FileTable: SQLTable {
   let table: Table
   let id: TableColumn<Int64>
@@ -162,6 +132,28 @@ struct TargetTable: SQLTable {
       t.column(self.id.unqualified, primaryKey: .autoincrement)
       t.column(self.target.unqualified)
       t.column(self.project.unqualified)
+    })
+  }
+}
+
+struct GlobalConfigurationTable: SQLTable {
+  let table: Table
+  let buildId: TableColumn<Int>
+  let environment: TableColumn<Data>
+
+  let tableName: String
+
+  init() {
+    self.tableName = "GlobalConfiguration"
+    self.table = Table(self.tableName)
+    self.buildId = TableColumn("buildId", self.table)
+    self.environment = TableColumn("env", self.table)
+  }
+
+  func createIfNotExists(_ db: Connection) throws {
+    try db.run(self.table.create(ifNotExists: true) { t in
+      t.column(self.buildId.unqualified)
+      t.column(self.environment.unqualified)
     })
   }
 }
