@@ -13,7 +13,9 @@ C::Executable(
   sources: "main.cpp",
   dependencies: [
     # Link to the static library artifact of the Math target
-    static("MyMath"),
+    # If you want dynamic linking, you can write `dynamic("MyMath")`
+    # Just writing "MyMath" will select the default. This is static for targets in the same project and dynamic for other targets
+    dynamic("MyMath"),
     # Link to a library that can be found with pkg-config
     pkgconfig("absl_check")
   ],

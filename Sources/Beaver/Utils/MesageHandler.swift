@@ -15,35 +15,30 @@ import ucrt
 #warning("Need implementation for current platform to determine terminal context")
 #endif
 
-struct MessageHandler {
-  @available(*, deprecated)
-  private static let data: AsyncRWLock<Self.Data> = AsyncRWLock(.init())
+public struct MessageHandler {
   private nonisolated(unsafe) static var progress: ProgressIndicators? = nil
   /// Should only be used on the main thread by Beaver, so no locking mechanism is provided here
   private nonisolated(unsafe) static var messageVisibility: MessageVisibility = MessageVisibility.default
-
-  @available(*, deprecated)
-  struct Data: ~Copyable {
-    var targetToSpinner: [TargetRef:ProgressBar] = [:]
-  }
 
   struct NoTaskError: Error, @unchecked Sendable {
     let id: Any
   }
 
-  struct MessageVisibility: OptionSet {
-    let rawValue: UInt32
+  public struct MessageVisibility: OptionSet, Sendable {
+    public let rawValue: UInt32
+
+    public init(rawValue: UInt32) { self.rawValue = rawValue }
 
     /// shell commands, outputted in grey showing what the library is doing
-    static let shellCommand       = Self(rawValue: 1 << 0)
-    static let shellOutputStderr  = Self(rawValue: 1 << 1)
-    static let shellOutputStdout  = Self(rawValue: 1 << 2)
-    static let trace              = Self(rawValue: 1 << 3)
-    static let debug              = Self(rawValue: 1 << 4)
-    static let info               = Self(rawValue: 1 << 5)
-    static let warning            = Self(rawValue: 1 << 6)
-    static let error              = Self(rawValue: 1 << 7)
-    static let sql                = Self(rawValue: 1 << 8)
+    public static let shellCommand       = Self(rawValue: 1 << 0)
+    public static let shellOutputStderr  = Self(rawValue: 1 << 1)
+    public static let shellOutputStdout  = Self(rawValue: 1 << 2)
+    public static let trace              = Self(rawValue: 1 << 3)
+    public static let debug              = Self(rawValue: 1 << 4)
+    public static let info               = Self(rawValue: 1 << 5)
+    public static let warning            = Self(rawValue: 1 << 6)
+    public static let error              = Self(rawValue: 1 << 7)
+    public static let sql                = Self(rawValue: 1 << 8)
 
     #if DEBUG
     static let `default`: Self = [.shellCommand, .shellOutputStderr, .shellOutputStdout, .trace, .debug, .info, .warning, .error, .sql]
@@ -84,23 +79,8 @@ struct MessageHandler {
     return value
   }
 
-  @available(*, deprecated)
-  public static func getSpinner(targetRef: TargetRef) async -> ProgressBar? {
-    return await self.data.read { data in data.targetToSpinner[targetRef] }
-  }
-
   public static func newSpinner(_ message: String) -> ProgressBar {
     Self.progress!.registerSpinner(message: message)
-  }
-
-  @available(*, deprecated)
-  public static func addTask(_ message: String, targetRef: TargetRef? = nil) async {
-    let spinner = Self.progress!.registerSpinner(message: message)
-    if let targetRef = targetRef {
-      await self.data.write { data in
-        data.targetToSpinner[targetRef] = spinner
-      }
-    }
   }
 
   private static func checkContext(_ context: MessageVisibility?) -> Bool {

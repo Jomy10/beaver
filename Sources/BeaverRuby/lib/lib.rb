@@ -16,4 +16,8 @@ def static(inner)
   return DependencyResolve.new(inner, :staticlib)
 end
 
+def dynamic(inner)
+  return DependencyResolve.new(inner, :dynlib)
+end
+
 # TODO: `sh` command that redirects to swift

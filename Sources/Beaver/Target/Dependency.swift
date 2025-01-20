@@ -77,6 +77,8 @@ public enum Dependency: Hashable, Equatable, Sendable {
     case unknownProject(String)
     case unknownTarget(name: String, inProject: String)
     case noDefaultProject
+    /// The library contains no artifacts that can be linked to
+    case noLinkableArtifacts(libraryName: String)
   }
 }
 
@@ -175,7 +177,30 @@ extension Beaver {
     }
   }
 
-  public func dependency(_ target: String, artifact: LibraryArtifactType = .staticlib) async throws -> Dependency {
-    return .library(LibraryTargetDependency(target: try await self.evaluateTarget(targetName: target), artifact: artifact))
+  public func dependency(_ target: String, artifact: LibraryArtifactType?) async throws -> Dependency {
+    let target = try await self.evaluateTarget(targetName: target)
+    let artifactType = if let artifact = artifact {
+      artifact
+    } else {
+      try await self.defaultLibraryArtifact(target)
+    }
+    return .library(LibraryTargetDependency(
+      target: target,
+      artifact: artifactType
+    ))
+  }
+
+  public func defaultLibraryArtifact(_ target: TargetRef) async throws -> LibraryArtifactType {
+    try await self.withProjectAndLibrary(target) { (project, library) in
+      let order: [LibraryArtifactType] = if project.id == self.currentProjectIndex {
+        [.staticlib, .dynlib]
+      } else {
+        [.dynlib, .staticlib]
+      }
+      guard let artifact = order.first(where: { library.artifacts.contains($0) }) else {
+        throw Dependency.ParsingError.noLinkableArtifacts(libraryName: await self.targetName(target)!)
+      }
+      return artifact
+    }
   }
 }
