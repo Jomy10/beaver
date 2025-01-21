@@ -11,7 +11,7 @@ struct Tools {
         let pathURL = URL(fileURLWithPath: String(path))
         for ext in exts {
           let exeURL = pathURL.appendingPathComponent("\(cmdName)\(ext)")
-          if FileManager.default.isExecutableFile(atPath: exeURL.path) && !exeURL.isDirectory {
+          if FileManager.default.isExecutableFile(atPath: exeURL.path) && !FileManager.default.isDirectory(exeURL) {
             return exeURL
           }
         }
@@ -26,7 +26,7 @@ struct Tools {
         let toolURL = URL(fileURLWithPath: tool)
         if !FileManager.default.isExecutableFile(atPath: toolURL.path) {
           MessageHandler.warn("Environment variable \"\(envName)\" exists, but doesn't point to a valid executable")
-        } else if toolURL.isDirectory {
+        } else if FileManager.default.isDirectory(toolURL) {
           MessageHandler.warn("Environment variable \"\(envName)\" exists, but points to a directory")
         } else {
           return toolURL

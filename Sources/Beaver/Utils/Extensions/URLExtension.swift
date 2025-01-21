@@ -1,5 +1,6 @@
 import Foundation
 import Platform
+import Utils
 
 extension URL {
   @available(*, deprecated, message: "Use FileManager.default.isDirectory(_:) from Utils")
@@ -19,7 +20,7 @@ extension URL {
       return []
     }
     return contents.flatMap { url in
-      if url.isDirectory {
+      if FileManager.default.isDirectory(url) {
         return url.recursiveContentsOfDirectory(skipHiddenFiles: skipHiddenFiles)
       } else {
         return [url]

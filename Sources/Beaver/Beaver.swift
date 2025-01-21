@@ -60,9 +60,7 @@ public struct Beaver: ~Copyable, Sendable {
   /// Should be called after all configuration has been set and targets have been declared
   public mutating func finalize() throws {
     let cacheFileBaseURL = self.cacheFile.dirURL!
-    if !cacheFileBaseURL.exists {
-      try FileManager.default.createDirectory(at: cacheFileBaseURL, withIntermediateDirectories: true)
-    }
+    try FileManager.default.createDirectoryIfNotExists(at: cacheFileBaseURL)
 
     self.fileCache = try FileCache(cacheFile: self.cacheFile)
     try self.fileCache?.selectConfiguration(mode: self.optimizeMode)
