@@ -84,12 +84,13 @@ public struct CExecutable: CTarget, Executable {
     projectBuildDir: borrowing URL,
     context: borrowing Beaver
   ) async throws {
+    let artifactExists = FileManager.default.exists(at: self.artifactURL(projectBuildDir: projectBuildDir, artifact: artifact)!)
     let (objects, rebuild) = try await self.buildObjects(projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
-    if rebuild {
-      try await self.buildExecutable(objects: objects, projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, context: context)
-    }
     if artifact == .app {
       fatalError("unimplemented")
+    }
+    if rebuild || !artifactExists { // TODO: or relink
+      try await self.buildExecutable(objects: objects, projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, context: context)
     }
   }
 

@@ -24,7 +24,11 @@ public protocol CTarget: Target {
 
 // Default implementations for Target
 extension CTarget {
-  public func build(projectBaseDir: borrowing URL, projectBuildDir: borrowing URL, context: borrowing Beaver) async throws {
+  public func build(
+    projectBaseDir: borrowing URL,
+    projectBuildDir: borrowing URL,
+    context: borrowing Beaver
+  ) async throws {
     try await self.buildArtifactsSync(baseDir: projectBaseDir, buildDir: projectBuildDir, context: context)
   }
 
@@ -39,26 +43,20 @@ extension CTarget {
   public func clean(projectBuildDir: borrowing URL, context: borrowing Beaver) async throws {
     let objectDir = self.objectBuildDir(projectBuildDir: projectBuildDir)
     let artifactDir = self.artifactOutputDir(projectBuildDir: projectBuildDir, artifact: self.artifacts.first!)!
-    //var artifactDirs = Set<URL>()
-    //for await artifact in (
-    //  self.artifacts.async
-    //    .map { try await self.artifactOutputDir(projectBuildDir: projectBuildDir, artifact: $0) }
-    //) {
-    //  artifactDirs
-    //}
+
     // TODO: option to use `trashItem` instead of remove?
     if FileManager.default.exists(at: objectDir) {
       for file in try FileManager.default.contentsOfDirectory(atPath: objectDir.path) {
         try FileManager.default.removeItem(at: objectDir.appending(path: file))
       }
     }
-    //for artifactDir in artifactDirs {
+
     if FileManager.default.exists(at: artifactDir) {
       for file in try FileManager.default.contentsOfDirectory(atPath: artifactDir.path) {
         try? FileManager.default.removeItem(at: artifactDir.appending(path: file))
       }
     }
-    //}
+
     try context.fileCache!.removeTarget(target: self.ref)
   }
 
@@ -76,8 +74,8 @@ extension CTarget {
   /// - the object files (both created and already existing)
   /// - wether any of these object files were rebuilt
   func buildObjects(
-    projectBaseDir: URL,
-    projectBuildDir: URL,
+    projectBaseDir: borrowing URL,
+    projectBuildDir: borrowing URL,
     artifact: ArtifactType,
     context: borrowing Beaver
   ) async throws -> ([URL], Bool) {
@@ -93,8 +91,8 @@ extension CTarget {
       sources,
       target: self.ref,
       artifact: artifact.asArtifactType()
-    ) { source, changed in
-      if changed {
+    ) { [projectBaseDir = copy projectBaseDir] source, changed in
+      if changed || !FileManager.default.exists(at: source) {
         anyChanged = true
         return try self.buildObject(projectBaseDir: projectBaseDir, objectBuildDir: objectBuildDir, sourceFile: source, cflags: cflags, type: type, context: contextPtr.pointee)
       } else {
