@@ -1,7 +1,6 @@
 import Beaver
 import Foundation
-import Tree
-import Semaphore
+//import Tree
 import ProgressIndicators
 import ProgressIndicatorsFFI
 import BeaverRuby
