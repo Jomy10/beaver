@@ -5,6 +5,7 @@ extension Sequence {
   }
 }
 
+@available(*, deprecated)
 struct SequenceAsyncSequence<Seq: Sequence>: AsyncSequence {
   private var inner: Seq
 

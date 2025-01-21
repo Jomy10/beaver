@@ -68,7 +68,7 @@ extension Target {
 
   public func buildArtifactsSync(baseDir: borrowing URL, buildDir: borrowing URL, context: borrowing Beaver) async throws {
     for artifact in self.artifacts {
-      _ = try await self.build(artifact: artifact, projectBaseDir: baseDir, projectBuildDir: buildDir, context: context)
+      try await self.build(artifact: artifact, projectBaseDir: baseDir, projectBuildDir: buildDir, context: context)
     }
   }
 

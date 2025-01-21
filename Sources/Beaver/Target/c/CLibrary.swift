@@ -90,6 +90,7 @@ public struct CLibrary: CTarget, Library {
     projectBuildDir: borrowing URL,
     context: borrowing Beaver
   ) async throws {
+    let artifactExists = FileManager.default.exists(at: self.artifactURL(projectBuildDir: projectBuildDir, artifact: artifact)!)
     switch (artifact) {
       case .dynlib:
         #if os(Windows)
@@ -97,13 +98,13 @@ public struct CLibrary: CTarget, Library {
         fatalError("unimplemented")
         #else
         let (objects, rebuild) = try await self.buildObjects(projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
-        if rebuild {
+        if rebuild || !artifactExists { // TODO: relink if any dependency artifacts rebuilt
           try await self.buildDynamicLibrary(objects: objects, projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, context: context)
         }
         #endif
       case .staticlib:
         let (objects, rebuild) = try await self.buildObjects(projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
-        if rebuild {
+        if rebuild || !artifactExists {
           try self.buildStaticLibrary(objects: objects, projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, context: context)
         }
       case .pkgconfig:

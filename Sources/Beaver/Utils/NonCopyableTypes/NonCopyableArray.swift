@@ -1,4 +1,4 @@
-/// A sendable, non-copyable array
+/// An array that cannot be copied and can contain non-copyable elements
 public struct NonCopyableArray<Element: ~Copyable>: ~Copyable {
   var buffer: UnsafeMutableBufferPointer<Element>
   public private(set) var count: Int = 0
@@ -24,8 +24,6 @@ public struct NonCopyableArray<Element: ~Copyable>: ~Copyable {
 
   public func firstIndex(where fn: (borrowing Element) throws -> Bool) rethrows -> Int? {
     for index in self.indices {
-      //let rawPtr = self.buffer[index]
-      //let ptr = rawPtr.assumingMemoryBound(to: Element.self)
       if (try fn(self.buffer[index])) {
         return index
       }
