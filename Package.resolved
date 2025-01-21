@@ -1,5 +1,5 @@
 {
-  "originHash" : "1b83c68d0e3379866c80bb9b770dc9ead0c4b3ad0f28f2dbdeb93e9aa73986c8",
+  "originHash" : "47ef91c78bd8f09b3b8a4138c402dcb2d449dd9a22e43b2055f7f4c7e7d8c5ce",
   "pins" : [
     {
       "identity" : "asyncobjects",
@@ -44,15 +44,6 @@
       "state" : {
         "branch" : "main",
         "revision" : "b4452c1c526baf7f3789322ec218058bc3e58344"
-      }
-    },
-    {
-      "identity" : "semaphore",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/groue/Semaphore",
-      "state" : {
-        "revision" : "2543679282aa6f6c8ecf2138acd613ed20790bc2",
-        "version" : "0.1.0"
       }
     },
     {
@@ -116,15 +107,6 @@
       "state" : {
         "revision" : "64889f0c732f210a935a0ad7cda38f77f876262d",
         "version" : "509.1.1"
-      }
-    },
-    {
-      "identity" : "tree",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/mattcox/Tree.git",
-      "state" : {
-        "branch" : "main",
-        "revision" : "3021e4280573866c3d92e5104916640a9bcc9788"
       }
     }
   ],
