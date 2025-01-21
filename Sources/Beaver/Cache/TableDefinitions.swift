@@ -138,7 +138,9 @@ struct TargetTable: SQLTable {
 
 struct GlobalConfigurationTable: SQLTable {
   let table: Table
+  /// The build id of the current Beaver build. This is reset every time that Beaver is rebuilt
   let buildId: TableColumn<Int>
+  /// An md5 hash computed from the environment variables
   let environment: TableColumn<Data>
 
   let tableName: String

@@ -40,6 +40,13 @@ import CryptoSwift
 /// 	int target
 /// }
 ///
+/// GlobalConfiguration {
+/// 	%% The Beaver buildId; regenerated on every build
+///   int buildId
+///   %% A hash computed from the environment variables
+///   int env
+/// }
+///
 /// File ||--|| CSourceFile: fileID
 /// CSourceFile }o--|| Configuration: configID
 /// CSourceFile }o--|| Target: targetID
@@ -60,7 +67,10 @@ struct FileCache: Sendable {
     buildId: Int = BeaverConstants.buildId,
     /// Compare the environment variables using by converting the dictionary as bytes to an md5 hash
     env: Data = try! Data(PropertyListSerialization.data(
-      fromPropertyList: ProcessInfo.processInfo.arguments,
+      fromPropertyList: ProcessInfo.processInfo.environment
+        .map { k, v in (k, v) }
+        .sorted { a, b in a.0 > b.0 }
+        .map { (k, v) in NSString(string: "\(k):\(v)") },
       format: .binary,
       options: 0
     ).bytes.md5())
@@ -79,17 +89,20 @@ struct FileCache: Sendable {
     try self.csourceFiles.createIfNotExists(self.db)
     try self.globalConfigurations.createIfNotExists(self.db)
 
+    MessageHandler.debug("New: \(buildId) \(env.bytes)")
+
     if let globConf = try db.pluck(self.globalConfigurations.table.limit(1)) {
       self.globalConfiguration = (
         buildId: globConf[self.globalConfigurations.buildId.unqualified],
         env: globConf[self.globalConfigurations.environment.unqualified]
       )
+      MessageHandler.debug("Old: \(self.globalConfiguration!.buildId) \(self.globalConfiguration!.env.bytes)")
 
       if self.globalConfiguration!.buildId != buildId {
         try self.db.run(self.globalConfigurations.table
           .update(self.globalConfigurations.buildId.unqualified <- buildId))
           // TODO: rebuild the database
-        MessageHandler.info("Previous artifacts were built with a different version of Beaver. Objects will be rebuilt.")
+        MessageHandler.info("Previous artifacts were built with a different version of Beaver. Cache has been reset.")
         try self.reset()
       }
 
@@ -336,14 +349,6 @@ struct StatError: Error, CustomStringConvertible {
 /// This approach is similar to `redo` as outlined in [this article](https://apenwarr.ca/log/20181113)
 /// (see redo: mtime dependencies done right)
 struct FileChecker {
-  //static let filename = SQLite.Expression<String>("filename")
-  //static let id = SQLite.Expression<Int64?>("id")
-  //static let mtime = SQLite.Expression<Int64?>("mtime")
-  //static let size = SQLite.Expression<Int64?>("size")
-  //static let inodeNumer = SQLite.Expression<UInt64?>("ino")
-  //static let fileMode = SQLite.Expression<UInt64?>("mode")
-  //static let ownerUid = SQLite.Expression<UInt64?>("uid")
-  //static let ownerGid = SQLite.Expression<UInt64?>("gid")
   typealias File = (filename: String, id: Int64?, mtime: Int64?, size: Int64?, ino: UInt64?, mode: UInt64?, uid: UInt64?, gid: UInt64?)
 
   /// Returns wether the file has changed and the new `stat` of the file
