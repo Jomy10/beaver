@@ -89,14 +89,11 @@ struct FileCache: Sendable {
     try self.csourceFiles.createIfNotExists(self.db)
     try self.globalConfigurations.createIfNotExists(self.db)
 
-    MessageHandler.debug("New: \(buildId) \(env.bytes)")
-
     if let globConf = try db.pluck(self.globalConfigurations.table.limit(1)) {
       self.globalConfiguration = (
         buildId: globConf[self.globalConfigurations.buildId.unqualified],
         env: globConf[self.globalConfigurations.environment.unqualified]
       )
-      MessageHandler.debug("Old: \(self.globalConfiguration!.buildId) \(self.globalConfiguration!.env.bytes)")
 
       if self.globalConfiguration!.buildId != buildId {
         try self.db.run(self.globalConfigurations.table
@@ -190,54 +187,127 @@ struct FileCache: Sendable {
     let targetId = try self.getTarget(target)
     let objectType = artifactType.cObjectType!
 
-    // TODO: with
-    let filesStmnt = try self.db.run("""
+    let subTable = Table("sub")
+
+    let subQuery = self.files.table
+      .select(
+        self.files.filename.qualified,
+        self.files.id.qualified,
+        self.files.mtime.qualified,
+        self.files.size.qualified,
+        self.files.inodeNumber.qualified,
+        self.files.fileMode.qualified,
+        self.files.ownerUid.qualified,
+        self.files.ownerGid.qualified
+      )
+      .join(
+        .inner,
+        self.csourceFiles.table,
+        on:  self.csourceFiles.fileId.qualified == self.files.id.qualified
+          && self.csourceFiles.configId.qualified == configId
+          && self.csourceFiles.targetId.qualified == targetId
+          && self.csourceFiles.objectType.qualified == objectType
+      )
+
+    let filesQuery = inputFiles.table
+      .select(
+        inputFiles.filename.qualified,
+        subTable[self.files.id.unqualified],
+        subTable[self.files.mtime.unqualified],
+        subTable[self.files.size.unqualified],
+        subTable[self.files.inodeNumber.unqualified],
+        subTable[self.files.fileMode.unqualified],
+        subTable[self.files.ownerUid.unqualified],
+        subTable[self.files.ownerGid.unqualified]
+      )
+      .with(subTable, as: subQuery)
+      .join(.leftOuter, subTable, on: subTable[self.files.filename.unqualified] == inputFiles.filename.qualified)
+
+    /*
+    select
+      #inputFiles.filename,
+      file.id,
+      file.mtime,
+      file.size,
+      file.ino,
+      file.uid,
+      file.gid
+    from #inputFiles
+    left outer join (
       select
-        \(inputFiles.filename.qualified),
-        \(self.files.id.unqualified),
-        \(self.files.mtime.unqualified),
-        \(self.files.size.unqualified),
-        \(self.files.inodeNumber.unqualified),
-        \(self.files.fileMode.unqualified),
-        \(self.files.ownerUid.unqualified),
-        \(self.files.ownerGid.unqualified)
-      from "\(inputFiles.tableName)"
-      left outer join (
-        select
-          \(self.files.filename.qualified),
-          \(self.files.id.unqualified),
-          \(self.files.mtime.unqualified),
-          \(self.files.size.unqualified),
-          \(self.files.inodeNumber.unqualified),
-          \(self.files.fileMode.unqualified),
-          \(self.files.ownerUid.unqualified),
-          \(self.files.ownerGid.unqualified)
-        from File
-        inner join CSourceFile on \(self.csourceFiles.fileId.qualified) = \(self.files.id.qualified)
-                              and \(self.csourceFiles.configId.qualified) = ?
-                              and \(self.csourceFiles.targetId.qualified) = ?
-                              and \(self.csourceFiles.objectType.qualified) = ?
-      ) sub on sub.filename = \(inputFiles.filename.qualified)
-      """,
-      configId.datatypeValue,
-      targetId.datatypeValue,
-      objectType.datatypeValue
-    )
+        file.filename,
+        file.id,
+        file.mtime,
+        file.size,
+        file.ino
+        file.uid,
+        file.gid
+      from file
+      inner join cSourceFile c on c.fileID = file.id
+                              and c.configID = `configID`
+                              and c.targetID = `targetID`
+                              and c.objectType = `objectType`
+    ) sub on sub.filename = #inputFile.filename
+    */
+
+    //let filesStmnt = try self.db.run("""
+    //  select
+    //    \(inputFiles.filename.qualified),
+    //    \(self.files.id.unqualified),
+    //    \(self.files.mtime.unqualified),
+    //    \(self.files.size.unqualified),
+    //    \(self.files.inodeNumber.unqualified),
+    //    \(self.files.fileMode.unqualified),
+    //    \(self.files.ownerUid.unqualified),
+    //    \(self.files.ownerGid.unqualified)
+    //  from "\(inputFiles.tableName)"
+    //  left outer join (
+    //    select
+    //      \(self.files.filename.qualified),
+    //      \(self.files.id.unqualified),
+    //      \(self.files.mtime.unqualified),
+    //      \(self.files.size.unqualified),
+    //      \(self.files.inodeNumber.unqualified),
+    //      \(self.files.fileMode.unqualified),
+    //      \(self.files.ownerUid.unqualified),
+    //      \(self.files.ownerGid.unqualified)
+    //    from File
+    //    inner join CSourceFile on \(self.csourceFiles.fileId.qualified) = \(self.files.id.qualified)
+    //                          and \(self.csourceFiles.configId.qualified) = ?
+    //                          and \(self.csourceFiles.targetId.qualified) = ?
+    //                          and \(self.csourceFiles.objectType.qualified) = ?
+    //  ) sub on sub.filename = \(inputFiles.filename.qualified)
+    //  """,
+    //  configId.datatypeValue,
+    //  targetId.datatypeValue,
+    //  objectType.datatypeValue
+    //)
 
     var updateValues: [(Int64?, [Setter])] = []
     var returnValue: [Result] = []
     var error: (any Error)? = nil
     do {
-      for fileStmnt in filesStmnt {
+      //for fileStmnt in filesStmnt {
+      for row in try self.db.prepare(filesQuery) {
+        //let file: FileChecker.File = (
+        //  filename: fileStmnt[0]! as! String,
+        //  id: fileStmnt[1].map { $0 as! Int64 },
+        //  mtime: fileStmnt[2].map { $0 as! Int64 },
+        //  size: fileStmnt[3].map { $0 as! Int64 },
+        //  ino: try fileStmnt[4].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) },
+        //  mode: try fileStmnt[5].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) },
+        //  uid: try fileStmnt[6].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) },
+        //  gid: try fileStmnt[7].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) }
+        //)
         let file: FileChecker.File = (
-          filename: fileStmnt[0]! as! String,
-          id: fileStmnt[1].map { $0 as! Int64 },
-          mtime: fileStmnt[2].map { $0 as! Int64 },
-          size: fileStmnt[3].map { $0 as! Int64 },
-          ino: try fileStmnt[4].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) },
-          mode: try fileStmnt[5].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) },
-          uid: try fileStmnt[6].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) },
-          gid: try fileStmnt[7].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) }
+          filename: row[self.files.filename.unqualified],
+          id: row[SQLite.Expression<Int64?>("id")],
+          mtime: row[SQLite.Expression<Int64?>("mtime")],
+          size: row[SQLite.Expression<Int64?>("size")],
+          ino: row[SQLite.Expression<UInt64?>("ino")],
+          mode: row[SQLite.Expression<UInt64?>("mode")],
+          uid: row[SQLite.Expression<UInt64?>("uid")],
+          gid: row[SQLite.Expression<UInt64?>("gid")]
         )
         let filename: String = file.filename
         let (changed, attrs) = try FileChecker.fileChanged(file: file)
