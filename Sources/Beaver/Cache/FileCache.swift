@@ -6,49 +6,7 @@ import timespec
 import Platform
 import CryptoSwift
 
-/// ```mermaid
-/// erDiagram
-///
-/// File {
-/// 	int id
-/// 	string filename
-/// 	int mtime
-/// 	int size
-/// 	int ino
-/// 	int mode
-/// 	int uid
-/// 	int gid
-/// }
-///
-/// CSourceFile {
-/// 	int fileID
-/// 	int configID
-/// 	int targetID
-/// 	int objectType
-/// }
-///
-/// Configuration {
-///   int id
-/// 	string mode
-/// }
-///
-/// Target {
-/// 	int id
-/// 	int project
-/// 	int target
-/// }
-///
-/// GlobalConfiguration {
-/// 	%% The Beaver buildId; regenerated on every build
-///   int buildId
-///   %% A hash computed from the environment variables
-///   int env
-/// }
-///
-/// File ||--|| CSourceFile: fileID
-/// CSourceFile }o--|| Configuration: configID
-/// CSourceFile }o--|| Target: targetID
-/// ```
+/// ![schema](/docs/internal/Cache.md)
 struct FileCache: Sendable {
   let db: Connection
   let files: FileTable
@@ -63,6 +21,7 @@ struct FileCache: Sendable {
 
   enum CacheError: Swift.Error {
     case noInputFiles
+    case noConfigurationSelected
   }
 
   init(
@@ -179,8 +138,6 @@ struct FileCache: Sendable {
   // try db.run(users.insert(or: .replace, email <- "alice@mac.com", name <- "Alice B."))
   // INSERT OR REPLACE INTO "users" ("email", "name") VALUES ('alice@mac.com', 'Alice B.')
 
-  struct NoConfigurationSelected: Error {}
-
   func loopSourceFiles<Result>(
     _ files: borrowing [URL],
     target: TargetRef,
@@ -196,7 +153,7 @@ struct FileCache: Sendable {
 
 
     guard let configId = self.configurationId else {
-      throw NoConfigurationSelected()
+      throw CacheError.noConfigurationSelected()
     }
     let targetId = try self.getTarget(target)
     let objectType = artifactType.cObjectType!
@@ -337,7 +294,7 @@ struct FileCache: Sendable {
     forBuildingArtifact artifactType: ArtifactType
   ) throws -> Bool {
     guard let configId = self.configurationId else {
-      throw NoConfigurationSelected()
+      throw CacheError.noConfigurationSelected()
     }
     let targetId = try self.getTarget(target)
 
@@ -443,12 +400,18 @@ struct FileCache: Sendable {
     guard let targetId = try self.getTargetIfExists(target) else {
       return false
     }
-    let files = try (self.db.prepareRowIterator(self.files.table
+    let files = (try (self.db.prepareRowIterator(self.files.table
       .select(self.files.id.qualified)
       .join(self.csourceFiles.table, on: self.csourceFiles.fileId.qualified == self.files.id.qualified)))
         .map { row in
           row[self.files.id.unqualified]
-        }
+        })
+      + (try self.db.prepareRowIterator(self.files.table
+          .select(self.files.id.qualified)
+          .join(self.dependencyFiles.table, on: self.dependencyFiles.fileId.qualified == self.files.id.qualified))
+            .map { row in
+              row[self.files.id.unqualified]
+            })
     if files.count > 0 {
       try self.db.run(self.files.table
         .where(files.contains(self.files.id.qualified))
@@ -457,9 +420,13 @@ struct FileCache: Sendable {
     try self.db.run(self.csourceFiles.table
       .where(self.csourceFiles.targetId.unqualified == targetId)
       .delete())
+    try self.db.run(self.dependencyFiles.table
+      .where(self.dependencyFiles.targetId.unqualified == targetId)
+      .delete())
     try self.db.run(self.targets.table
       .where(self.targets.id.unqualified == targetId)
       .delete())
+
     return true
   }
 
