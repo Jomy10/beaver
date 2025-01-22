@@ -146,11 +146,16 @@ struct FileCache: Sendable {
     }
   }
 
+  // TODO: async lock?
+  /// Lock when retrieving a target so that no double targets are created
+  let targetRetrievalLock: NSLock = NSLock()
+
   func getTargetIfExists(_ target: TargetRef) throws -> Int64? {
     guard let row = (try db.pluck(self.targets.table.select(self.targets.id.qualified)
       .where(self.targets.project.qualified == target.project)
       .where(self.targets.target.qualified == target.target))
     ) else {
+      MessageHandler.debug("Couldn't find \(target)")
       return nil
     }
     return row[self.targets.id.unqualified]
@@ -158,14 +163,16 @@ struct FileCache: Sendable {
 
   /// Get the id for the specified target
   func getTarget(_ target: TargetRef) throws -> Int64 {
-    let targetId = try self.getTargetIfExists(target)
-    if let targetId = targetId {
-      return targetId
-    } else {
-      return try db.run(self.targets.table.insert([
-        self.targets.project.unqualified <- target.project,
-        self.targets.target.unqualified <- target.target
-      ]))
+    try self.targetRetrievalLock.withLock {
+      let targetId = try self.getTargetIfExists(target)
+      if let targetId = targetId {
+        return targetId
+      } else {
+        return try db.run(self.targets.table.insert([
+          self.targets.project.unqualified <- target.project,
+          self.targets.target.unqualified <- target.target
+        ]))
+      }
     }
   }
 

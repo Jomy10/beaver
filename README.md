@@ -32,6 +32,7 @@ C::Library(
 
 C::Executable(
   name: "Game",
+  language: :cpp,
   sources: "src/*.cpp",
   dependencies: ["Physics", "Renderer"]
 )
