@@ -153,7 +153,7 @@ struct FileCache: Sendable {
 
 
     guard let configId = self.configurationId else {
-      throw CacheError.noConfigurationSelected()
+      throw CacheError.noConfigurationSelected
     }
     let targetId = try self.getTarget(target)
     let objectType = artifactType.cObjectType!
@@ -294,7 +294,7 @@ struct FileCache: Sendable {
     forBuildingArtifact artifactType: ArtifactType
   ) throws -> Bool {
     guard let configId = self.configurationId else {
-      throw CacheError.noConfigurationSelected()
+      throw CacheError.noConfigurationSelected
     }
     let targetId = try self.getTarget(target)
 
