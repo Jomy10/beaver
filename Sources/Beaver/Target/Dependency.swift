@@ -114,6 +114,7 @@ extension Dependency {
     }
   }
 
+  @available(*, deprecated, message: "use linkerFlagsAndArtifactURL(context:, collectingLanguageIn:)")
   public func linkerFlags(context: borrowing Beaver) async throws -> [String] {
     switch (self) {
       case .library(let libTarget):
@@ -129,19 +130,24 @@ extension Dependency {
     }
   }
 
-  public func linkerFlags(context: borrowing Beaver, collectingLanguageIn langs: inout Set<Language>) async throws -> [String] {
+  /// Returns the linker flags (first argument) and the artifactURL being linked to (if the dependency is a target
+  /// defined in Beaver)
+  public func linkerFlagsAndArtifactURL(context: borrowing Beaver, collectingLanguageIn langs: inout Set<Language>) async throws -> ([String], URL?) {
     switch (self) {
       case .library(let libTarget):
         return await context.withProjectAndLibrary(libTarget.target) { (project: borrowing Project, library: borrowing any Library) in
           langs.insert(library.language)
-          return library.linkAgainstLibrary(projectBuildDir: project.buildDir, artifact: libTarget.artifact)
+          return (
+            library.linkAgainstLibrary(projectBuildDir: project.buildDir, artifact: libTarget.artifact),
+            library.artifactURL(projectBuildDir: project.buildDir, artifact: libTarget.artifact)
+          )
         }
       case .pkgconfig(let dep):
-        return try dep.linkerFlags
+        return (try dep.linkerFlags, nil)
       case .system(let name):
-        return ["-l\(name)"]
+        return (["-l\(name)"], nil)
       case .customFlags(cflags: _, linkerFlags: let linkerFlags):
-        return linkerFlags
+        return (linkerFlags, nil)
     }
   }
 }

@@ -89,14 +89,22 @@ public struct CExecutable: CTarget, Executable {
     if artifact == .app {
       fatalError("unimplemented")
     }
-    if rebuild || !artifactExists { // TODO: or relink
-      try await self.buildExecutable(objects: objects, projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, context: context)
+    let (depLinkerFlags, relink) = try await self.dependencyLinkerFlagsAndRelink(context: context, forBuildingArtifact: artifact)
+    if rebuild || !artifactExists || relink { // TODO: or relink
+      try await self.buildExecutable(
+        objects: objects,
+        dependencyLinkerFlags: depLinkerFlags,
+        projectBaseDir: projectBaseDir,
+        projectBuildDir: projectBuildDir,
+        context: context
+      )
     }
   }
 
   /// Link all objects and dependencies
   func buildExecutable(
     objects: borrowing [URL],
+    dependencyLinkerFlags depLinkerFlags: [String],
     projectBaseDir: borrowing URL,
     projectBuildDir: borrowing URL,
     context: borrowing Beaver
@@ -105,16 +113,16 @@ public struct CExecutable: CTarget, Executable {
     try FileManager.default.createDirectoryIfNotExists(at: buildBaseDir)
     let outputFile = self.artifactURL(projectBuildDir: projectBuildDir, artifact: .executable)!
 
-    var depLinkerFlags: [String] = []
-    var depLanguages: Set<Language> = []
-    let contextPtr = withUnsafePointer(to: context) { $0 }
-    try await self.loopUniqueDependenciesRecursive(context: context) { (dependency: Dependency) in
-      depLinkerFlags.append(contentsOf: try await dependency.linkerFlags(context: contextPtr.pointee, collectingLanguageIn: &depLanguages))
-    }
+    //var depLinkerFlags: [String] = []
+    //var depLanguages: Set<Language> = []
+    //let contextPtr = withUnsafePointer(to: context) { $0 }
+    //try await self.loopUniqueDependenciesRecursive(context: context) { (dependency: Dependency) in
+    //  depLinkerFlags.append(contentsOf: try await dependency.linkerFlags(context: contextPtr.pointee, collectingLanguageIn: &depLanguages))
+    //}
 
     let args: [String] = objects.map { $0.path }
       + depLinkerFlags
-      + depLanguages.compactFlatMap { $0.linkerFlags(targetLanguage: self.language) }
+      //+ depLanguages.compactFlatMap { $0.linkerFlags(targetLanguage: self.language) }
       + ["-o", outputFile.path]
     try self.executeCC(args)
   }

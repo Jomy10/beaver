@@ -160,6 +160,53 @@ struct GlobalConfigurationTable: SQLTable {
   }
 }
 
+struct DependencyFileTable: SQLTable {
+  let table: Table
+  // A file (artifact) the config, target and artifact combination depend on
+  let fileId: TableColumn<Int64>
+  // A target with a given config for building a specific artifact
+  let configId: TableColumn<Int64>
+  let targetId: TableColumn<Int64>
+  let artifactType: TableColumn<ArtifactType>
+
+  let tableName: String
+
+  init() {
+    self.tableName = "DependencyFile"
+    self.table = Table(self.tableName)
+    self.fileId = TableColumn("fileID", self.table)
+    self.configId = TableColumn("configID", self.table)
+    self.targetId = TableColumn("targetID", self.table)
+    self.artifactType = TableColumn("artifactType", self.table)
+  }
+
+  func createIfNotExists(_ db: Connection) throws {
+    try db.run(self.table.create(ifNotExists: true) { t in
+      t.column(self.fileId.unqualified)
+      t.column(self.configId.unqualified)
+      t.column(self.targetId.unqualified)
+      t.column(self.artifactType.unqualified)
+
+      t.primaryKey(
+        self.fileId.unqualified,
+        self.configId.unqualified,
+        self.targetId.unqualified,
+        self.artifactType.unqualified
+      )
+
+      t.foreignKey(
+        self.fileId.unqualified,
+        references: Table("File"), SQLite.Expression<Int64>("id"))
+      t.foreignKey(
+        self.configId.unqualified,
+        references: Table("Configuration"), SQLite.Expression<Int64>("id"))
+      t.foreignKey(
+        self.targetId.unqualified,
+        references: Table("Target"), SQLite.Expression<Int64>("id"))
+    })
+  }
+}
+
 struct TempInputFileTable: SQLTempTable {
   let table: Table
   let filename: TableColumn<String>
@@ -176,5 +223,9 @@ struct TempInputFileTable: SQLTempTable {
     try db.run(self.table.create(temporary: true) { t in
       t.column(self.filename.unqualified, primaryKey: true)
     })
+  }
+
+  func insert(_ inputFiles: [URL], _ db: Connection) throws {
+    try db.run(self.table.insertMany(inputFiles.map { [self.filename.unqualified <- $0.absoluteURL.path] }))
   }
 }

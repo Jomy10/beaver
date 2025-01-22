@@ -66,8 +66,6 @@ extension CTarget {
 }
 
 extension CTarget {
-  //public typealias Storage = CTargetStorage
-
   /// Build all objects of this target
   ///
   /// # Returns
@@ -100,6 +98,29 @@ extension CTarget {
       }
     }
     return (objectFiles, anyChanged)
+  }
+
+  func dependencyLinkerFlagsAndRelink(context: borrowing Beaver, forBuildingArtifact artifact: ArtifactType) async throws -> ([String], Bool) {
+    // Collect linker flags to link against dependencies
+    var depLinkerFlags: [String] = []
+    var depLanguages: Set<Language> = Set()
+    var depArtifacts: [URL] = []
+    let contextPtr = withUnsafePointer(to: context) { $0 }
+    try await self.loopUniqueDependenciesRecursive(context: context) { dependency in
+      let (flags, artifactURL) = try await dependency.linkerFlagsAndArtifactURL(context: contextPtr.pointee, collectingLanguageIn: &depLanguages)
+      depLinkerFlags.append(contentsOf: flags)
+      if let artifactURL = artifactURL {
+        depArtifacts.append(artifactURL)
+      }
+    }
+
+    // relink if any of the dependency's artifacts changed
+    let relink = try context.fileCache!.dependencyFilesChanged(currentFiles: depArtifacts, target: self.ref, forBuildingArtifact: artifact.asArtifactType())
+
+    return (
+      depLinkerFlags + depLanguages.compactFlatMap { $0.linkerFlags(targetLanguage: self.language) },
+      relink
+    )
   }
 
   @inline(__always)

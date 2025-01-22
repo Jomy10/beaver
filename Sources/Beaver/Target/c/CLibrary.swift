@@ -98,8 +98,17 @@ public struct CLibrary: CTarget, Library {
         fatalError("unimplemented")
         #else
         let (objects, rebuild) = try await self.buildObjects(projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
-        if rebuild || !artifactExists { // TODO: relink if any dependency artifacts rebuilt
-          try await self.buildDynamicLibrary(objects: objects, projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, context: context)
+
+        let (depLinkerFlags, relink) = try await self.dependencyLinkerFlagsAndRelink(context: context, forBuildingArtifact: artifact)
+
+        if rebuild || !artifactExists || relink {
+          try await self.buildDynamicLibrary(
+            objects: objects,
+            dependencyLinkerFlags: depLinkerFlags,
+            projectBaseDir: projectBaseDir,
+            projectBuildDir: projectBuildDir,
+            context: context
+          )
         }
         #endif
       case .staticlib:
@@ -137,7 +146,13 @@ public struct CLibrary: CTarget, Library {
     }
   }
 
-  func buildDynamicLibrary(objects objectFiles: borrowing [URL], projectBaseDir: borrowing URL, projectBuildDir: borrowing URL, context: borrowing Beaver) async throws {
+  func buildDynamicLibrary(
+    objects objectFiles: borrowing [URL],
+    dependencyLinkerFlags depLinkerFlags: [String],
+    projectBaseDir: borrowing URL,
+    projectBuildDir: borrowing URL,
+    context: borrowing Beaver
+  ) async throws {
     let buildBaseDir = self.artifactOutputDir(projectBuildDir: projectBuildDir, artifact: .dynlib)!
     try FileManager.default.createDirectoryIfNotExists(at: buildBaseDir, withIntermediateDirectories: true)
 
@@ -155,17 +170,17 @@ public struct CLibrary: CTarget, Library {
     args = ["-shared"]
     #endif
 
-    var depLinkerFlags: [String] = []
-    var depLanguages: Set<Language> = []
-    let contextPtr = withUnsafePointer(to: context) { $0 }
-    try await self.loopUniqueDependenciesRecursive(context: context) { (dependency: Dependency) in
-      depLinkerFlags.append(contentsOf: try await dependency.linkerFlags(context: contextPtr.pointee, collectingLanguageIn: &depLanguages))
-    }
+    //var depLinkerFlags: [String] = []
+    //var depLanguages: Set<Language> = []
+    //let contextPtr = withUnsafePointer(to: context) { $0 }
+    //try await self.loopUniqueDependenciesRecursive(context: context) { (dependency: Dependency) in
+    //  depLinkerFlags.append(contentsOf: try await dependency.linkerFlagsAndArtifactURL(context: contextPtr.pointee, collectingLanguageIn: &depLanguages))
+    //}
 
     args.append(contentsOf: ["-o", outputFile.path]
       + objectFiles.map { $0.path }
       + depLinkerFlags
-      + depLanguages.compactFlatMap { $0.linkerFlags(targetLanguage: self.language) }
+      //+ depLanguages.compactFlatMap { $0.linkerFlags(targetLanguage: self.language) }
     )
 
     try self.executeCC(args)
