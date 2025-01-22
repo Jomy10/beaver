@@ -6,8 +6,6 @@ import timespec
 import Platform
 import CryptoSwift
 
-// TODO: Store artifacts a target depends on in cache, when changed recompile the target's artifact
-
 /// ```mermaid
 /// erDiagram
 ///
@@ -59,8 +57,13 @@ struct FileCache: Sendable {
   let targets: TargetTable
   let globalConfigurations: GlobalConfigurationTable
   var globalConfiguration: (buildId: Int, env: Data)?
+  let dependencyFiles: DependencyFileTable
 
   var configurationId: Int64? = nil
+
+  enum CacheError: Swift.Error {
+    case noInputFiles
+  }
 
   init(
     cacheFile: URL,
@@ -82,12 +85,14 @@ struct FileCache: Sendable {
     self.targets = TargetTable()
     self.globalConfigurations = GlobalConfigurationTable()
     self.globalConfiguration = nil
+    self.dependencyFiles = DependencyFileTable()
 
     try self.files.createIfNotExists(self.db)
     try self.configurations.createIfNotExists(self.db)
     try self.targets.createIfNotExists(self.db)
     try self.csourceFiles.createIfNotExists(self.db)
     try self.globalConfigurations.createIfNotExists(self.db)
+    try self.dependencyFiles.createIfNotExists(self.db)
 
     if let globConf = try db.pluck(self.globalConfigurations.table.limit(1)) {
       self.globalConfiguration = (
@@ -179,7 +184,9 @@ struct FileCache: Sendable {
     // Create a temporary table to hold our files
     let inputFiles = TempInputFileTable()
     try inputFiles.create(self.db)
-    try db.run(inputFiles.table.insertMany(files.map { [inputFiles.filename.unqualified <- $0.absoluteURL.path] }))
+    try inputFiles.insert(files, self.db)
+    //try db.run(inputFiles.table.insertMany(files.map { [inputFiles.filename.unqualified <- $0.absoluteURL.path] }))
+
 
     guard let configId = self.configurationId else {
       throw NoConfigurationSelected()
@@ -188,6 +195,33 @@ struct FileCache: Sendable {
     let objectType = artifactType.cObjectType!
 
     let subTable = Table("sub")
+
+    /*
+      select
+        #inputFiles.filename,
+        file.id,
+        file.mtime,
+        file.size,
+        file.ino,
+        file.uid,
+        file.gid
+      from #inputFiles
+      left outer join (
+        select
+          file.filename,
+          file.id,
+          file.mtime,
+          file.size,
+          file.ino
+          file.uid,
+          file.gid
+        from file
+        inner join cSourceFile c on c.fileID = file.id
+                                and c.configID = `configID`
+                                and c.targetID = `targetID`
+                                and c.objectType = `objectType`
+      ) sub on sub.filename = #inputFile.filename
+    */
 
     let subQuery = self.files.table
       .select(
@@ -223,66 +257,6 @@ struct FileCache: Sendable {
       .with(subTable, as: subQuery)
       .join(.leftOuter, subTable, on: subTable[self.files.filename.unqualified] == inputFiles.filename.qualified)
 
-    /*
-    select
-      #inputFiles.filename,
-      file.id,
-      file.mtime,
-      file.size,
-      file.ino,
-      file.uid,
-      file.gid
-    from #inputFiles
-    left outer join (
-      select
-        file.filename,
-        file.id,
-        file.mtime,
-        file.size,
-        file.ino
-        file.uid,
-        file.gid
-      from file
-      inner join cSourceFile c on c.fileID = file.id
-                              and c.configID = `configID`
-                              and c.targetID = `targetID`
-                              and c.objectType = `objectType`
-    ) sub on sub.filename = #inputFile.filename
-    */
-
-    //let filesStmnt = try self.db.run("""
-    //  select
-    //    \(inputFiles.filename.qualified),
-    //    \(self.files.id.unqualified),
-    //    \(self.files.mtime.unqualified),
-    //    \(self.files.size.unqualified),
-    //    \(self.files.inodeNumber.unqualified),
-    //    \(self.files.fileMode.unqualified),
-    //    \(self.files.ownerUid.unqualified),
-    //    \(self.files.ownerGid.unqualified)
-    //  from "\(inputFiles.tableName)"
-    //  left outer join (
-    //    select
-    //      \(self.files.filename.qualified),
-    //      \(self.files.id.unqualified),
-    //      \(self.files.mtime.unqualified),
-    //      \(self.files.size.unqualified),
-    //      \(self.files.inodeNumber.unqualified),
-    //      \(self.files.fileMode.unqualified),
-    //      \(self.files.ownerUid.unqualified),
-    //      \(self.files.ownerGid.unqualified)
-    //    from File
-    //    inner join CSourceFile on \(self.csourceFiles.fileId.qualified) = \(self.files.id.qualified)
-    //                          and \(self.csourceFiles.configId.qualified) = ?
-    //                          and \(self.csourceFiles.targetId.qualified) = ?
-    //                          and \(self.csourceFiles.objectType.qualified) = ?
-    //  ) sub on sub.filename = \(inputFiles.filename.qualified)
-    //  """,
-    //  configId.datatypeValue,
-    //  targetId.datatypeValue,
-    //  objectType.datatypeValue
-    //)
-
     var updateValues: [(Int64?, [Setter])] = []
     var returnValue: [Result] = []
     var error: (any Error)? = nil
@@ -299,16 +273,7 @@ struct FileCache: Sendable {
         //  uid: try fileStmnt[6].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) },
         //  gid: try fileStmnt[7].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) }
         //)
-        let file: FileChecker.File = (
-          filename: row[self.files.filename.unqualified],
-          id: row[SQLite.Expression<Int64?>("id")],
-          mtime: row[SQLite.Expression<Int64?>("mtime")],
-          size: row[SQLite.Expression<Int64?>("size")],
-          ino: row[SQLite.Expression<UInt64?>("ino")],
-          mode: row[SQLite.Expression<UInt64?>("mode")],
-          uid: row[SQLite.Expression<UInt64?>("uid")],
-          gid: row[SQLite.Expression<UInt64?>("gid")]
-        )
+        let file: FileChecker.File = FileChecker.fileFromRow(row)
         let filename: String = file.filename
         let (changed, attrs) = try FileChecker.fileChanged(file: file)
 
@@ -355,6 +320,114 @@ struct FileCache: Sendable {
     }
 
     return returnValue
+  }
+
+  /// Returns wether any of the dependency files have changed, or if new files have been added.
+  /// Updates the cache.
+  func dependencyFilesChanged(
+    currentFiles: borrowing [URL],
+    target: TargetRef,
+    forBuildingArtifact artifactType: ArtifactType
+  ) throws -> Bool {
+    guard let configId = self.configurationId else {
+      throw NoConfigurationSelected()
+    }
+    let targetId = try self.getTarget(target)
+
+    let subTable = Table("sub_files")
+
+    var subQuery: Table
+    if currentFiles.count == 0 {
+      subQuery = self.dependencyFiles.table
+        .select(self.files.id.qualified)
+    } else {
+      subQuery = self.dependencyFiles.table
+        .select(
+          self.files.filename.qualified,
+          self.files.id.qualified,
+          self.files.mtime.qualified,
+          self.files.size.qualified,
+          self.files.inodeNumber.qualified,
+          self.files.fileMode.qualified,
+          self.files.ownerUid.qualified,
+          self.files.ownerGid.qualified
+        )
+    }
+
+    subQuery = subQuery
+      .join(.inner, self.files.table, on: self.dependencyFiles.fileId.qualified == self.files.id.qualified)
+      .where(self.dependencyFiles.configId.qualified == configId)
+      .where(self.dependencyFiles.targetId.qualified == targetId)
+      .where(self.dependencyFiles.artifactType.qualified == artifactType)
+
+    if currentFiles.count == 0 {
+      let count = try db.scalar(subQuery.count)
+      return count != currentFiles.count
+    }
+
+    let inputFiles = TempInputFileTable()
+    try inputFiles.create(self.db)
+    try inputFiles.insert(currentFiles, self.db)
+
+    let filesQuery = inputFiles.table
+      .select(
+        inputFiles.filename.qualified,
+        subTable[self.files.id.unqualified],
+        subTable[self.files.mtime.unqualified],
+        subTable[self.files.size.unqualified],
+        subTable[self.files.inodeNumber.unqualified],
+        subTable[self.files.fileMode.unqualified],
+        subTable[self.files.ownerUid.unqualified],
+        subTable[self.files.ownerGid.unqualified]
+      )
+      .with(subTable, as: subQuery)
+      .join(.leftOuter, subTable, on: subTable[self.files.filename.unqualified] == inputFiles.filename.qualified)
+
+    var anyChanged = false
+    for row in try self.db.prepare(filesQuery) {
+      let file = FileChecker.fileFromRow(row)
+      let filename = file.filename
+      let (changed, attrs) = try FileChecker.fileChanged(file: file)
+
+      MessageHandler.trace("Artifact \(filename) (\(changed ? "changed" : "not changed"))")
+      if changed {
+        anyChanged = true
+        if let id = file.id {
+          try self.db.run(self.files.table
+            .where(self.files.id.qualified == id)
+            .update([
+              self.files.mtime.unqualified <- Int64(timespec_to_ms(attrs.st_mtimespec)),
+              self.files.size.unqualified <- Int64(attrs.st_size),
+              self.files.inodeNumber.unqualified <- UInt64(attrs.st_ino),
+              self.files.fileMode.unqualified <- UInt64(attrs.st_mode),
+              self.files.ownerUid.unqualified <- UInt64(attrs.st_uid),
+              self.files.ownerGid.unqualified <- UInt64(attrs.st_gid),
+            ])
+          )
+        } else {
+          let id = try self.db.run(self.files.table
+            .insert([
+              self.files.filename.unqualified <- filename,
+              self.files.mtime.unqualified <- Int64(timespec_to_ms(attrs.st_mtimespec)),
+              self.files.size.unqualified <- Int64(attrs.st_size),
+              self.files.inodeNumber.unqualified <- UInt64(attrs.st_ino),
+              self.files.fileMode.unqualified <- UInt64(attrs.st_mode),
+              self.files.ownerUid.unqualified <- UInt64(attrs.st_uid),
+              self.files.ownerGid.unqualified <- UInt64(attrs.st_gid),
+            ])
+          )
+          try self.db.run(self.dependencyFiles.table
+            .insert([
+              self.dependencyFiles.fileId.unqualified <- id,
+              self.dependencyFiles.configId.unqualified <- configId,
+              self.dependencyFiles.targetId.unqualified <- targetId,
+              self.dependencyFiles.artifactType.unqualified <- artifactType
+            ]))
+        }
+      }
+    }
+
+    return anyChanged
   }
 
   /// Returns false if nothing had to be removed
@@ -421,7 +494,21 @@ struct StatError: Error, CustomStringConvertible {
 struct FileChecker {
   typealias File = (filename: String, id: Int64?, mtime: Int64?, size: Int64?, ino: UInt64?, mode: UInt64?, uid: UInt64?, gid: UInt64?)
 
-  /// Returns wether the file has changed and the new `stat` of the file
+  static func fileFromRow(_ row: Row) -> File {
+    (
+      filename: row[SQLite.Expression<String>("filename")],
+      id: row[SQLite.Expression<Int64?>("id")],
+      mtime: row[SQLite.Expression<Int64?>("mtime")],
+      size: row[SQLite.Expression<Int64?>("size")],
+      ino: row[SQLite.Expression<UInt64?>("ino")],
+      mode: row[SQLite.Expression<UInt64?>("mode")],
+      uid: row[SQLite.Expression<UInt64?>("uid")],
+      gid: row[SQLite.Expression<UInt64?>("gid")]
+    )
+  }
+
+  /// Returns wether the file has changed and the new `stat` of the file.
+  /// Also returns true if the file has not been cached before (e.g. it is a new file)
   static func fileChanged(file: Self.File) throws -> (Bool, stat) {
     let filename = file.filename
 
