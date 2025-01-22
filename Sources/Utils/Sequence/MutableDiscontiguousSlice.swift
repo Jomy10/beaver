@@ -1,12 +1,12 @@
-struct MutableDiscontiguousSlice<C: Collection & BidirectionalCollection>: Collection, BidirectionalCollection, Sequence {
-  let buffer: C
+public struct MutableDiscontiguousSlice<C: Collection & BidirectionalCollection>: Collection, BidirectionalCollection, Sequence, RangeRemovableCollection {
+  var buffer: C
   // TODO RangeSet?
   var unavailableRanges: [Range<Self.Index>]
 
-  typealias Element = C.Element
-  typealias Index = C.Index
+  public typealias Element = C.Element
+  public typealias Index = C.Index
 
-  var startIndex: Self.Index {
+  public var startIndex: Self.Index {
     if !self.indexAvailable(self.buffer.startIndex) {
       self.index(after: self.buffer.startIndex)
     } else {
@@ -14,7 +14,7 @@ struct MutableDiscontiguousSlice<C: Collection & BidirectionalCollection>: Colle
     }
   }
 
-  var endIndex: Self.Index {
+  public var endIndex: Self.Index {
     if !self.indexAvailable(self.buffer.endIndex) {
       self.index(before: self.buffer.endIndex)
     } else {
@@ -22,12 +22,16 @@ struct MutableDiscontiguousSlice<C: Collection & BidirectionalCollection>: Colle
     }
   }
 
-  init(_ buffer: C) {
+  public var count: Int {
+    self.indices.count
+  }
+
+  public init(_ buffer: C) {
     self.buffer = buffer
     self.unavailableRanges = []
   }
 
-  func index(after index: Self.Index) -> Self.Index {
+  public func index(after index: Self.Index) -> Self.Index {
     var i: Self.Index = self.buffer.index(after: index)
     while !self.indexAvailable(i) {
       i = self.buffer.index(after: i)
@@ -35,7 +39,7 @@ struct MutableDiscontiguousSlice<C: Collection & BidirectionalCollection>: Colle
     return i
   }
 
-  func index(before index: Self.Index) -> Self.Index {
+  public func index(before index: Self.Index) -> Self.Index {
     var i: Self.Index = self.buffer.index(after: index)
     while !self.indexAvailable(i) {
       i = self.buffer.index(before: i)
@@ -43,23 +47,23 @@ struct MutableDiscontiguousSlice<C: Collection & BidirectionalCollection>: Colle
     return i
   }
 
-  subscript(position: Self.Index) -> Self.Element {
+  public subscript(position: Self.Index) -> Self.Element {
     self.buffer[position]
   }
 
-  func indexAvailable(_ index: Self.Index) -> Bool {
+  public func indexAvailable(_ index: Self.Index) -> Bool {
     !self.unavailableRanges.contains(where: { range in range.contains(index) })
   }
 
-  mutating func removeSubrange(_ bounds: Range<Index>) {
+  public mutating func removeSubrange(_ bounds: Range<Index>) {
     self.unavailableRanges.append(bounds)
   }
 
-  func makeIterator() -> Self.Iterator {
+  public func makeIterator() -> Self.Iterator {
     Self.Iterator(self)
   }
 
-  struct Iterator: IteratorProtocol {
+  public struct Iterator: IteratorProtocol {
     var idx: Index
     let buffer: MutableDiscontiguousSlice<C>
 
@@ -68,11 +72,15 @@ struct MutableDiscontiguousSlice<C: Collection & BidirectionalCollection>: Colle
       self.idx = self.buffer.startIndex
     }
 
-    mutating func next() -> Element? {
+    public mutating func next() -> Element? {
       if self.idx >= self.buffer.endIndex { return nil }
       let ret: Element = self.buffer[self.idx]
       self.idx = self.buffer.index(after: self.idx)
       return ret
     }
   }
+}
+
+public protocol RangeRemovableCollection: Collection {
+  mutating func removeSubrange(_ bounds: Range<Index>)
 }
