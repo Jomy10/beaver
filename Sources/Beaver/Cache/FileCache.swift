@@ -5,6 +5,7 @@ import Foundation
 import timespec
 import Platform
 import CryptoSwift
+import Utils
 
 /// ![schema](/docs/internal/Cache.md)
 struct FileCache: Sendable {

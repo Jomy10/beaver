@@ -1,7 +1,6 @@
 //import TaskProgress
 import ProgressIndicators
 import ColorizeSwift
-import Utils
 
 #if canImport(Darwin)
 import Darwin
@@ -19,10 +18,6 @@ public struct MessageHandler {
   private nonisolated(unsafe) static var progress: ProgressIndicators? = nil
   /// Should only be used on the main thread by Beaver, so no locking mechanism is provided here
   private nonisolated(unsafe) static var messageVisibility: MessageVisibility = MessageVisibility.default
-
-  struct NoTaskError: Error, @unchecked Sendable {
-    let id: Any
-  }
 
   public struct MessageVisibility: OptionSet, Sendable {
     public let rawValue: UInt32
@@ -57,6 +52,7 @@ public struct MessageHandler {
     #endif
   }()
 
+  @inlinable
   public static func setColorEnabled(_ val: Bool? = nil) {
     String.isColorizationEnabled = val ?? Self.terminalColorEnabled
   }
