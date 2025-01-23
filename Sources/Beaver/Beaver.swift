@@ -99,6 +99,7 @@ public struct Beaver: ~Copyable, Sendable {
     }
   }
 
+  @inlinable
   public func build(targetName: String, artifact: ArtifactType? = nil) async throws {
     try await self.build(try await self.evaluateTarget(targetName: targetName), artifact: artifact)
   }
@@ -137,6 +138,7 @@ public struct Beaver: ~Copyable, Sendable {
     try await self.run(targetRef, args: args)
   }
 
+  @inlinable
   public func run(targetName: String, args: [String] = []) async throws {
     try await self.run(try await self.evaluateTarget(targetName: targetName), args: args)
   }
@@ -149,6 +151,7 @@ public struct Beaver: ~Copyable, Sendable {
     try Tools.exec(executableURL, args)
   }
 
+  @inlinable
   public func clean(projectName: String) async throws {
     try await self.clean(await self.projectRef(name: projectName))
   }
@@ -209,6 +212,10 @@ public struct Beaver: ~Copyable, Sendable {
     } else {
       await self.commands.overwrites.contains(commandName)
     }
+  }
+
+  public func fileChanged(_ file: URL, context: String) throws -> Bool {
+    try self.fileCache!.fileChanged(file, context: context)
   }
 
   // call in init()

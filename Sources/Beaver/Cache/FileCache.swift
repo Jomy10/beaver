@@ -16,6 +16,7 @@ struct FileCache: Sendable {
   let globalConfigurations: GlobalConfigurationTable
   var globalConfiguration: (buildId: Int, env: Data)?
   let dependencyFiles: DependencyFileTable
+  let customFiles: CustomFileTable
 
   var configurationId: Int64? = nil
 
@@ -45,6 +46,7 @@ struct FileCache: Sendable {
     self.globalConfigurations = GlobalConfigurationTable()
     self.globalConfiguration = nil
     self.dependencyFiles = DependencyFileTable()
+    self.customFiles = CustomFileTable()
 
     try self.files.createIfNotExists(self.db)
     try self.configurations.createIfNotExists(self.db)
@@ -52,6 +54,7 @@ struct FileCache: Sendable {
     try self.csourceFiles.createIfNotExists(self.db)
     try self.globalConfigurations.createIfNotExists(self.db)
     try self.dependencyFiles.createIfNotExists(self.db)
+    try self.customFiles.createIfNotExists(self.db)
 
     if let globConf = try db.pluck(self.globalConfigurations.table.limit(1)) {
       self.globalConfiguration = (
@@ -394,6 +397,54 @@ struct FileCache: Sendable {
     return anyChanged
   }
 
+  /// Returns true if file has changed
+  @usableFromInline
+  func fileChanged(
+    _ file: URL,
+    context: String
+  ) throws -> Bool {
+    guard let fileRow = try db.pluck(self.files.table
+      .join(.inner, self.customFiles.table, on: self.customFiles.fileId.qualified == self.files.id.qualified)
+      .where(self.customFiles.context.qualified == context)
+    ) else {
+      let attrs = try FileChecker.fileAttrs(file: file)
+      let id = try self.db.run(self.files.table
+        .insert([
+          self.files.filename.unqualified <- file.absoluteURL.path,
+          self.files.mtime.unqualified <- Int64(timespec_to_ms(attrs.st_mtimespec)),
+          self.files.size.unqualified <- Int64(attrs.st_size),
+          self.files.inodeNumber.unqualified <- UInt64(attrs.st_ino),
+          self.files.fileMode.unqualified <- UInt64(attrs.st_mode),
+          self.files.ownerUid.unqualified <- UInt64(attrs.st_uid),
+          self.files.ownerGid.unqualified <- UInt64(attrs.st_gid),
+        ]))
+      try self.db.run(self.customFiles.table
+        .insert([
+          self.customFiles.fileId.unqualified <- id,
+          self.customFiles.context.unqualified <- context
+        ]))
+      return true
+    }
+
+    let file = FileChecker.fileFromRow(fileRow)
+    let (changed, attrs) = try FileChecker.fileChanged(file: file)
+
+    if changed {
+      try self.db.run(self.files.table
+        .where(self.files.id.qualified == file.id!)
+        .update([
+          self.files.mtime.unqualified <- Int64(timespec_to_ms(attrs.st_mtimespec)),
+          self.files.size.unqualified <- Int64(attrs.st_size),
+          self.files.inodeNumber.unqualified <- UInt64(attrs.st_ino),
+          self.files.fileMode.unqualified <- UInt64(attrs.st_mode),
+          self.files.ownerUid.unqualified <- UInt64(attrs.st_uid),
+          self.files.ownerGid.unqualified <- UInt64(attrs.st_gid),
+        ]))
+    }
+
+    return changed
+  }
+
   /// Returns false if nothing had to be removed
   @discardableResult
   func removeTarget(target: TargetRef) throws -> Bool {
@@ -479,6 +530,20 @@ struct FileChecker {
       uid: row[SQLite.Expression<UInt64?>("uid")],
       gid: row[SQLite.Expression<UInt64?>("gid")]
     )
+  }
+
+  static func fileAttrs(file: URL) throws -> stat {
+    let filename = file.absoluteURL.path
+    var attrs = stat()
+    try filename.withCString({ str in
+      if stat(str, &attrs) == -1 {
+        if errno == EOVERFLOW {
+          MessageHandler.print("An error occured in `stat` that might be solved by using stat64, please open an issue or fix this by opening a pull request for Beaver at https://github.com/Jomy10/Beaver")
+        }
+        throw StatError(filename: filename, code: errno)
+      }
+    })
+    return attrs
   }
 
   /// Returns wether the file has changed and the new `stat` of the file.

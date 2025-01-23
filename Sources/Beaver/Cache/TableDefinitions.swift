@@ -207,6 +207,34 @@ struct DependencyFileTable: SQLTable {
   }
 }
 
+struct CustomFileTable: SQLTable {
+  let table: Table
+  let fileId: TableColumn<Int64>
+  let context: TableColumn<String>
+
+  let tableName: String
+
+  init() {
+    self.tableName = "CustomFile"
+    self.table = Table(self.tableName)
+    self.fileId = TableColumn("fileID", self.table)
+    self.context = TableColumn("context", self.table)
+  }
+
+  func createIfNotExists(_ db: Connection) throws {
+    try db.run(self.table.create(ifNotExists: true) { t in
+      t.column(self.fileId.unqualified)
+      t.column(self.context.unqualified)
+
+      t.primaryKey(self.fileId.unqualified, self.context.unqualified)
+
+      t.foreignKey(
+        self.fileId.unqualified,
+        references: Table("File"), SQLite.Expression<Int64>("id"))
+    })
+  }
+}
+
 struct TempInputFileTable: SQLTempTable {
   let table: Table
   let filename: TableColumn<String>

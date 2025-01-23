@@ -20,4 +20,8 @@ def dynamic(inner)
   return DependencyResolve.new(inner, :dynlib)
 end
 
+def fileChanged(filename)
+  fileChangedWithContext(filename, caller_locations(1, 1).first)
+end
+
 # TODO: `sh` command that redirects to swift

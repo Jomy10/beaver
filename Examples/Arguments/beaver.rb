@@ -47,6 +47,9 @@ end
 #   beaver build
 cmd "build", overwrite: true do
   puts "Building..."
+  if fileChanged("main.c")
+    puts "rebuilding main.c..."
+  end
   sleep 4
   puts "Done."
 end
