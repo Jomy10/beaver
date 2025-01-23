@@ -79,12 +79,11 @@ let package = Package(
       name: "Beaver",
       dependencies: [
         "Platform",
-        "ProgressIndicators",
         "timespec",
         "Utils",
         .product(name: "Semver", package: "Semver"),
         .product(name: "Glob", package: "swift-glob"),
-        .product(name: "ColorizeSwift", package: "ColorizeSwift"),
+        //.product(name: "ColorizeSwift", package: "ColorizeSwift"),
         .product(name: "Atomics", package: "swift-atomics"),
         //.product(name: "Tree", package: "tree"),
         .product(name: "Collections", package: "swift-collections"),
@@ -97,6 +96,9 @@ let package = Package(
     .target(
       name: "Utils",
       dependencies: [
+        "Platform",
+        "ProgressIndicators",
+        .product(name: "ColorizeSwift", package: "ColorizeSwift"),
         .product(name: "Atomics", package: "swift-atomics"),
       ]
     ),

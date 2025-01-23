@@ -53,3 +53,8 @@ cmd "build", overwrite: true do
   sleep 4
   puts "Done."
 end
+
+cmd "shellCommand" do
+  sh "echo 'Hello world!'"
+  sh "echo", "Hello world!"
+end

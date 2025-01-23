@@ -20,6 +20,7 @@ def dynamic(inner)
   return DependencyResolve.new(inner, :dynlib)
 end
 
+# Returns true if the file has changed, false if not and nil if the file doesn't exist
 def fileChanged(filename)
   fileChangedWithContext(filename, caller_locations(1, 1).first)
 end

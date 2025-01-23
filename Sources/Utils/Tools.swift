@@ -2,8 +2,9 @@ import Foundation
 import Platform
 import ColorizeSwift
 
-struct Tools {
-  static func which(_ cmdName: String) -> URL? {
+public struct Tools {
+  @inlinable
+  public static func which(_ cmdName: String) -> URL? {
     let env = ProcessInfo.processInfo.environment
     let exts = env["PATHEXT"] != nil ? env["PATHEXT"]!.split(separator: ";") : [""]
     if let paths = env["PATH"]?.split(separator: PATH_LIST_SEPARATOR) {
@@ -46,15 +47,22 @@ struct Tools {
     }
   }
 
-  struct ProcessError: Error {
-    let terminationStatus: Int32
-    let reason: Process.TerminationReason
+  public struct ProcessError: Error {
+    public let terminationStatus: Int32
+    public let reason: Process.TerminationReason
+
+    @usableFromInline
+    internal init(terminationStatus: Int32, reason: Process.TerminationReason) {
+      self.terminationStatus = terminationStatus
+      self.reason = reason
+    }
   }
 
-  struct ExecutionError: Error {
-    let stderr: String
+  public struct ExecutionError: Error {
+    public let stderr: String
   }
 
+  // TODO: replace with `execWithOutput`
   private static func _exec(_ cmdURL: URL, _ args: [String]) throws {
     let task = Process()
     let stderrPipe = Pipe()
@@ -70,7 +78,8 @@ struct Tools {
     }
   }
 
-  static func execWithOutput(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) throws -> (stderr: String, stdout: String) {
+  @inlinable
+  public static func execWithOutput(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) throws -> (stderr: String, stdout: String) {
     let task = Process()
     let stderrPipe = Pipe()
     let stdoutPipe = Pipe()
@@ -94,7 +103,8 @@ struct Tools {
     return (stdout, stderr)
   }
 
-  static func execWithExitCode(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) throws -> Int {
+  @inlinable
+  public static func execWithExitCode(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) throws -> Int {
     let task = Process()
     task.executableURL = cmdURL
     task.arguments = args
@@ -107,9 +117,8 @@ struct Tools {
     return Int(task.terminationStatus)
   }
 
-  // TODO: withPipes: (Pipe, Pipe)?
-  //       printingCommandTo: e.g. .stderr
-  static func exec(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory(), context: String? = nil) throws {
+  @inlinable
+  public static func exec(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory(), context: String? = nil) throws {
     let task = Process()
     let stderrPipe = Pipe()
     let stdoutPipe = Pipe()
@@ -147,8 +156,8 @@ struct Tools {
   }
 
   /// Statics are lazy variables
-  static let cc: URL? = Tools.findTool(name: "cc", envName: "CC", aliases: ["clang", "gcc", "zig", "icc"])
-  static let ccExtraArgs: [String]? = {
+  public static let cc: URL? = Tools.findTool(name: "cc", envName: "CC", aliases: ["clang", "gcc", "zig", "icc"])
+  public static let ccExtraArgs: [String]? = {
     if Self.cc?.lastPathComponent.split(separator: ".").first == "zig" {
       return ["cc"]
     } else {
@@ -156,8 +165,8 @@ struct Tools {
     }
   }()
 
-  static let cxx: URL? = Tools.findTool(name: "cxx", envName: "CXX", aliases: ["clang++", "g++", "zig", "icpc"])
-  static let cxxExtraArgs: [String]? = {
+  public static let cxx: URL? = Tools.findTool(name: "cxx", envName: "CXX", aliases: ["clang++", "g++", "zig", "icpc"])
+  public static let cxxExtraArgs: [String]? = {
     if Self.cxx?.lastPathComponent.split(separator: ".").first == "zig" {
       return ["c++"]
     } else {
@@ -166,38 +175,41 @@ struct Tools {
   }()
 
   #if os(macOS)
-  static let objcCompiler: URL? = Tools.findTool(name: "clang")
+  public static let objcCompiler: URL? = Tools.findTool(name: "clang")
   #else
-  static let objcCompiler: URL? = Tools.findTool(name: "gcc")
+  public static let objcCompiler: URL? = Tools.findTool(name: "gcc")
   #endif
 
-  static let gnustepConfig: URL? = Tools.findTool(name: "gnustep-config")
+  public static let gnustepConfig: URL? = Tools.findTool(name: "gnustep-config")
   #if os(macOS)
-  static let objcCflags: [String] = ["-x", "objective-c"]
+  public static let objcCflags: [String] = ["-x", "objective-c"]
   #else
-  static let objcCflags: [String] = try! Tools._exec(Tools.gnustepConfig!, ["--objc-flags"])
-  #endif
-
-  #if os(macOS)
-  static let objcxxCflags: [String] = ["-x", "objective-c++"]
-  #else
-  static let objcxxCflags: [String] = Tools.objcCflags
+  public static let objcCflags: [String] = try! Tools._exec(Tools.gnustepConfig!, ["--objc-flags"])
   #endif
 
   #if os(macOS)
-  static let objcLinkerFlags: [String] = ["-framework", "Foundation"]
+  public static let objcxxCflags: [String] = ["-x", "objective-c++"]
   #else
-  static let objcLinkerFlags: [String] = try! Tools._exec(Tools.gnustepConfig!, ["--objc-libs", "--base-libs"])
+  public static let objcxxCflags: [String] = Tools.objcCflags
   #endif
 
-  static let lipo: URL? = Tools.findTool(name: "lipo")
+  #if os(macOS)
+  public static let objcLinkerFlags: [String] = ["-framework", "Foundation"]
+  #else
+  public static let objcLinkerFlags: [String] = try! Tools._exec(Tools.gnustepConfig!, ["--objc-libs", "--base-libs"])
+  #endif
 
-  static let ar: URL? = Tools.findTool(name: "ar", envName: "AR")
+  public static let lipo: URL? = Tools.findTool(name: "lipo")
 
-  static let pkgconfig: URL? = Tools.findTool(name: "pkgconf", envName: "PKG_CONFIG", aliases: ["pkg-config", "pkgconfig"])
+  public static let ar: URL? = Tools.findTool(name: "ar", envName: "AR")
+
+  public static let pkgconfig: URL? = Tools.findTool(name: "pkgconf", envName: "PKG_CONFIG", aliases: ["pkg-config", "pkgconfig"])
+
+  public static let sh: URL? = Tools.findTool(name: "sh", aliases: ["zsh", "bash", "fish"])
 
   /// String to argument string
-  static func parseArgs(_ input: String) -> [Substring] {
+  @inlinable
+  public static func parseArgs(_ input: String) -> [Substring] {
     var output: [Substring] = []
     var startIndex: String.Index = input.startIndex
     var currentIndex: String.Index = input.startIndex
@@ -238,28 +250,5 @@ extension Process.TerminationReason: @retroactive CustomStringConvertible {
       case .uncaughtSignal: "uncaught signal"
       default: "unknown termination reason"
     }
-  }
-}
-
-extension String {
-  func prependingIfNeeded(_ prefix: String?) -> String {
-    if let prefix = prefix {
-      prefix + self
-    } else {
-      self
-    }
-  }
-
-  func prependingRowsIfNeeded(_ prefix: String?) -> String {
-    if let prefix = prefix {
-      self.prependingRows(prefix)
-      //prefix + self.split(whereSeparator: \.isNewline).joined(separator: "\n" + prefix)
-    } else {
-      self
-    }
-  }
-
-  func prependingRows(_ prefix: String) -> String {
-    prefix + self.split(whereSeparator: \.isNewline).joined(separator: "\n" + prefix)
   }
 }

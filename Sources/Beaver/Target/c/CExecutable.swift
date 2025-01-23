@@ -90,7 +90,7 @@ public struct CExecutable: CTarget, Executable {
       fatalError("unimplemented")
     }
     let (depLinkerFlags, relink) = try await self.dependencyLinkerFlagsAndRelink(context: context, forBuildingArtifact: artifact)
-    if rebuild || !artifactExists || relink { // TODO: or relink
+    if rebuild || !artifactExists || relink {
       try await self.buildExecutable(
         objects: objects,
         dependencyLinkerFlags: depLinkerFlags,

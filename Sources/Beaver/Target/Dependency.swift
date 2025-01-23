@@ -1,4 +1,5 @@
 import Foundation
+import Utils
 
 public struct TargetRef: Hashable, Equatable, Sendable {
   public let target: Int
