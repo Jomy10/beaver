@@ -45,10 +45,18 @@ DependencyFile {
 	int artifactType
 }
 
+CustomFile {
+	int fileID
+	string context
+}
+
 File ||--|| CSourceFile: fileID
 CSourceFile }o--|| Configuration: configID
 CSourceFile }o--|| Target: targetID
+
 File ||--|| DependencyFile: fileID
 DependencyFile }o--|| Configuration: configID
 DependencyFile }o--|| Target: targetID
+
+File ||--|| CustomFile: fileID
 ```
