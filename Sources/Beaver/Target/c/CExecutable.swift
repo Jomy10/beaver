@@ -1,7 +1,7 @@
 import Foundation
 import Utils
 
-public struct CExecutable: CTarget, Executable {
+public struct CExecutable: CTarget, Executable, ~Copyable {
   public let name: String
   public var description: String?
   public var homepage: URL?

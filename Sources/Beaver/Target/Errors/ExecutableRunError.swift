@@ -9,7 +9,7 @@ public struct ExecutableRunError: TargetError {
     case noExecutable
   }
 
-  public init(_ target: borrowing any Target, _ reason: ReasonType) {
+  public init<T: Target & ~Copyable>(_ target: borrowing T, _ reason: ReasonType) {
     self.target = target.ref
     self.targetName = target.name
     self.reason = reason

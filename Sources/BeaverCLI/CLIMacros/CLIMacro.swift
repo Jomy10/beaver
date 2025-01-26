@@ -47,7 +47,7 @@ public struct CLIMacro: ExtensionMacro, MemberMacro {
       "var leftoverArguments: DiscontiguousSlice<[String].SubSequence>"
     )
 
-    return [leftoverArgsVarDecl.as(DeclSyntax.self)!]
+    return [DeclSyntax(leftoverArgsVarDecl)]
   }
 
   public static func expansion(
@@ -62,7 +62,7 @@ public struct CLIMacro: ExtensionMacro, MemberMacro {
 
     // Collect argument declarations
     for decl in declaration.memberBlock.members {
-      guard let member = decl.as(MemberBlockItemSyntax.self) else { continue }
+      guard let member = MemberBlockItemSyntax(decl) else { continue }
       guard let variable = member.decl.as(VariableDeclSyntax.self) else { continue }
       if variable.attributes.count == 0 { continue }
 

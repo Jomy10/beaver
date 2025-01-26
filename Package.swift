@@ -34,7 +34,7 @@ let package = Package(
     //.package(path: "../RubyGateway"),
     .package(url: "https://github.com/Jomy10/RubyGateway", branch: "main"),
     //.package(url: "https://github.com/johnfairh/CRuby", from: "2.1.0"),
-    .package(url: "https://github.com/apple/swift-syntax", from: "509.0.0"),
+    .package(url: "https://github.com/apple/swift-syntax", from: "600.0.0"),
     .package(url: "https://github.com/krzyzanowskim/CryptoSwift", from: "1.8.4"),
   ],
   targets: [
@@ -43,6 +43,7 @@ let package = Package(
       dependencies: [
         "Beaver",
         "BeaverRuby",
+        "UtilMacros",
         "Utils",
         "CLIPackage",
       ],
@@ -93,11 +94,22 @@ let package = Package(
         //.product(name: "TaskProgress", package: "TaskProgress"),
       ]
     ),
+    .macro(
+      name: "UtilMacros",
+      dependencies: [
+        .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+        .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+        .product(name: "SwiftSyntax", package: "swift-syntax"),
+        .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
+        .product(name: "SwiftParser", package: "swift-syntax"),
+      ]
+    ),
     .target(
       name: "Utils",
       dependencies: [
         "Platform",
         "ProgressIndicators",
+        "UtilMacros",
         .product(name: "ColorizeSwift", package: "ColorizeSwift"),
         .product(name: "Atomics", package: "swift-atomics"),
       ]

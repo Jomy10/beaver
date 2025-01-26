@@ -1,7 +1,7 @@
 import Foundation
 import Utils
 
-public protocol Executable: Target where ArtifactType == ExecutableArtifactType {
+public protocol Executable: ~Copyable, Target where ArtifactType == ExecutableArtifactType {
   //struct RunError: Error {
   //  let target: TargetRef
   //  let reason: Reason
@@ -12,7 +12,7 @@ public protocol Executable: Target where ArtifactType == ExecutableArtifactType 
   //}
 }
 
-extension Executable {
+extension Executable where Self: ~Copyable {
   public func run(projectBuildDir: URL, args: [String]) async throws {
     guard let url = self.artifactURL(projectBuildDir: projectBuildDir, artifact: .executable) else {
       throw ExecutableRunError(self, .noExecutable)

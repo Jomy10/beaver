@@ -57,6 +57,45 @@ struct BeaverConstants {
   EOF
 )
 
+baseMacroDir = "Sources/UtilMacros/generated"
+Dir.mkdir(baseMacroDir) unless Dir.exist?(baseMacroDir)
+File.write(
+  File.join(baseMacroDir, "project.swift"),
+  "let projectCode = \"\"\"\n" +
+  File.read("Sources/Beaver/Project/Protocols/Project.swift") +
+  "\n\"\"\""
+)
+File.write(
+  File.join(baseMacroDir, "commandCapableProject.swift"),
+  "let commandCapableProjectCode = \"\"\"\n" +
+  File.read("Sources/Beaver/Project/Protocols/CommandCapableProject.swift") +
+  "\n\"\"\""
+)
+File.write(
+  File.join(baseMacroDir, "mutableProject.swift"),
+  "let mutableProjectCode = \"\"\"\n" +
+  File.read("Sources/Beaver/Project/Protocols/MutableProject.swift") +
+  "\n\"\"\""
+)
+File.write(
+  File.join(baseMacroDir, "targetBase.swift"),
+  "let targetBaseCode = \"\"\"\n" +
+  File.read("Sources/Beaver/Target/Protocols/Target.swift") +
+  "\n\"\"\""
+)
+File.write(
+  File.join(baseMacroDir, "Target.swift"),
+  "let targetCode = \"\"\"\n" +
+  File.read("Sources/Beaver/Target/Protocols/Target.swift") +
+  "\n\"\"\""
+)
+File.write(
+  File.join(baseMacroDir, "library.swift"),
+  "let libraryCode = \"\"\"\n" +
+  File.read("Sources/Beaver/Target/Protocols/Library.swift") +
+  "\n\"\"\""
+)
+
 sh "swift #{command} #{mode_flag}#{argv.size == 0 ? "" : argv.join(" ") + " " }-Xlinker -Ltarget/#{mode} -Xlinker -lprogress_indicators",
     envPrepend: { "PKG_CONFIG_PATH" => File.join(Dir.pwd, "Packages/CRuby") }
 

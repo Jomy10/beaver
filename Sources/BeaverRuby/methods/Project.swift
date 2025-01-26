@@ -3,7 +3,7 @@ import Beaver
 import RubyGateway
 import Utils
 
-extension Project {
+extension BeaverProject {
   init(
     _ args: borrowing [String: RbObject],
     context: borrowing Beaver
@@ -35,12 +35,12 @@ func loadProjectMethod(in module: RbObject, queue: SyncTaskQueue, context: Unsaf
       ]
     ),
     body: { (obj: RbObject, method: RbMethod) throws -> RbObject in
-      let proj = UnsafeSendable(Rc(try context.value.withInner { (context: borrowing Beaver) in
-        try Project(method.args.keyword, context: context)
+      let proj: UnsafeSendable<Rc<BeaverProject>> = UnsafeSendable(Rc(try context.value.withInner { (context: borrowing Beaver) in
+        try BeaverProject(method.args.keyword, context: context)
       }))
       queue.addTask { [proj = consume proj] in
         await context.value.withInner { (context: inout Beaver) in
-          _ = await context.addProject(proj.value.take()!)
+          _ = await context.addProject(.beaver(proj.value.take()!))
         }
       }
       return RbObject.nilObject

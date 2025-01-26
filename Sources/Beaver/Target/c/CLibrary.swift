@@ -1,7 +1,7 @@
 import Foundation
 import Utils
 
-public struct CLibrary: CTarget, Library {
+public struct CLibrary: CTarget, Library, ~Copyable {
   public let name: String
   public var description: String?
   public var homepage: URL?
