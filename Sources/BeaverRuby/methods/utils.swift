@@ -48,7 +48,9 @@ func loadUtilsMethods(in module: RbObject, queue: SyncTaskQueue, context: Unsafe
       } else if cmd.count == 1 {
         try Tools.exec(Tools.sh!, ["-c", cmd.first!])
       } else {
-        let cmdName = Tools.which(cmd[cmd.startIndex])! // TODO: erro
+        guard let cmdName = Tools.which(cmd[cmd.startIndex]) else {
+          throw ShError("Executable named \(cmd[cmd.startIndex]) not found")
+        }
         let arguments = cmd[cmd.index(after: cmd.startIndex)...]
         try Tools.exec(cmdName, Array(arguments))
       }

@@ -41,7 +41,7 @@ struct DependencyTree {
   }
 
   private static func collectDependencies(_ target: LibraryTargetDependency, context: borrowing Beaver) async -> [LibraryTargetDependency] {
-    await context.withTarget(target.target) { (target: borrowing any Target) in
+    await context.withTarget(target.target) { (target: borrowing AnyTarget) in
       target.dependencies.compactMap { dependency in
         switch (dependency) {
           case .library(let lib): return lib
@@ -58,7 +58,7 @@ struct DependencyTree {
     self.leaves = []
 
     let ctxPtr = withUnsafePointer(to: context) { $0 }
-    try await context.withTarget(target) { (target: borrowing any Target) in
+    try await context.withTarget(target) { (target: borrowing AnyTarget) in
       // key --depends on--> val
       var dependencies: [LibraryTargetDependency:[LibraryTargetDependency]] = [:]
       // val <--depends on-- key
@@ -165,7 +165,7 @@ actor TargetBuilder {
       var message: String? = nil
       var status: BuildStatus? = nil
       do {
-        try await context.value.pointee.withProjectAndLibrary(target.target) { (project: borrowing Project, library: borrowing any Library) in
+        try await context.value.pointee.withProjectAndLibrary(target.target) { (project: borrowing AnyProject, library: borrowing AnyLibrary) in
           let name = if project.id == context.value.pointee.currentProjectIndex {
             library.name
           } else {
@@ -195,7 +195,7 @@ actor TargetBuilder {
     var postfix: String? = nil
 
     do {
-      try await context.value.pointee.withProjectAndTarget(resultTarget) { (project: borrowing Project, target: borrowing any Target) in
+      try await context.value.pointee.withProjectAndTarget(resultTarget) { (project: borrowing AnyProject, target: borrowing AnyTarget) in
         message = "Building \(target.name)"
         if hasError {
           status = .cancelled
@@ -205,7 +205,7 @@ actor TargetBuilder {
         if let artifact = resultTargetArtifact {
           try await target.build(artifact: artifact, projectBaseDir: project.baseDir, projectBuildDir: project.buildDir, context: context.value.pointee)
         } else {
-          try await target.buildAsync(projectBaseDir: project.baseDir, projectBuildDir: project.buildDir, context: context.value.pointee)
+          try await target.build(projectBaseDir: project.baseDir, projectBuildDir: project.buildDir, context: context.value.pointee)
         }
         status = .done
       }

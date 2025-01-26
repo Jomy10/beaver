@@ -62,10 +62,10 @@ extension CLibrary {
       guard let project = context.value.withInner({ (ctx: borrowing Beaver) in
         ctx.currentProjectIndex
       }) else {
-        throw Beaver.ProjectAccessError.noDefaultProject
+        throw ProjectAccessError.noDefaultProject
       }
 
-      let lib = try CLibrary.init(
+      var lib: CLibrary? = try CLibrary.init(
         name: args.name,
         description: args.description,
         version: args.version,
@@ -81,9 +81,11 @@ extension CLibrary {
           .reduce(into: [], { (arr, elem) in arr.append(elem) })
       )
 
-      await context.value.withInner { (ctx: inout Beaver) in
-        await ctx.withProject(project) { (proj: inout Project) in
-          _ = await proj.addTarget(lib)
+      try await context.value.withInner { (ctx: inout Beaver) in
+        try await ctx.withProject(project) { (proj: inout AnyProject) in
+          try await proj.asMutable { (proj: inout AnyMutableProjectRef) in
+            _ = await proj.addTarget(.library(.c(lib.take()!)))
+          }
         }
       }
     })
@@ -101,10 +103,10 @@ extension CExecutable {
       guard let project = context.value.withInner({ (ctx: borrowing Beaver) in
         ctx.currentProjectIndex
       }) else {
-        throw Beaver.ProjectAccessError.noDefaultProject
+        throw ProjectAccessError.noDefaultProject
       }
 
-      let lib = try CExecutable.init(
+      var exe: CExecutable? = try CExecutable.init(
         name: args.name,
         description: args.description,
         version: args.version,
@@ -121,9 +123,11 @@ extension CExecutable {
           .reduce(into: [], { (arr, elem) in arr.append(elem) })
       )
 
-      await context.value.withInner { (ctx: inout Beaver) in
-        await ctx.withProject(project) { (proj: inout Project) in
-          _ = await proj.addTarget(lib)
+      try await context.value.withInner { (ctx: inout Beaver) in
+        try await ctx.withProject(project) { (proj: inout AnyProject) in
+          try await proj.asMutable { (proj: inout AnyMutableProjectRef) in
+            _ = await proj.addTarget(.executable(.c(exe.take()!)))
+          }
         }
       }
     })

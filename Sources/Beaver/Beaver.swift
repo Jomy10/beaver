@@ -3,7 +3,7 @@ import Utils
 import Atomics
 
 public struct Beaver: ~Copyable, Sendable {
-  var projects: AsyncRWLock<NonCopyableArray<Project>>
+  var projects: AsyncRWLock<NonCopyableArray<AnyProject>>
   private var currentProjectIndexAtomic: ManagedAtomic<ProjectRef> = ManagedAtomic(-1)
   public var currentProjectIndex: ProjectRef? {
     get {
@@ -29,17 +29,10 @@ public struct Beaver: ~Copyable, Sendable {
     }
   }
 
-  //public struct Settings: ~Copyable, Sendable {
-  //  /// The amount of c objects to compile per thread.
-  //  /// e.g. when this variable is 10 and there are 20 sources, this means 2 threads will be
-  //  /// spawned to compile the C target
-  //  var cObjectsPerThread: Int = 10
-  //}
   public enum InitializationError: Error {
     case fileCacheAlreadyInitialized
   }
 
-  // TODO: handle error
   public init(
     enableColor: Bool? = nil,
     optimizeMode: OptimizationMode = .debug,
@@ -74,9 +67,9 @@ public struct Beaver: ~Copyable, Sendable {
   }
 
   @discardableResult
-  public mutating func addProject(_ project: consuming Project) async -> ProjectRef {
-    var project: Project? = project
-    return await self.projects.write { projects in
+  public mutating func addProject(_ project: consuming AnyProject) async -> ProjectRef {
+    var project: AnyProject? = project
+    return await self.projects.write { (projects: inout NonCopyableArray<AnyProject>) in
       let id = projects.count
       var project = project.take()!
       project.id = id
@@ -92,10 +85,8 @@ public struct Beaver: ~Copyable, Sendable {
   }
 
   public func buildCurrentProject() async throws {
-    let targetRefs = try await self.withCurrentProject { (project: borrowing Project) in await project.targetRefs }
-
-    for targetRef in targetRefs {
-      try await self.build(targetRef)
+    try await self.withCurrentProject { (project: borrowing AnyProject) in
+      try await project.build(context: self)
     }
   }
 
@@ -116,26 +107,9 @@ public struct Beaver: ~Copyable, Sendable {
   }
 
   public func run(args: [String] = []) async throws {
-    let targetRef = try await self.withCurrentProject { (project: borrowing Project) in
-      let index = try await project.targets.read { targets in
-        var indexes: [Int] = []
-        for targetIndex in targets.indices {
-          if targets.buffer[targetIndex] is any Executable {
-            indexes.append(targetIndex)
-          }
-        }
-        if indexes.count != 1 {
-          if indexes.count == 0 {
-            throw RunError.noExecutables
-          } else {
-            throw RunError.moreExecutables
-          }
-        }
-        return indexes.first!
-      }
-      return TargetRef(target: index, project: project.id)
+    try await self.withCurrentProject { (project: borrowing AnyProject) in
+      try await project.run(args: args)
     }
-    try await self.run(targetRef, args: args)
   }
 
   @inlinable
@@ -145,10 +119,9 @@ public struct Beaver: ~Copyable, Sendable {
 
   public func run(_ targetRef: TargetRef, args: [String] = []) async throws {
     try await self.build(targetRef, artifact: .executable(.executable))
-    let executableURL = try await self.withProjectAndExecutable(targetRef) { (project: borrowing Project, executable: borrowing any Executable) async throws in
-      executable.artifactURL(projectBuildDir: project.buildDir, artifact: .executable)!
+    try await self.withProjectAndExecutable(targetRef) { (project: borrowing AnyProject, executable: borrowing AnyExecutable) in
+      try await executable.run(projectBuildDir: project.buildDir, args: args)
     }
-    try Tools.exec(executableURL, args)
   }
 
   @inlinable
@@ -158,13 +131,13 @@ public struct Beaver: ~Copyable, Sendable {
 
   public func clean(_ projectRef: ProjectRef? = nil) async throws {
     if let projectRef = projectRef {
-      try await self.withProject(projectRef) { (project: borrowing Project) in
+      try await self.withProject(projectRef) { (project: borrowing AnyProject) in
         MessageHandler.print("Cleaning \(project.name)...")
         try await project.clean(context: self)
       }
     } else {
       MessageHandler.print("Cleaning all targets...")
-      try await self.loopProjects { (project: borrowing Project) in
+      try await self.loopProjects { (project: borrowing AnyProject) in
         try await project.clean(context: self)
       }
     }
@@ -176,8 +149,10 @@ public struct Beaver: ~Copyable, Sendable {
     _ execute: @escaping Commands.Command
   ) async throws {
     if self.currentProjectIndex != nil {
-      try await self.withCurrentProject { (project: inout Project) async throws -> Void in
-        try await project.addCommand(name, overwrite: overwrite, execute)
+      try await self.withCurrentProject { (project: inout AnyProject) async throws -> Void in
+        try await project.asCommandCapable { (project: inout AnyCommandCapableProjectRef) in
+          try await project.addCommand(name, overwrite: overwrite, execute)
+        }
       }
     } else {
       try await self.commands.addCommand(name: name, overwrite: overwrite, execute: execute)
@@ -186,8 +161,11 @@ public struct Beaver: ~Copyable, Sendable {
 
   public func call(_ commandName: String) async throws {
     if self.currentProjectIndex != nil {
-      try await self.withCurrentProject { (project: borrowing Project) async throws -> () in
-        try await project.call(commandName, context: self)
+      try await self.withCurrentProject { (project: borrowing AnyProject) async throws -> () in
+        //try await project.asProtocol { (project: borrowing any CommandCapableProject & ~Copyable) in try await project.call(commandName, context: self) }
+        try await project.asCommandCapable { (project: borrowing AnyCommandCapableProjectRef) in
+          try await project.call(commandName, context: self)
+        }
       }
     } else {
       try await self.commands.call(commandName, context: self)
@@ -196,18 +174,22 @@ public struct Beaver: ~Copyable, Sendable {
 
   public func callDefault() async throws {
     if self.currentProjectIndex != nil {
-      try await self.withCurrentProject { (project: borrowing Project) in
-        try await project.callDefault(context: self)
+      try await self.withCurrentProject { (project: borrowing AnyProject) in
+        try await project.asCommandCapable { (proj: borrowing AnyCommandCapableProjectRef) in
+          try await project.callDefault(context: self)
+        }
       }
     } else {
       try await self.commands.callDefault(context: self)
     }
   }
 
-  public func isOverwritten(_ commandName: String) async -> Bool {
+  public func isOverwritten(_ commandName: String) async throws -> Bool {
     if self.currentProjectIndex != nil {
-      try! await self.withCurrentProject { (project: borrowing Project) in
-        await project.isOverwritten(commandName)
+      try await self.withCurrentProject { (project: borrowing AnyProject) in
+        try await project.asCommandCapable { (proj: borrowing AnyCommandCapableProjectRef) in
+          await project.isOverwritten(commandName)
+        }
       }
     } else {
       await self.commands.overwrites.contains(commandName)

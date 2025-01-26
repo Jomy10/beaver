@@ -2,8 +2,10 @@ import Foundation
 import Utils
 
 public struct TargetRef: Hashable, Equatable, Sendable {
-  public let target: Int
+  public let target: Self.Ref
   public let project: ProjectRef
+
+  public typealias Ref = Int
 
   public init(target: Int, project: ProjectRef) {
     self.target = target
@@ -103,7 +105,7 @@ extension Dependency {
   public func cflags(context: borrowing Beaver) async throws -> [String]? {
     switch (self) {
       case .library(let libTarget):
-        return try await context.withProjectAndLibrary(libTarget.target) { (project: borrowing Project, library: borrowing any Library) in
+        return try await context.withProjectAndLibrary(libTarget.target) { (project: borrowing AnyProject, library: borrowing AnyLibrary) in
           return try await library.publicCflags(projectBaseDir: project.baseDir)
         }
       case .pkgconfig(let dep):
@@ -119,7 +121,7 @@ extension Dependency {
   public func linkerFlags(context: borrowing Beaver) async throws -> [String] {
     switch (self) {
       case .library(let libTarget):
-        return await context.withProjectAndLibrary(libTarget.target) { (project: borrowing Project, library: borrowing any Library) in
+        return await context.withProjectAndLibrary(libTarget.target) { (project: borrowing AnyProject, library: borrowing AnyLibrary) in
           return library.linkAgainstLibrary(projectBuildDir: project.buildDir, artifact: libTarget.artifact)
         }
       case .pkgconfig(let dep):
@@ -136,7 +138,7 @@ extension Dependency {
   public func linkerFlagsAndArtifactURL(context: borrowing Beaver, collectingLanguageIn langs: inout Set<Language>) async throws -> ([String], URL?) {
     switch (self) {
       case .library(let libTarget):
-        return await context.withProjectAndLibrary(libTarget.target) { (project: borrowing Project, library: borrowing any Library) in
+        return await context.withProjectAndLibrary(libTarget.target) { (project: borrowing AnyProject, library: borrowing AnyLibrary) in
           langs.insert(library.language)
           return (
             library.linkAgainstLibrary(projectBuildDir: project.buildDir, artifact: libTarget.artifact),

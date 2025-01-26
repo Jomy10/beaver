@@ -8,7 +8,7 @@ public protocol ArtifactTypeProtocol: Equatable, Hashable, Sendable {
   //func as<ConcreteType: ArtifactTypeProtocol>(_ t: ConcreteType) -> ConcreteType
 }
 
-typealias eArtifactType = ArtifactType
+public typealias eArtifactType = ArtifactType
 public enum ArtifactType: Equatable, Hashable, Sendable {
   case executable(ExecutableArtifactType)
   case library(LibraryArtifactType)

@@ -6,7 +6,8 @@ public protocol TargetError: Error, CustomStringConvertible {
   var reason: ReasonType { get }
   static var errorTypeName: String { get }
 
-  init(_ target: borrowing any Target, _ reason: ReasonType)
+  //init(_ target: borrowing any Target & ~Copyable, _ reason: ReasonType)
+  init<T: Target & ~Copyable>(_ target: borrowing T, _ reason: ReasonType)
 }
 
 extension TargetError {

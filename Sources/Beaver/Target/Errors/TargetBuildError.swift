@@ -8,7 +8,7 @@ public struct TargetBuildError: TargetError {
   public enum ReasonType: Sendable {
   }
 
-  public init(_ target: borrowing any Target, _ reason: ReasonType) {
+  public init<T: Target & ~Copyable>(_ target: borrowing T, _ reason: ReasonType) {
     self.target = target.ref
     self.targetName = target.name
     self.reason = reason

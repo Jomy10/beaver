@@ -170,7 +170,7 @@ struct BeaverCLI: Sendable {
           // No project and no command specified (warn)
         }
       } else {
-        if await context.isOverwritten(commandName) {
+        if try await context.isOverwritten(commandName) {
           try await context.call(commandName)
         } else {
           switch (commandName) {

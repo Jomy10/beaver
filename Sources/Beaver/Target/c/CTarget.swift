@@ -2,7 +2,7 @@ import Foundation
 import Platform
 import Utils
 
-public protocol CTarget: Target {
+public protocol CTarget: Target, ~Copyable {
   var sources: Files { get }
   var headers: Headers { get }
   var extraCFlags: Flags { get }
@@ -23,13 +23,13 @@ public protocol CTarget: Target {
 //}
 
 // Default implementations for Target
-extension CTarget {
+extension CTarget where Self: ~Copyable {
   public func build(
     projectBaseDir: borrowing URL,
     projectBuildDir: borrowing URL,
     context: borrowing Beaver
   ) async throws {
-    try await self.buildArtifactsSync(baseDir: projectBaseDir, buildDir: projectBuildDir, context: context)
+    try await self.buildArtifactsAsync(baseDir: projectBaseDir, buildDir: projectBuildDir, context: context)
   }
 
   public func buildAsync(
@@ -65,7 +65,7 @@ extension CTarget {
   }
 }
 
-extension CTarget {
+extension CTarget where Self: ~Copyable {
   /// Build all objects of this target
   ///
   /// # Returns

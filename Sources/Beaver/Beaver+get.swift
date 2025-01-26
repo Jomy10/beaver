@@ -16,13 +16,13 @@ extension Beaver {
   }
 
   public func targetIndex(name: String, project: ProjectRef) async -> Int? {
-    await self.withProject(project) { (project: borrowing Project) in
+    await self.withProject(project) { (project: borrowing AnyProject) in
       await project.targetIndex(name: name)
     }
   }
 
   public func targetName(_ ref: TargetRef) async -> String? {
-    await self.withProject(ref.project) { (project: borrowing Project) in
+    await self.withProject(ref.project) { (project: borrowing AnyProject) in
       await project.targetName(ref.target)
     }
   }
