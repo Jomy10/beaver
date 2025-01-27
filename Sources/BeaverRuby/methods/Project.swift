@@ -46,4 +46,27 @@ func loadProjectMethod(in module: RbObject, queue: SyncTaskQueue, context: Unsaf
       return RbObject.nilObject
     }
   )
+
+  try module.defineMethod(
+    "importCMake",
+    argsSpec: RbMethodArgsSpec(
+      leadingMandatoryCount: 1,
+      optionalValues: [RbObject.nilObject]
+    ),
+    body: { (obj, method) in
+      let baseDir = URL(filePath: try method.args.mandatory[0].convert(to: String.self))
+      let buildDirArg = method.args.optional.first!
+      let buildDir = buildDirArg.isNil ? baseDir.appending(path: "build") : URL(filePath: try buildDirArg.convert(to: String.self))
+      queue.addTask {
+        try await context.value.withInner { (context: inout Beaver) in
+          try await CMakeImporter.import(
+            baseDir: baseDir,
+            buildDir: buildDir,
+            context: &context
+          )
+        }
+      }
+      return RbObject.nilObject
+    }
+  )
 }

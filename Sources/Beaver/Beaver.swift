@@ -203,9 +203,3 @@ public struct Beaver: ~Copyable, Sendable {
   // call in init()
   func check() {}
 }
-
-public enum OptimizationMode: String, Sendable, Decodable, Hashable, Equatable {
-  case debug
-  case release
-  // TODO: case custom(String)
-}

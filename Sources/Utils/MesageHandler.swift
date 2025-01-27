@@ -88,25 +88,31 @@ public struct MessageHandler {
     }
   }
 
-  public static func print(_ message: String, context: MessageVisibility? = nil) {
+  public static func print(_ message: String, context: MessageVisibility? = nil, terminator: String = "\n") {
     if !Self.checkContext(context) { return }
 
     if let progress = Self.progress {
       //ProgressIndicators.global.globalMessage(message)
       progress.println(message)
     } else {
-      Utils.print(message, to: IOStream.stderr)
+      Utils.print(message, to: IOStream.stderr, terminator: terminator)
     }
   }
 
-  public static func print(_ message: String, to stream: IOStream, context: MessageVisibility? = nil) {
+  public static func print(_ message: String, to stream: IOStream, context: MessageVisibility? = nil, terminator: String = "\n") {
     if !Self.checkContext(context) { return }
 
     if let progress = Self.progress {
       //ProgressIndicators.global.globalMessage(message)
       progress.println(message)
     } else {
-      Utils.print(message, to: stream)
+      Utils.print(message, to: stream, terminator: terminator)
+    }
+  }
+
+  public static func flush(_ stream: IOStream) {
+    if Self.progress == nil {
+      stream.flush()
     }
   }
 

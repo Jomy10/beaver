@@ -35,7 +35,7 @@ public enum IOStream: TextOutputStream {
   }
   #endif
 
-  #if canImport(Darwin) || canImport(Glibc)
+  #if canImport(Darwin) || canImport(Glibc) || canImport(Musl)
   public mutating func write(_ string: String) {
     fputs(string, self.to)
   }
@@ -45,11 +45,21 @@ public enum IOStream: TextOutputStream {
     print(string)
   }
   #endif
+
+  public func flush() {
+    #if canImport(Darwin) || canImport(Glibc) || canImport(Musl)
+    fflush(self.to)
+    #else
+    // TODO!
+    #endif
+  }
 }
 
-public func print(_ msgs: String..., to stream: IOStream) {
+public func print(_ msgs: String..., to stream: IOStream, separator: String = " ", terminator: String = "\n") {
   var s = stream
-  print(msgs.joined(separator: " "), to: &s)
+  s.write(msgs.joined(separator: separator) + terminator)
+  //var s = stream
+  //print(msgs.joined(separator: " "), to: &s, terminator: terminator)
 }
 
 //struct IO {

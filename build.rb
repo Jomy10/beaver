@@ -61,39 +61,39 @@ baseMacroDir = "Sources/UtilMacros/generated"
 Dir.mkdir(baseMacroDir) unless Dir.exist?(baseMacroDir)
 File.write(
   File.join(baseMacroDir, "project.swift"),
-  "let projectCode = \"\"\"\n" +
+  "let projectCode = #\"\"\"\n" +
   File.read("Sources/Beaver/Project/Protocols/Project.swift") +
-  "\n\"\"\""
+  "\n\"\"\"#"
 )
 File.write(
   File.join(baseMacroDir, "commandCapableProject.swift"),
-  "let commandCapableProjectCode = \"\"\"\n" +
+  "let commandCapableProjectCode = #\"\"\"\n" +
   File.read("Sources/Beaver/Project/Protocols/CommandCapableProject.swift") +
-  "\n\"\"\""
+  "\n\"\"\"#"
 )
 File.write(
   File.join(baseMacroDir, "mutableProject.swift"),
-  "let mutableProjectCode = \"\"\"\n" +
+  "let mutableProjectCode = #\"\"\"\n" +
   File.read("Sources/Beaver/Project/Protocols/MutableProject.swift") +
-  "\n\"\"\""
+  "\n\"\"\"#"
 )
 File.write(
   File.join(baseMacroDir, "targetBase.swift"),
-  "let targetBaseCode = \"\"\"\n" +
+  "let targetBaseCode = #\"\"\"\n" +
   File.read("Sources/Beaver/Target/Protocols/Target.swift") +
-  "\n\"\"\""
+  "\n\"\"\"#"
 )
 File.write(
   File.join(baseMacroDir, "Target.swift"),
-  "let targetCode = \"\"\"\n" +
+  "let targetCode = #\"\"\"\n" +
   File.read("Sources/Beaver/Target/Protocols/Target.swift") +
-  "\n\"\"\""
+  "\n\"\"\"#"
 )
 File.write(
   File.join(baseMacroDir, "library.swift"),
-  "let libraryCode = \"\"\"\n" +
+  "let libraryCode = #\"\"\"\n" +
   File.read("Sources/Beaver/Target/Protocols/Library.swift") +
-  "\n\"\"\""
+  "\n\"\"\"#"
 )
 
 sh "swift #{command} #{mode_flag}#{argv.size == 0 ? "" : argv.join(" ") + " " }-Xlinker -Ltarget/#{mode} -Xlinker -lprogress_indicators",

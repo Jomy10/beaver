@@ -127,16 +127,18 @@ public struct Tools {
       let data: Data = handle.availableData
       if data.count == 0 {
         handle.readabilityHandler = nil
+        MessageHandler.flush(.stderr)
       } else {
-        MessageHandler.print(String(data: data, encoding: .utf8)!.prependingRowsIfNeeded(contextStr), to: .stderr, context: .shellOutputStderr)
+        MessageHandler.print(String(data: data, encoding: .utf8)!.prependingRowsIfNeeded(contextStr), to: .stderr, context: .shellOutputStderr, terminator: "")
       }
     }
     stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
       let data: Data = handle.availableData
       if data.count == 0 {
         handle.readabilityHandler = nil
+        MessageHandler.flush(.stdout)
       } else {
-        MessageHandler.print(String(data: data, encoding: .utf8)!.prependingRowsIfNeeded(contextStr), to: .stdout, context: .shellOutputStdout)
+        MessageHandler.print(String(data: data, encoding: .utf8)!.prependingRowsIfNeeded(contextStr), to: .stdout, context: .shellOutputStdout, terminator: "")
       }
     }
 
@@ -206,6 +208,10 @@ public struct Tools {
   public static let pkgconfig: URL? = Tools.findTool(name: "pkgconf", envName: "PKG_CONFIG", aliases: ["pkg-config", "pkgconfig"])
 
   public static let sh: URL? = Tools.findTool(name: "sh", aliases: ["zsh", "bash", "fish"])
+
+  public static let cmake: URL? = Tools.findTool(name: "cmake")
+
+  public static let make: URL? = Tools.findTool(name: "make")
 
   /// String to argument string
   @inlinable

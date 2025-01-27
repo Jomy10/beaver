@@ -1,10 +1,11 @@
 import Foundation
 
 @ProjectWrapper
-@CommandCapableProjectWrapper(skipping: nil)
-@MutableProjectWrapper(skipping: nil)
+@CommandCapableProjectWrapper(skipping: ["cmake"])
+@MutableProjectWrapper(skipping: ["cmake"])
 public enum AnyProject: ~Copyable, Sendable {
   case beaver(BeaverProject)
+  case cmake(CMakeProject)
 }
 
 extension AnyProject {
@@ -13,6 +14,8 @@ extension AnyProject {
       case .beaver(_):
         let ptr = withUnsafePointer(to: self) { $0 }
         return try await cb(AnyCommandCapableProjectRef(UnsafeMutablePointer(mutating: ptr)))
+      case .cmake(_):
+        throw ProjectAccessError.notCommandCapable
     }
   }
 
@@ -20,6 +23,8 @@ extension AnyProject {
     switch (self) {
       case .beaver(_):
         break
+      case .cmake(_):
+        throw ProjectAccessError.notCommandCapable
     }
     let ptr = withUnsafeMutablePointer(to: &self) { $0 }
     var ref = AnyCommandCapableProjectRef(ptr)
@@ -30,6 +35,8 @@ extension AnyProject {
     switch (self) {
       case .beaver(_):
         break
+      case .cmake(_):
+        throw ProjectAccessError.notMutable
     }
     let ptr = withUnsafeMutablePointer(to: &self) { $0 }
     var ref = AnyMutableProjectRef(ptr)

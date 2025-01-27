@@ -20,6 +20,15 @@
       }
     },
     {
+      "identity" : "cruby",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/johnfairh/CRuby",
+      "state" : {
+        "revision" : "07ee7e6c164d7d234785319e81a83c8e4d321d3f",
+        "version" : "2.1.0"
+      }
+    },
+    {
       "identity" : "cryptoswift",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/krzyzanowskim/CryptoSwift",

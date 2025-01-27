@@ -1,3 +1,4 @@
+/// A project for which custom commands can be registered
 public protocol CommandCapableProject: ~Copyable, Project, Sendable {
   mutating func addCommand(
     _ name: String,

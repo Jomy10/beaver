@@ -180,6 +180,8 @@ struct BeaverCLI: Sendable {
               try await self.clean(context: context)
             case "run":
               try await self.run(args: args, context: context)
+            case "list":
+              try await self.list(context: context)
             default:
               try await context.call(commandName)
           }

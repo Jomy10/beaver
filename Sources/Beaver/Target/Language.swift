@@ -33,6 +33,15 @@ extension Language {
     }
   }
 
+  init?(fromCMake cmakeLanguageString: String) {
+    switch (cmakeLanguageString) {
+      case "C": self = .c
+      case "CXX": self = .cxx
+      // case "FORTRAN": self = .fortran
+      default: return nil
+    }
+  }
+
   func cflags() -> [String]? {
     switch (self) {
       case .objc: return Tools.objcCflags

@@ -4,6 +4,19 @@ import AsyncAlgorithms
 
 public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Copyable, Sendable {
   public var id: Int = -1
+  //public var id: Int {
+  //  get { self._id }
+  //  set async {
+  //    self._id = newValue
+  //    await self.targets.write { targets in
+  //      for targetIndex in 0..<targets.count {
+  //        targets.withElement { (target: inout AnyTarget) in
+  //          target.projectId = newValue
+  //        }
+  //      }
+  //    }
+  //  }
+  //}
   public let name: String
   public var baseDir: URL
   public var buildDir: URL
@@ -220,6 +233,12 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
 
     try await self.withExecutable(targetRef) { (target: borrowing AnyExecutable) in
       try await target.run(projectBuildDir: self.buildDir, args: args)
+    }
+  }
+
+  public func targetNames() async -> [String] {
+    await self.targets.read { targets in
+      await targets.map { $0.name }
     }
   }
 }
