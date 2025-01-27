@@ -14,6 +14,9 @@ enum TargetAccessError: Error {
   case notALibrary(named: String)
   /// The target exists, but is not an executable
   case notAnExecutable(named: String)
+  /// The target exists, but is not a library
+  case notLibrary
+  case notExecutable
 
   case notOfType((any Target & ~Copyable).Type)
 }

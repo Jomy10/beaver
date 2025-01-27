@@ -1,3 +1,5 @@
+import Platform
+
 public protocol ArtifactTypeProtocol: Equatable, Hashable, Sendable {
   init?(_ string: String)
 
@@ -48,6 +50,13 @@ public enum ExecutableArtifactType: ArtifactTypeProtocol, Equatable, Hashable, S
   public var cObjectType: CObjectType? {
     return .static
   }
+
+  public var `extension`: String {
+    switch (self) {
+      case .executable: Platform.executableExtension
+      case .app: ".app"
+    }
+  }
 }
 
 public enum LibraryArtifactType: ArtifactTypeProtocol, Equatable, Hashable, Sendable {
@@ -83,6 +92,18 @@ public enum LibraryArtifactType: ArtifactTypeProtocol, Equatable, Hashable, Send
       case .dynlib: return .dynamic
       case .staticlib: return .static
       default: return nil
+    }
+  }
+
+  var `extension`: String {
+    switch (self) {
+      case .dynlib: Platform.dynlibExtension
+      case .staticlib: ".a"
+      case .framework: ".framework"
+      case .xcframework: ".xcframework"
+      case .pkgconfig: ".pc"
+      default:
+        fatalError("unimplemented")
     }
   }
 }

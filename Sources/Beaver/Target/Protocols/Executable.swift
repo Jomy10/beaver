@@ -20,4 +20,8 @@ extension Executable where Self: ~Copyable {
 
     try Tools.exec(url, args)
   }
+
+  public var eArtifacts: [eArtifactType] {
+    self.artifacts.map { .executable($0) }
+  }
 }

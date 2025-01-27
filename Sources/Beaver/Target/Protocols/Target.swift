@@ -1,8 +1,6 @@
 import Foundation
 import Utils
 
-// TODO: TargetBase without ArtifactType
-
 public protocol TargetBase: ~Copyable, Sendable {
   // General info //
   var name: String { get }
@@ -21,16 +19,7 @@ public protocol TargetBase: ~Copyable, Sendable {
 
   var dependencies: [Dependency] { get }
 
-  /// Build all artifacts synchronously
   func build(
-    projectBaseDir: borrowing URL,
-    projectBuildDir: borrowing URL,
-    context: borrowing Beaver
-  ) async throws
-
-  /// Build all artifacts asynchronously
-  @available(*, deprecated, message: "use build")
-  func buildAsync(
     projectBaseDir: borrowing URL,
     projectBuildDir: borrowing URL,
     context: borrowing Beaver
@@ -127,12 +116,4 @@ extension Target where Self: ~Copyable {
       try await group.waitForAll()
     }
   }
-
-  //public func dependencyLinkerFlags(context: borrowing Beaver) async throws -> [String] {
-  //  var linkerFlags: [String] = []
-  //  self.loopUniqueDependenciesRecursive(context: context) { (dependency, library, projectBuildDir) in
-  //    linkerFlags.append(contentsOf: library.linkAgainstLibrary(projectBuildDir: projectBuildDir, artifact: dependency.artifact))
-  //  }
-  //  return linkerFlags
-  //}
 }

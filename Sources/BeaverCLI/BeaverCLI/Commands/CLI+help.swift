@@ -29,6 +29,7 @@ extension BeaverCLI {
     self.printHelpPart("run [target]", "Run a target. Pass arguments to your executable using \"-- [args...]\"", terminalWidth: terminalWidth)
     self.printHelpPart("clean", "Clean the build folder and cache", terminalWidth: terminalWidth)
     self.printHelpPart("init [--file=] [--project=] [--buildDir=]", "Initialize a new beaver project (cannot be overridden). Optionally pass a filename to use for your script (default: beaver.rb).", terminalWidth: terminalWidth)
+    self.printHelpPart("list [project|--targets]", "List targets or projects that can be used", terminalWidth: terminalWidth)
 
     print("\nOPTIONS")
     for opt in Self._arguments {

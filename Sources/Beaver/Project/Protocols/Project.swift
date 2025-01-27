@@ -37,4 +37,5 @@ public protocol Project: ~Copyable, Sendable {
 
   func targetIndex(name: String) async -> Int?
   func targetName(_ index: Int) async -> String?
+  func targetNames() async -> [String]
 }

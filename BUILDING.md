@@ -1,5 +1,12 @@
 # Building
 
+**Clone the repo**
+```sh
+git clone https://github.com/Jomy10/beaver
+git submodule update --init deps
+```
+
+**Configure and build**
 ```sh
 ruby configure.rb
 ruby build.rb release
