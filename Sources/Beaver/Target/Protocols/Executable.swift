@@ -18,7 +18,7 @@ extension Executable where Self: ~Copyable {
       throw ExecutableRunError(self, .noExecutable)
     }
 
-    try Tools.exec(url, args)
+    try await Tools.exec(url, args)
   }
 
   public var eArtifacts: [eArtifactType] {

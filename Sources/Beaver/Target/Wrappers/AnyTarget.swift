@@ -7,7 +7,7 @@ public enum AnyTarget: ~Copyable, Sendable {
   case executable(AnyExecutable)
 }
 
-enum TargetAccessError: Error {
+public enum TargetAccessError: Error {
   /// The target doesn't exist
   case noTarget(named: String)
   /// The target exists, but is not a library

@@ -1,3 +1,5 @@
+import Utils
+
 /// An array that cannot be copied and can contain non-copyable elements
 public struct NonCopyableArray<Element: ~Copyable>: ~Copyable {
   @usableFromInline
@@ -130,15 +132,5 @@ public struct NonCopyableArray<Element: ~Copyable>: ~Copyable {
 
   deinit {
     self.buffer.deallocate()
-  }
-}
-
-extension UnsafeMutableBufferPointer where Element: ~Copyable {
-  @usableFromInline
-  func reallocate(capacity: Int) -> UnsafeMutableBufferPointer<Element> {
-    let newPtr = UnsafeMutableBufferPointer.allocate(capacity: capacity)
-    _ = newPtr.moveInitialize(fromContentsOf: self)
-    self.deallocate()
-    return newPtr
   }
 }

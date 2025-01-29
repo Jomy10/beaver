@@ -155,8 +155,15 @@ let package = Package(
       name: "BeaverTests",
       dependencies: [
         "Beaver",
+        "Utils",
         .product(name: "ColorizeSwift", package: "ColorizeSwift")
       ]
     ),
+    .testTarget(
+      name: "UtilTests",
+      dependencies: [
+        "Utils"
+      ]
+    )
   ]
 )

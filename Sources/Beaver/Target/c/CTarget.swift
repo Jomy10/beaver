@@ -92,7 +92,7 @@ extension CTarget where Self: ~Copyable {
     ) { [projectBaseDir = copy projectBaseDir] source, changed in
       if changed || !FileManager.default.exists(at: source) {
         anyChanged = true
-        return try self.buildObject(projectBaseDir: projectBaseDir, objectBuildDir: objectBuildDir, sourceFile: source, cflags: cflags, type: type, context: contextPtr.pointee)
+        return try await self.buildObject(projectBaseDir: projectBaseDir, objectBuildDir: objectBuildDir, sourceFile: source, cflags: cflags, type: type, context: contextPtr.pointee)
       } else {
         return self.objectFile(projectBaseDir: projectBaseDir, objectBuildDir: objectBuildDir, sourceFile: source, type: type)
       }
@@ -131,7 +131,7 @@ extension CTarget where Self: ~Copyable {
     cflags: borrowing [String],
     type: CObjectType,
     context: borrowing Beaver
-  ) throws -> URL {
+  ) async throws -> URL {
     let objectFileURL = self.objectFile(projectBaseDir: projectBaseDir, objectBuildDir: objectBuildDir, sourceFile: file, type: type)
     let objectFileBase = objectFileURL.dirURL!
     try FileManager.default.createDirectoryIfNotExists(at: objectFileBase)
@@ -139,7 +139,7 @@ extension CTarget where Self: ~Copyable {
     var extraCflags = [String]()
     if type == .dynamic { extraCflags.append("-fPIC") }
     let args = extraCflags + cflags + ["-c", file.path, "-o", objectFileURL.path]
-    try self.executeCC(args)
+    try await self.executeCC(args)
 
     return objectFileURL
   }
@@ -157,22 +157,22 @@ extension CTarget where Self: ~Copyable {
     return URL(filePath: objectBuildDir.path + PATH_SEPARATOR + relativePathToSource + ext)
   }
 
-  func executeCC(_ args: [String]) throws {
+  func executeCC(_ args: [String]) async throws {
     switch (self.language) {
       case .objc: fallthrough
       case .objcxx:
-        try Tools.exec(Tools.objcCompiler!, args, context: self.name)
+        try await Tools.exec(Tools.objcCompiler!, args, context: self.name)
       case .c:
         if let extraArgs = Tools.ccExtraArgs {
-          try Tools.exec(Tools.cc!, extraArgs + args, context: self.name)
+          try await Tools.exec(Tools.cc!, extraArgs + args, context: self.name)
         } else {
-          try Tools.exec(Tools.cc!, args, context: self.name)
+          try await Tools.exec(Tools.cc!, args, context: self.name)
         }
       case .cxx:
         if let extraArgs = Tools.cxxExtraArgs {
-          try Tools.exec(Tools.cxx!, extraArgs + args, context: self.name)
+          try await Tools.exec(Tools.cxx!, extraArgs + args, context: self.name)
         } else {
-          try Tools.exec(Tools.cxx!, args, context: self.name)
+          try await Tools.exec(Tools.cxx!, args, context: self.name)
         }
       default:
         throw TargetValidationError(self, .invalidLanguage(self.language))

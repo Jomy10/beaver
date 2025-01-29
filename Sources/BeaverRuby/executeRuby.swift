@@ -40,6 +40,10 @@ public func executeRuby<Args: Collection & BidirectionalCollection & Sendable>(
   return queue
 }
 
+public func deallocateRubyObjects() {
+  //Promise.deallocateAll()
+}
+
 enum RbConversionError: Error, @unchecked Sendable {
   case incompatible(from: RbType, to: Any.Type)
   case unexpectedType(got: RbType, expected: [RbType])

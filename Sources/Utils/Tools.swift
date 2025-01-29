@@ -1,6 +1,7 @@
 import Foundation
 import Platform
 import ColorizeSwift
+import Atomics
 
 public struct Tools {
   @inlinable
@@ -117,19 +118,78 @@ public struct Tools {
     return Int(task.terminationStatus)
   }
 
+  // TODO: first line is lost somehow
+  @usableFromInline
+  final class OutputQueue: @unchecked Sendable {
+    @usableFromInline
+    var queue: ConcurrentDataQueue<Character>
+    let finished: ManagedAtomic<Bool>
+    // Prepend on each line of output
+    let prefixString: String?
+    let outputStream: IOStream
+    let context: MessageHandler.MessageVisibility
+    //let task: Task<(), Never>
+
+    @usableFromInline
+    init(prefix: String?, to stream: IOStream) {
+      self.queue = ConcurrentDataQueue(zero: "\0")
+      self.finished = ManagedAtomic(false)
+      //self.prefixString = if let context = pr { "[\(context)] " } else { nil }
+      self.prefixString = prefix
+      self.outputStream = stream
+      self.context = stream == .stdout ? .shellOutputStdout : .shellOutputStderr
+    }
+
+    @usableFromInline
+    func start() -> Task<(), Never> {
+      return Task {
+        var tmpBuffer: [Character] = []
+        while !self.finished.load(ordering: .relaxed) {
+          if self.queue.read(into: &tmpBuffer, untilValue: "\n") > 0 {
+            if tmpBuffer.last == "\n" {
+              MessageHandler.print(String(tmpBuffer), to: self.outputStream, context: self.context, terminator: "")
+              tmpBuffer.removeAll(keepingCapacity: true)
+            }
+          }
+          // TODO: collect until new line character, then output
+          await Task.yield()
+        }
+        self.queue.read(into: &tmpBuffer)
+        if tmpBuffer.count > 0 {
+          MessageHandler.print(String(tmpBuffer), to: self.outputStream, context: self.context, terminator: "")
+        }
+      }
+    }
+
+    @usableFromInline
+    func append(_ string: String) {
+      self.queue.write(Array(string))
+    }
+
+    @usableFromInline
+    func finish() {
+      self.finished.store(true, ordering: .relaxed)
+    }
+  }
+
+  // TODO: make async again
   @inlinable
-  public static func exec(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory(), context: String? = nil) throws {
+  public static func exec(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory(), context: String? = nil) async throws {
+    let contextString: String? = if let context = context { "[\(context)] " } else { nil }
     let task = Process()
+    let stderrQueue = OutputQueue(prefix: contextString, to: .stderr)
     let stderrPipe = Pipe()
+    let stdoutQueue = OutputQueue(prefix: contextString, to: .stdout)
     let stdoutPipe = Pipe()
-    let contextStr: String? = if let context = context { "[\(context)] " } else { nil }
-    stderrPipe.fileHandleForReading.readabilityHandler = { handle in
+    stderrPipe.fileHandleForReading.readabilityHandler = { handle in // TODO: how do I get color output?
       let data: Data = handle.availableData
       if data.count == 0 {
         handle.readabilityHandler = nil
         MessageHandler.flush(.stderr)
+        stderrQueue.finish()
       } else {
-        MessageHandler.print(String(data: data, encoding: .utf8)!.prependingRowsIfNeeded(contextStr), to: .stderr, context: .shellOutputStderr, terminator: "")
+        let str = String(data: data, encoding: .utf8)!
+        stderrQueue.append(str)
       }
     }
     stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
@@ -137,8 +197,11 @@ public struct Tools {
       if data.count == 0 {
         handle.readabilityHandler = nil
         MessageHandler.flush(.stdout)
+        stdoutQueue.finish()
       } else {
-        MessageHandler.print(String(data: data, encoding: .utf8)!.prependingRowsIfNeeded(contextStr), to: .stdout, context: .shellOutputStdout, terminator: "")
+        let str = String(data: data, encoding: .utf8)!
+        stdoutQueue.append(str)
+        //MessageHandler.print(String(data: data, encoding: .utf8)!.prependingRowsIfNeeded(contextStr), to: .stdout, context: .shellOutputStdout, terminator: "")
       }
     }
 
@@ -148,13 +211,18 @@ public struct Tools {
     task.arguments = args
     task.currentDirectoryURL = baseDir
     task.environment = ProcessInfo.processInfo.environment
-    MessageHandler.print(((cmdURL.path + " " + args.joined(separator: " ")).prependingIfNeeded(contextStr)).darkGray(), to: .stderr, context: .shellCommand)
+    let stderrTask = stderrQueue.start()
+    let stdoutTask = stdoutQueue.start()
+    MessageHandler.print(((cmdURL.path + " " + args.joined(separator: " ")).prependingIfNeeded(contextString)).darkGray(), to: .stderr, context: .shellCommand)
     try task.run()
     task.waitUntilExit()
 
     if task.terminationStatus != 0 {
       throw ProcessError(terminationStatus: task.terminationStatus, reason: task.terminationReason)
     }
+
+    _ = await stderrTask.value
+    _ = await stdoutTask.value
   }
 
   /// Statics are lazy variables

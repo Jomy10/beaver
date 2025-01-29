@@ -25,4 +25,42 @@ def fileChanged(filename)
   fileChangedWithContext(filename, caller_locations(1, 1).first)
 end
 
-# TODO: `sh` command that redirects to swift
+def project(name)
+  promise = projectAsync(name)
+
+  begin
+    while !promise.fulfilled?
+      sleep(0.1)
+    end
+
+    proj = promise.value
+    return proj
+  ensure
+    promise.release
+  end
+end
+
+class Beaver::ProjectAccessor
+  def run(exeName, *args)
+    runAsync(exeName, *args).wait
+  end
+
+  def build(targetName)
+    puts "building #{targetName}"
+    buildAsync(targetName).wait
+  end
+end
+
+class Beaver::SignalOneshot
+  def wait
+    begin
+      while !self.finished?
+        sleep(0.1)
+      end
+
+      self.check
+    ensure
+      self.release
+    end
+  end
+end

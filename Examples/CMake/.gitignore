@@ -1,3 +1,4 @@
 /flatbuffers
 .build
 .beaver
+MyFileFormat_generated.h
