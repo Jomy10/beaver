@@ -13,7 +13,7 @@ extension CMakeTarget where Self: ~Copyable {
     projectBuildDir: borrowing URL,
     context: borrowing Beaver
   ) async throws {
-    try Tools.exec(
+    try await Tools.exec(
       Tools.make!,
       ["-j", "4", self.name],
       baseDir: projectBuildDir,
@@ -27,7 +27,7 @@ extension CMakeTarget where Self: ~Copyable {
     projectBuildDir: borrowing URL,
     context: borrowing Beaver
   ) async throws {
-    try Tools.exec(
+    try await Tools.exec(
       Tools.make!,
       ["-j", "4", self.name],
       baseDir: projectBuildDir,

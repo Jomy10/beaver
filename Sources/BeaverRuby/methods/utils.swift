@@ -43,17 +43,18 @@ func loadUtilsMethods(in module: RbObject, queue: SyncTaskQueue, context: Unsafe
     body: { obj, method in
       let cmd: [String] = try method.args.splatted.map { try $0.convert(to: String.self) }
 
-      if cmd.count == 0 {
-        throw ShError("no arguments")
-      } else if cmd.count == 1 {
-        try Tools.exec(Tools.sh!, ["-c", cmd.first!])
-      } else {
-        guard let cmdName = Tools.which(cmd[cmd.startIndex]) else {
-          throw ShError("Executable named \(cmd[cmd.startIndex]) not found")
-        }
-        let arguments = cmd[cmd.index(after: cmd.startIndex)...]
-        try Tools.exec(cmdName, Array(arguments))
-      }
+      fatalError("TODO")
+      //if cmd.count == 0 {
+      //  throw ShError("no arguments")
+      //} else if cmd.count == 1 {
+      //  try await Tools.exec(Tools.sh!, ["-c", cmd.first!])
+      //} else {
+      //  guard let cmdName = Tools.which(cmd[cmd.startIndex]) else {
+      //    throw ShError("Executable named \(cmd[cmd.startIndex]) not found")
+      //  }
+      //  let arguments = cmd[cmd.index(after: cmd.startIndex)...]
+      //  try await Tools.exec(cmdName, Array(arguments))
+      //}
 
       return RbObject.nilObject
     }

@@ -36,7 +36,7 @@ public struct CLibrary: CTarget, Library, ~Copyable {
     sources: Files = Files(),
     headers: Headers = Headers(),
     cflags: Flags = Flags(),
-    linkerFlags: [String],
+    linkerFlags: [String] = [],
     dependencies: [Dependency] = []
   ) throws {
     self.name = name
@@ -114,7 +114,7 @@ public struct CLibrary: CTarget, Library, ~Copyable {
       case .staticlib:
         let (objects, rebuild) = try await self.buildObjects(projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
         if rebuild || !artifactExists {
-          try self.buildStaticLibrary(objects: objects, projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, context: context)
+          try await self.buildStaticLibrary(objects: objects, projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, context: context)
         }
       case .pkgconfig:
         fatalError("Unimplemented artifact: \(artifact)")
@@ -169,14 +169,14 @@ public struct CLibrary: CTarget, Library, ~Copyable {
       //+ depLanguages.compactFlatMap { $0.linkerFlags(targetLanguage: self.language) }
     )
 
-    try self.executeCC(args)
+    try await self.executeCC(args)
   }
 
-  func buildStaticLibrary(objects: borrowing [URL], projectBaseDir: borrowing URL, projectBuildDir: borrowing URL, context: borrowing Beaver) throws {
+  func buildStaticLibrary(objects: borrowing [URL], projectBaseDir: borrowing URL, projectBuildDir: borrowing URL, context: borrowing Beaver) async throws {
     let buildBaseDir = self.artifactOutputDir(projectBuildDir: projectBuildDir, artifact: .staticlib)!
     try FileManager.default.createDirectoryIfNotExists(at: buildBaseDir, withIntermediateDirectories: true)
 
     let outputFile = self.artifactURL(projectBuildDir: projectBuildDir, artifact: .staticlib)!
-    try Tools.exec(Tools.ar!, ["-rc", outputFile.path] + objects.map { $0.path }, context: self.name)
+    try await Tools.exec(Tools.ar!, ["-rc", outputFile.path] + objects.map { $0.path }, context: self.name)
   }
 }

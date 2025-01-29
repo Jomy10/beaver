@@ -88,12 +88,30 @@ public struct MessageHandler {
     }
   }
 
+  //private static nonisolated(unsafe) var progressBuffer: RWLock<String?> = try! RWLock(nil)
+
   public static func print(_ message: String, context: MessageVisibility? = nil, terminator: String = "\n") {
     if !Self.checkContext(context) { return }
 
     if let progress = Self.progress {
-      //ProgressIndicators.global.globalMessage(message)
       progress.println(message)
+      //try! Self.progressBuffer.write { buffer in
+      //  if terminator != "\n" && message.last != "\n" {
+      //    if buffer == nil {
+      //      buffer = message
+      //    } else {
+      //      buffer!.append(message)
+      //    }
+      //  } else {
+      //    if let progressBuffer = buffer {
+      //      progress.println(progressBuffer + message + terminator)
+      //      buffer = nil
+      //    } else {
+      //      progress.println(message + terminator)
+      //    }
+      //  }
+      //}
+      //ProgressIndicators.global.globalMessage(message)
     } else {
       Utils.print(message, to: IOStream.stderr, terminator: terminator)
     }

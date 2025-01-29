@@ -33,10 +33,10 @@ public struct CExecutable: CTarget, Executable, ~Copyable {
     license: String? = nil,
     language: Language = .c,
     artifacts: [ExecutableArtifactType] = Self.defaultArtifacts,
-    sources: Files,
-    headers: Headers,
-    cflags: Flags,
-    linkerFlags: [String],
+    sources: Files = Files(),
+    headers: Headers = Headers(),
+    cflags: Flags = Flags(),
+    linkerFlags: [String] = [],
     dependencies: [Dependency] = []
   ) throws {
     self.name = name
@@ -124,6 +124,6 @@ public struct CExecutable: CTarget, Executable, ~Copyable {
       + depLinkerFlags
       //+ depLanguages.compactFlatMap { $0.linkerFlags(targetLanguage: self.language) }
       + ["-o", outputFile.path]
-    try self.executeCC(args)
+    try await self.executeCC(args)
   }
 }

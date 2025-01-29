@@ -39,7 +39,7 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
   }
 
   public func build(context: borrowing Beaver) async throws {
-    try Tools.exec(
+    try await Tools.exec(
       Tools.make!,
       ["-j", "4"],
       baseDir: buildDir,
@@ -53,7 +53,7 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
     context: borrowing Beaver
   ) async throws {
     let targetName = await self.targetName(targetRef)!
-    try Tools.exec(
+    try await Tools.exec(
       Tools.make!,
       ["-j", "-4", targetName],
       baseDir: buildDir,
@@ -66,7 +66,7 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
     context: borrowing Beaver
   ) async throws {
     let targetName = await self.targetName(targetRef)!
-    try Tools.exec(
+    try await Tools.exec(
       Tools.make!,
       ["-j", "4", targetName],
       baseDir: buildDir,

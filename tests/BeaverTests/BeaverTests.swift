@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import Semver
 import Platform
+import Utils
 @testable import Beaver
 
 @Test func nonCopyableArray() async throws {
@@ -31,48 +32,50 @@ import Platform
 /// library. Run the executable, which tests the implementation
 @Test func exampleCProjectAdder() async throws {
   var mutCtx = try Beaver()
-  await mutCtx.addProject(Project(
+  await mutCtx.addProject(.beaver(BeaverProject(
     name: "Adder",
     baseDir: URL(filePath: "Tests/resources/exampleCProjectAdder"),
     buildDir: URL(filePath: ".build/tests/exampleCProjectAdder"),
     targets: NonCopyableArray(),
     context: mutCtx
-  ))
+  )))
 
-  try await mutCtx.withCurrentProject { (project: inout Project) in
-    _ = await project.addTarget(try CLibrary(
+  try await mutCtx.withCurrentProject { (project: inout AnyProject) in
+    _ = await project.addTarget(.library(.c(try CLibrary(
       name: "Adder",
       description: "Adds two numbers",
       artifacts: [.staticlib],
       sources: "adder.c",
       headers: "*.h"
-    ))
+    ))))
   }
-  let adderDep = try await mutCtx.dependency("Adder")
-  try await mutCtx.withCurrentProject { (project: inout Project) in
-    _ = await project.addTarget(try CExecutable(
+  let adderDep = try await mutCtx.dependency("Adder", artifact: .staticlib)
+  try await mutCtx.withCurrentProject { (project: inout AnyProject) in
+    _ = await project.addTarget(.executable(.c(try CExecutable(
       name: "AdderTest",
       description: "Add two numbers and check the result",
       artifacts: [.executable],
       sources: "main.c",
       dependencies: [adderDep]
-    ))
+    ))))
   }
 
   try mutCtx.finalize()
   let ctx = consume mutCtx
-  try await ctx.withCurrentProject { (proj: borrowing Project) in
-    try await proj.withTarget(ctx.targetIndex(name: "Adder", project: proj.id)!) { (target: borrowing any Target) in
-      try await target.build(baseDir: proj.baseDir, buildDir: proj.buildDir, context: ctx)
-    }
-    try await proj.withTarget(ctx.targetIndex(name: "AdderTest", project: proj.id)!) { (target: borrowing any Target) in
-      try await target.build(baseDir: proj.baseDir, buildDir: proj.buildDir, context: ctx)
-    }
+  try await ctx.withCurrentProject { (proj: borrowing AnyProject) in
+    try await proj.build(proj.targetIndex(name: "Adder")!, context: ctx)
+    try await proj.build(proj.targetIndex(name: "AdderTest")!, context: ctx)
+    //try await proj.withTarget(ctx.targetIndex(name: "Adder", project: proj.id)!) { (target: borrowing AnyTarget) in
+    //  try await target.build(baseDir: proj.baseDir, buildDir: proj.buildDir, context: ctx)
+    //}
+    //try await proj.withTarget(ctx.targetIndex(name: "AdderTest", project: proj.id)!) { (target: borrowing AnyTarget) in
+    //  try await target.build(baseDir: proj.baseDir, buildDir: proj.buildDir, context: ctx)
+    //}
   }
 
-  try await ctx.withCurrentProject { (proj: borrowing Project) in
-    try await proj.withExecutable(ctx.targetIndex(name: "AdderTest", project: proj.id)!) { (target: borrowing any Executable) in
-      try await Tools.exec(target.artifactURL(projectBuildDir: proj.buildDir, ExecutableArtifactType.executable), [])
+  try await ctx.withCurrentProject { (proj: borrowing AnyProject) in
+    try await proj.withExecutable(ctx.targetIndex(name: "AdderTest", project: proj.id)!) { (target: borrowing AnyExecutable) in
+      try await Utils.Tools.exec(target.artifactURL(projectBuildDir: proj.buildDir, artifact: ExecutableArtifactType.executable)!, [])
     }
   }
 }

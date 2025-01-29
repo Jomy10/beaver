@@ -27,7 +27,7 @@ public struct CMakeImporter {
     }
 
     // TODO: check if cmakeFiles changed, only reconfigure CMake when needed (store cmakeFiles per configuration)
-    try Tools.exec(
+    try await Tools.exec(
       Tools.cmake!,
       [
         baseDir.absoluteURL.path,
