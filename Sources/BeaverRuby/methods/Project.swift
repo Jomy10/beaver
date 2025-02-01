@@ -54,9 +54,10 @@ func loadProjectMethod(in module: RbObject, queue: SyncTaskQueue, context: Unsaf
       optionalValues: [RbObject.nilObject]
     ),
     body: { (obj, method) in
-      let baseDir = URL(filePath: try method.args.mandatory[0].convert(to: String.self))
+      let basePath = try method.args.mandatory[0].convert(to: String.self)
+      let baseDir = URL(filePath: basePath)
       let buildDirArg = method.args.optional.first!
-      let buildDir = buildDirArg.isNil ? baseDir.appending(path: "build") : URL(filePath: try buildDirArg.convert(to: String.self))
+      let buildDir = buildDirArg.isNil ? context.value.withInner { (ctx: borrowing Beaver) in ctx.buildDir(for: basePath) } : URL(filePath: try buildDirArg.convert(to: String.self))
       queue.addTask {
         try await context.value.withInner { (context: inout Beaver) in
           try await CMakeImporter.import(
@@ -65,6 +66,7 @@ func loadProjectMethod(in module: RbObject, queue: SyncTaskQueue, context: Unsaf
             context: &context
           )
         }
+        print("CMake project added")
       }
       return RbObject.nilObject
     }

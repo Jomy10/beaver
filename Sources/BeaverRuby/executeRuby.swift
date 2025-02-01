@@ -4,6 +4,7 @@ import RubyGateway
 import Utils
 import AsyncAlgorithms
 import Atomics
+//import RubyRaise
 
 /// Errors for the ruby command line utility (e.g. `cmd`, `opt`, `arg`)
 enum CommandLineError: Error {
@@ -20,13 +21,24 @@ public func executeRuby<Args: Collection & BidirectionalCollection & Sendable>(
   where Args.Element == String
 {
   let scriptContents = try String(contentsOf: scriptFile, encoding: .utf8)
-  let queue: SyncTaskQueue = SyncTaskQueue()
+
+  let queueError = UnsafeSharedBox(ManagedAtomic(false))
+  let queue: SyncTaskQueue = SyncTaskQueue(onError: { _ in
+    queueError.value.store(true, ordering: .relaxed)
+  })
 
   // Lock is probably not needed
   let slice = try RWLock(MutableDiscontiguousSlice(args))
 
   let beaverModule = try Ruby.defineModule("Beaver")
 
+  try Ruby.defineGlobalVar(
+    "$BEAVER_ERROR",
+    get: { queueError.value.load(ordering: .relaxed) },
+    set: { (val: Bool) in
+      queueError.value.store(val, ordering: .relaxed)
+    }
+  )
   try loadCommandLineMethods(in: beaverModule, args: slice, queue: queue, context: context)
   try loadProjectMethod(in: beaverModule, queue: queue, context: context)
   try loadCMethods(in: beaverModule, queue: queue, context: context)
@@ -36,7 +48,27 @@ public func executeRuby<Args: Collection & BidirectionalCollection & Sendable>(
 
   let libFilePath = Bundle.module.path(forResource: "lib", ofType: "rb", inDirectory: "lib")!
   try Ruby.require(filename: libFilePath)
-  try Ruby.eval(ruby: scriptContents)
+  do {
+    try Ruby.eval(ruby: scriptContents)
+  } catch let error as RbError {
+    if case .rubyException(let exc) = error {
+      // If the exception is a system exit, then we check the status, otherwise just throw the error
+      guard (try exc.exception.call("is_a?", args: [Ruby.get("SystemExit")]).convert(to: Bool.self)) else {
+        throw error
+      }
+      guard (try exc.exception.call("status").convert(to: Int.self)) == 300 else {
+        throw error
+      }
+      // The exception is an exit with return code 300. We designated this return code
+      // to indicate an error in the queue, so we ignore the error here and let the
+      // queue throw an error
+    } else {
+      throw error
+    }
+  } catch let error {
+    throw error
+  }
+
   return queue
 }
 

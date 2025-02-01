@@ -100,7 +100,6 @@ struct BeaverCLI: Sendable {
     do {
       // Ruby code has to be executed on the main thread!
       let queue = try await MainActor.run {
-        // TODO: passing arguments
         try executeRuby(
           scriptFile: scriptFile,
           args: args,

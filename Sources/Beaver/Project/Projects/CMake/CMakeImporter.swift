@@ -10,13 +10,22 @@ public struct CMakeImporter {
     buildDir: URL,
     context: inout Beaver
   ) async throws {
-    let buildDir = buildDir.appending(path: context.optimizeMode.description)
-    try FileManager.default.createDirectoryIfNotExists(at: buildDir, withIntermediateDirectories: true)
+    try context.requireBuildDir()
+
+    //let buildDir = buildDir.appending(path: context.optimizeMode.description)
+    let buildDirExists = FileManager.default.exists(at: buildDir)
+    if !buildDirExists {
+      try FileManager.default.createDirectory(at: buildDir, withIntermediateDirectories: true)
+    }
 
     let apiDir = buildDir.appending(path: ".cmake/api/v1")
+    let replyDir = apiDir.appending(path: "reply")
 
     let queryDir = apiDir.appending(path: "query")
-    try FileManager.default.createDirectoryIfNotExists(at: queryDir, withIntermediateDirectories: true)
+    let queryDirExists = FileManager.default.exists(at: queryDir)
+    if !queryDirExists {
+      try FileManager.default.createDirectory(at: queryDir, withIntermediateDirectories: true)
+    }
     let codemodelRequest = queryDir.appending(path: "codemodel-v2")
     if !FileManager.default.exists(at: codemodelRequest) {
       try FileManager.default.createFile(at: codemodelRequest)
@@ -26,19 +35,18 @@ public struct CMakeImporter {
       try FileManager.default.createFile(at: cmakeFilesRequest)
     }
 
-    // TODO: check if cmakeFiles changed, only reconfigure CMake when needed (store cmakeFiles per configuration)
-    try await Tools.exec(
-      Tools.cmake!,
-      [
-        baseDir.absoluteURL.path,
-        "-DCMAKE_BUILD_TYPE=\(context.optimizeMode.cmakeDescription)",
-        "-G", "Unix Makefiles"
-      ],
-      baseDir: buildDir
-    )
-
-    let replyDir = apiDir.appending(path: "reply")
-    try FileManager.default.createDirectoryIfNotExists(at: replyDir)
+    let reconfigure = try context.fileCache!.shouldReconfigureCMakeProject(baseDir)
+    if reconfigure || !buildDirExists || !queryDirExists || !FileManager.default.exists(at: replyDir) {
+      try await Tools.exec(
+        Tools.cmake!,
+        [
+          baseDir.absoluteURL.path,
+          "-DCMAKE_BUILD_TYPE=\(context.optimizeMode.cmakeDescription)",
+          "-G", "Unix Makefiles"
+        ],
+        baseDir: buildDir
+      )
+    }
 
     let cmakeIndexPaths = try await Glob.search(
       directory: replyDir,
@@ -96,22 +104,32 @@ public struct CMakeImporter {
         )
     }
 
-    // Determine if needs to be reconfigured based on these files
-    // TODO: store cmakeFiles in cache
-    let cmakeFilesPath = replyDir.appending(path: cmakeIndex.cmakeFiles!.path)
-    let cmakeFilesData = try Data(contentsOf: cmakeFilesPath)
-    let cmakeFiles: CMakeFilesV1
-    switch (Result(try JSONDecoder().decode(CMakeFilesV1.self, from: cmakeFilesData))) {
-      case .success(let val): cmakeFiles = val
-      case .failure(let error):
-        if !(error is DecodingError) { throw error }
-        throw CMakeImportError.jsonDecodingError(
-          error: error as! DecodingError,
-          whileParsing: "cmakefiles",
-          at: cmakeFilesPath
-        )
+    if reconfigure {
+      // Determine if needs to be reconfigured based on these files
+      let cmakeFilesPath = replyDir.appending(path: cmakeIndex.cmakeFiles!.path)
+      let cmakeFilesData = try Data(contentsOf: cmakeFilesPath)
+      let cmakeFiles: CMakeFilesV1
+      switch (Result(try JSONDecoder().decode(CMakeFilesV1.self, from: cmakeFilesData))) {
+        case .success(let val): cmakeFiles = val
+        case .failure(let error):
+          if !(error is DecodingError) { throw error }
+          throw CMakeImportError.jsonDecodingError(
+            error: error as! DecodingError,
+            whileParsing: "cmakefiles",
+            at: cmakeFilesPath
+          )
+      }
+
+      if let inputs = cmakeFiles.inputs {
+        try context.fileCache!.storeCMakeFiles(dir: baseDir, inputs.map { input in
+          if input.path.starts(with: "/") {
+            URL(filePath: input.path)
+          } else {
+            baseDir.appending(path: input.path)
+          }
+        })
+      }
     }
-    _ = cmakeFiles // TODO
 
     let cmakeConfiguration = codemodel.configurations.first!
 
@@ -133,14 +151,19 @@ public struct CMakeImporter {
                 at: targetFile
               )
           }
+          let flagsInclude = context.config.cmake.flagsInclude
           let addLibrary = { (artifactType: LibraryArtifactType, targets: inout NonCopyableArray<AnyTarget>) in
             let cflags: [String] = target.compileGroups?.flatMap({ compileGroup in
               var cflags: [String] = []
-              if let f = compileGroup.compileCommandFragments?.flatMap({ Tools.parseArgs($0.fragment).map { String($0) } }) {
-                cflags.append(contentsOf: f)
+              if flagsInclude.compileCommandFragments {
+                if let f = compileGroup.compileCommandFragments?.flatMap({ Tools.parseArgs($0.fragment).map { String($0) } }) {
+                  cflags.append(contentsOf: f)
+                }
               }
-              if let f = (compileGroup.defines?.map { "-D\($0.define)" }) {
-                cflags.append(contentsOf: f)
+              if flagsInclude.defines {
+                if let f = (compileGroup.defines?.map { "-D\($0.define)" }) {
+                  cflags.append(contentsOf: f)
+                }
               }
               if let f = (compileGroup.includes?.map { "-I\($0.path)" }) {
                 cflags.append(contentsOf: f)
@@ -174,7 +197,6 @@ public struct CMakeImporter {
               MessageHandler.warn("CMake target type '\(target.type)' is currently not supported")
               continue
           }
-
         }
       }
 

@@ -67,6 +67,7 @@ let package = Package(
       dependencies: [
         "Beaver",
         "Utils",
+        "RubyRaise",
         //.product(name: "CRuby", package: "CRuby"),
         .product(name: "AsyncObjects", package: "AsyncObjects"),
         .product(name: "RubyGateway", package: "RubyGateway"),

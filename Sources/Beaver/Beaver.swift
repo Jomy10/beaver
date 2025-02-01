@@ -17,10 +17,14 @@ public struct Beaver: ~Copyable, Sendable {
 
   public var optimizeMode: OptimizationMode
 
+  var buildDir: URL
+
   var cacheFile: URL
   var fileCache: FileCache?
 
   var commands: Commands
+
+  var config: BeaverConfig
 
   private func setCurrentProjectIndex(_ idx: ProjectRef) async {
     while true {
@@ -37,14 +41,17 @@ public struct Beaver: ~Copyable, Sendable {
 
   public init(
     enableColor: Bool? = nil,
-    optimizeMode: OptimizationMode = .debug,
-    cacheFile: URL = URL.currentDirectory().appending(path: ".beaver").appending(path: "cache")
+    optimizeMode: OptimizationMode = .debug
+    //cacheFile: URL = URL.currentDirectory().appending(path: ".beaver").appending(path: "cache")
   ) throws {
     self.projects = AsyncRWLock(NonCopyableArray(withCapacity: 3))
     self.optimizeMode = optimizeMode
-    self.cacheFile = cacheFile
+    self.buildDir = URL.currentDirectory().absoluteURL.appending(path: "build")
+    self.cacheFile = self.buildDir.appending(path: "cache")
+    //self.cacheFile = cacheFile
     self.fileCache = nil
     self.commands = Commands()
+    self.config = BeaverConfig()
 
     MessageHandler.setColorEnabled(enableColor)
 
@@ -54,22 +61,49 @@ public struct Beaver: ~Copyable, Sendable {
 
   /// Should be called after all configuration has been set and targets have been declared
   public mutating func finalize() async throws {
-    let cacheFileBaseURL = self.cacheFile.dirURL!
-    try FileManager.default.createDirectoryIfNotExists(at: cacheFileBaseURL)
+    if self.fileCache == nil {
+      try self.initializeCache()
+    }
 
-    self.fileCache = try FileCache(cacheFile: self.cacheFile)
     // Check if targets have changed and if that should cause a rebuild / relink.
     // Stores new targets in the database and removes removed ones
     try await self.fileCache?.checkTargets(context: self)
+  }
+
+  private mutating func initializeCache() throws {
+    if self.fileCache != nil {
+      throw InitializationError.fileCacheAlreadyInitialized
+    }
+    try FileManager.default.createDirectoryIfNotExists(at: self.buildDir)
+    self.fileCache = try FileCache(cacheFile: self.cacheFile)
     try self.fileCache?.selectConfiguration(mode: self.optimizeMode)
   }
 
-  public mutating func setCacheFile(_ file: URL) throws(InitializationError) {
+  public mutating func setBuildDir(_ dir: URL) throws {
     if self.fileCache != nil {
-      throw .fileCacheAlreadyInitialized
+      throw InitializationError.fileCacheAlreadyInitialized
     }
-    self.cacheFile = file
+    self.buildDir = dir
+    self.cacheFile = dir.appending(path: "cache")
+    try self.initializeCache()
   }
+
+  public mutating func requireBuildDir() throws {
+    if self.fileCache == nil {
+      try self.initializeCache()
+    }
+  }
+
+  public func buildDir(for name: String) -> URL {
+    self.buildDir.appending(path: name).appending(path: self.optimizeMode.description)
+  }
+
+  //public mutating func setCacheFile(_ file: URL) throws(InitializationError) {
+  //  if self.fileCache != nil {
+  //    throw .fileCacheAlreadyInitialized
+  //  }
+  //  self.cacheFile = file
+  //}
 
   @discardableResult
   public mutating func addProject(_ project: consuming AnyProject) async -> ProjectRef {
