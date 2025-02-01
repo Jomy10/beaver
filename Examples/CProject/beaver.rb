@@ -1,5 +1,5 @@
-# Create a new project, set the output directory to "out"
-Project(name: "MyProject", buildDir: "out")
+# Create a new project
+Project(name: "MyProject")
 
 # Create an executable target inside of project "MyProject"
 C::Executable(
