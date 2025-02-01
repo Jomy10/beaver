@@ -148,3 +148,64 @@ fileprivate extension LibraryArtifactType {
     }
   }
 }
+
+extension DependencyType: SQLite.Value {
+  public typealias Datatype = Int
+
+  public static var declaredDatatype: String {
+    "INTEGER"
+  }
+
+  struct InvalidDatatypeValue: Error {
+    let value: Int
+  }
+
+  public static func fromDatatypeValue(_ datatypeValue: Datatype) throws -> ValueType {
+    guard let t = DependencyType(rawValue: datatypeValue) else {
+      throw InvalidDatatypeValue(value: datatypeValue)
+    }
+    return t
+  }
+
+  public var datatypeValue: Datatype {
+    self.rawValue
+  }
+}
+
+extension TargetType: SQLite.Value {
+  public typealias Datatype = Int
+
+  public static var declaredDatatype: String {
+    "INTEGER"
+  }
+
+  struct InvalidDatatypeValue: Error {
+    let value: Int
+  }
+
+  public static func fromDatatypeValue(_ datatypeValue: Datatype) throws -> ValueType {
+    guard let t = TargetType(rawValue: Int8(datatypeValue)) else {
+      throw InvalidDatatypeValue(value: datatypeValue)
+    }
+    return t
+  }
+
+  public var datatypeValue: Datatype {
+    Int(self.rawValue)
+  }
+}
+
+extension Dependency {
+  var stringValue: String? {
+    switch (self) {
+      case .pkgconfig(let pkgConfig):
+        pkgConfig.name + "|preferStatic:\(pkgConfig.preferStatic)"
+      case .system(let name):
+        name
+      case .customFlags(cflags: let cflags, linkerFlags: let linkerFlags):
+        "cflags:\(cflags),linkerflags:\(linkerFlags)"
+      case .library(_):
+        nil
+    }
+  }
+}

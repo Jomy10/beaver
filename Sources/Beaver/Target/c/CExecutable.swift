@@ -84,13 +84,15 @@ public struct CExecutable: CTarget, Executable, ~Copyable {
     projectBuildDir: borrowing URL,
     context: borrowing Beaver
   ) async throws {
-    let artifactExists = FileManager.default.exists(at: self.artifactURL(projectBuildDir: projectBuildDir, artifact: artifact)!)
-    let (objects, rebuild) = try await self.buildObjects(projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
+    let artifactURL = self.artifactURL(projectBuildDir: projectBuildDir, artifact: artifact)!
+    let artifactExists = FileManager.default.exists(at: artifactURL)
+    let (objects, rebuilt) = try await self.buildObjects(projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
     if artifact == .app {
       fatalError("unimplemented")
     }
     let (depLinkerFlags, relink) = try await self.dependencyLinkerFlagsAndRelink(context: context, forBuildingArtifact: artifact)
-    if rebuild || !artifactExists || relink {
+    let forceRelink = try context.fileCache!.shouldRelinkArtifact(target: self.ref, artifact: artifact.asArtifactType(), artifactFile: artifactURL)
+    if rebuilt || !artifactExists || relink || forceRelink {
       try await self.buildExecutable(
         objects: objects,
         dependencyLinkerFlags: depLinkerFlags,

@@ -18,3 +18,4 @@ int main(void) {
   assert(strcmp(deserializedPerson->lname()->c_str(), "Doe") == 0);
   assert(deserializedPerson->birthdate() == 0);
 }
+

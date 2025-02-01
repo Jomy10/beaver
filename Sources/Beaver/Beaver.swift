@@ -2,6 +2,8 @@ import Foundation
 import Utils
 import Atomics
 
+// TODO: global build dir and store cache db there
+
 public struct Beaver: ~Copyable, Sendable {
   var projects: AsyncRWLock<NonCopyableArray<AnyProject>>
   private var currentProjectIndexAtomic: ManagedAtomic<ProjectRef> = ManagedAtomic(-1)
@@ -51,11 +53,14 @@ public struct Beaver: ~Copyable, Sendable {
   }
 
   /// Should be called after all configuration has been set and targets have been declared
-  public mutating func finalize() throws {
+  public mutating func finalize() async throws {
     let cacheFileBaseURL = self.cacheFile.dirURL!
     try FileManager.default.createDirectoryIfNotExists(at: cacheFileBaseURL)
 
     self.fileCache = try FileCache(cacheFile: self.cacheFile)
+    // Check if targets have changed and if that should cause a rebuild / relink.
+    // Stores new targets in the database and removes removed ones
+    try await self.fileCache?.checkTargets(context: self)
     try self.fileCache?.selectConfiguration(mode: self.optimizeMode)
   }
 
@@ -126,7 +131,10 @@ public struct Beaver: ~Copyable, Sendable {
 
   @inlinable
   public func clean(projectName: String) async throws {
-    try await self.clean(await self.projectRef(name: projectName))
+    guard let projectRef = await self.projectRef(name: projectName) else {
+      throw ProjectAccessError.noProject(named: projectName)
+    }
+    try await self.clean(projectRef)
   }
 
   public func clean(_ projectRef: ProjectRef? = nil) async throws {
@@ -136,8 +144,8 @@ public struct Beaver: ~Copyable, Sendable {
         try await project.clean(context: self)
       }
     } else {
-      MessageHandler.print("Cleaning all targets...")
-      try await self.loopProjects { (project: borrowing AnyProject) in
+      try await self.withCurrentProject { (project: borrowing AnyProject) in
+        MessageHandler.print("Cleaning all targets of \(project.name)...")
         try await project.clean(context: self)
       }
     }

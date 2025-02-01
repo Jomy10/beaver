@@ -90,7 +90,8 @@ public struct CLibrary: CTarget, Library, ~Copyable {
     projectBuildDir: borrowing URL,
     context: borrowing Beaver
   ) async throws {
-    let artifactExists = FileManager.default.exists(at: self.artifactURL(projectBuildDir: projectBuildDir, artifact: artifact)!)
+    let artifactURL = self.artifactURL(projectBuildDir: projectBuildDir, artifact: artifact)!
+    let artifactExists = FileManager.default.exists(at: artifactURL)
     switch (artifact) {
       case .dynlib:
         #if os(Windows)
@@ -100,8 +101,9 @@ public struct CLibrary: CTarget, Library, ~Copyable {
         let (objects, rebuild) = try await self.buildObjects(projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
 
         let (depLinkerFlags, relink) = try await self.dependencyLinkerFlagsAndRelink(context: context, forBuildingArtifact: artifact)
+        let forceRelink = try context.fileCache!.shouldRelinkArtifact(target: self.ref, artifact: artifact.asArtifactType(), artifactFile: artifactURL)
 
-        if rebuild || !artifactExists || relink {
+        if rebuild || !artifactExists || relink || forceRelink {
           try await self.buildDynamicLibrary(
             objects: objects,
             dependencyLinkerFlags: depLinkerFlags,

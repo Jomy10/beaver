@@ -13,6 +13,8 @@ public protocol Executable: ~Copyable, Target where ArtifactType == ExecutableAr
 }
 
 extension Executable where Self: ~Copyable {
+  public var type: TargetType { .executable }
+
   public func run(projectBuildDir: URL, args: [String]) async throws {
     guard let url = self.artifactURL(projectBuildDir: projectBuildDir, artifact: .executable) else {
       throw ExecutableRunError(self, .noExecutable)

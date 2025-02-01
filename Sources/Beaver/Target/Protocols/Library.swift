@@ -7,6 +7,8 @@ public protocol Library: ~Copyable, Target where ArtifactType == LibraryArtifact
 }
 
 extension Library where Self: ~Copyable {
+  public var type: TargetType { .library }
+
   public var eArtifacts: [eArtifactType] {
     self.artifacts.map { .library($0) }
   }

@@ -47,7 +47,36 @@ DependencyFile {
 
 CustomFile {
 	int fileID
+	int configID
 	string context
+}
+
+OutputFile {
+	string filename
+	int configID
+	int targetID
+	int artifactType
+	%% Should this artifact be relinked, regardless of any other conditions
+	bool relink
+}
+
+TargetCache {
+	int targetID
+	string targetName
+	string projectName
+	%% Executable or Library
+	int targetType
+}
+
+TargetDependencyCache {
+	int targetID
+	%% library, pkgconfig, system, customFlags
+	int dependencyType
+	int_null dependencyTargetID
+	%% for pkgconfig: the name + preferStatic (int)
+	%% for system: the name
+	%% for customFlags: format = cflags:[...],linkerFlags:[...]
+	string_null stringData
 }
 
 File ||--|| CSourceFile: fileID
@@ -58,5 +87,14 @@ File ||--|| DependencyFile: fileID
 DependencyFile }o--|| Configuration: configID
 DependencyFile }o--|| Target: targetID
 
+%% TODO: link to configuration?
 File ||--|| CustomFile: fileID
+CustomFile }o--|| Configuration: configID
+
+OutputFile }o--|| Configuration: ConfigID
+OutputFile }o--|| Target: targetID
+
+Target ||--|| TargetCache: targetID
+TargetCache ||--o{ TargetDependencyCache: targetID
+TargetCache |o--|| TargetDependencyCache: dependencyTargetID
 ```

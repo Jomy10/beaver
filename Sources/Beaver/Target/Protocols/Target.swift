@@ -1,6 +1,11 @@
 import Foundation
 import Utils
 
+public enum TargetType: Int8 {
+  case library
+  case executable
+}
+
 public protocol TargetBase: ~Copyable, Sendable {
   // General info //
   var name: String { get }
@@ -18,6 +23,8 @@ public protocol TargetBase: ~Copyable, Sendable {
   var eArtifacts: [eArtifactType] { get }
 
   var dependencies: [Dependency] { get }
+
+  var type: TargetType { get }
 
   func build(
     projectBaseDir: borrowing URL,

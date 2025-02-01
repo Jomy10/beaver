@@ -103,4 +103,17 @@ extension Beaver {
       }
     }
   }
+
+  public func loopProjectsAndTargets<Result>(_ cb: (borrowing AnyProject, borrowing AnyTarget) async throws -> Result) async rethrows -> [Result] {
+    var ret: [Result] = []
+    try await self.projects.read { projects in
+      try await projects.forEach { project in
+        try await project.loopTargets { target in
+          let val = try await cb(project, target)
+          ret.append(val)
+        }
+      }
+    }
+    return ret
+  }
 }

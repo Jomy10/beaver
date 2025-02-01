@@ -1,12 +1,28 @@
 @preconcurrency import SQLite
 
-struct TableColumn<ColumnType: SQLite.Value> {
-  var qualified: SQLite.Expression<ColumnType>
-  var unqualified: SQLite.Expression<ColumnType>
+struct TableColumn<ColumnType> {
+  let table: Table
+  let expression: SQLite.Expression<ColumnType>
+  let columnName: String
 
-  init(_ columnName: String, _ table: borrowing Table) {
-    self.unqualified = SQLite.Expression<ColumnType>(columnName)
-    self.qualified = table[self.unqualified]
+  var qualified: SQLite.Expression<ColumnType> {
+    self.table[self.expression]
+  }
+  var unqualified: SQLite.Expression<ColumnType> {
+    self.expression
+  }
+  var qualifiedOptional: SQLite.Expression<ColumnType?> {
+    self.table[SQLite.Expression<ColumnType?>(self.columnName)]
+  }
+  //var qualified: SQLite.Expression<ColumnType>
+  //var unqualified: SQLite.Expression<ColumnType>
+
+  init(_ columnName: String, _ table: Table) {
+    self.table = table
+    self.expression = SQLite.Expression<ColumnType>(columnName)
+    self.columnName = columnName
+    //self.unqualified = SQLite.Expression<ColumnType>(columnName)
+    //self.qualified = table[self.unqualified]
   }
 }
 

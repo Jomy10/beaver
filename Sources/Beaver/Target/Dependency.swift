@@ -36,8 +36,8 @@ public struct LibraryTargetDependency: Hashable, Equatable, Sendable {
 }
 
 public struct PkgConfigDependency: Hashable, Equatable, Sendable {
-  private let name: String
-  private let preferStatic: Bool
+  let name: String
+  let preferStatic: Bool
 
   public enum ValidationError: Error {
     case notExists
@@ -87,6 +87,22 @@ public enum Dependency: Hashable, Equatable, Sendable {
     /// The library contains no artifacts that can be linked to
     case noLinkableArtifacts(libraryName: String)
   }
+
+  var type: DependencyType {
+    switch (self) {
+      case .library(_): .library
+      case .pkgconfig(_): .pkgconfig
+      case .system(_): .system
+      case .customFlags(cflags: _, linkerFlags: _): .customFlags
+    }
+  }
+}
+
+enum DependencyType: Int {
+  case library
+  case pkgconfig
+  case system
+  case customFlags
 }
 
 extension Dependency {

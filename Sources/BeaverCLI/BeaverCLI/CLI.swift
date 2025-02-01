@@ -156,8 +156,8 @@ struct BeaverCLI: Sendable {
     let (args, leftover) = self.getArguments()
 
     let context = try await self.runScript(args: leftover)
-    try context.value.withInner { (context: inout Beaver) in
-      try context.finalize()
+    try await context.value.withInner { (context: inout Beaver) in
+      try await context.finalize()
     }
     //MessageHandler.debug(await context.customDebugString(withSources: false, withDependencies: true))
 

@@ -1,10 +1,3 @@
-extension Sequence {
-  @available(*, deprecated, message: "use async<fnName> instead")
-  var `async`: SequenceAsyncSequence<Self> {
-    SequenceAsyncSequence(from: self)
-  }
-}
-
 @available(*, deprecated)
 struct SequenceAsyncSequence<Seq: Sequence>: AsyncSequence {
   private var inner: Seq

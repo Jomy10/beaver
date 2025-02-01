@@ -36,7 +36,7 @@ public struct MessageHandler {
     public static let sql                = Self(rawValue: 1 << 8)
 
     #if DEBUG
-    static let `default`: Self = [.shellCommand, .shellOutputStderr, .shellOutputStdout, .trace, .debug, .info, .warning, .error/*, .sql*/]
+    static let `default`: Self = [.shellCommand, .shellOutputStderr, .shellOutputStdout, .trace, .debug, .info, .warning, .error, .sql]
     #else
     static let `default`: Self = [.shellCommand, .shellOutputStderr, .shellOutputStdout, .info, .warning, .error]
     #endif
