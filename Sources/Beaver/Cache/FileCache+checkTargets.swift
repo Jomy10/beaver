@@ -5,6 +5,8 @@ extension FileCache {
   /// Check if targets are still the same as previous build (i.e. did the script change?)
   /// If the target changed, then its caches are reset
   func checkTargets(context: borrowing Beaver) async throws {
+    if context.currentProjectIndex == nil { return }
+
     let tempTargets = TempTargetTable()
     try tempTargets.create(self.db)
 
