@@ -1,6 +1,8 @@
 import Foundation
 import Atomics
 
+// Not used anymore
+
 /// A Concurrent queue data can be pushed to backed by a ring buffer
 public struct ConcurrentDataQueue<DataType>: ~Copyable, @unchecked Sendable {
   private var buffer: UnsafeMutableBufferPointer<DataType>
@@ -93,10 +95,7 @@ public struct ConcurrentDataQueue<DataType>: ~Copyable, @unchecked Sendable {
   }
 
   public mutating func write(_ buffer: [DataType]) {
-    if buffer.count == 0 {
-      MessageHandler.print("Writing 0")
-      return
-    }
+    if buffer.count == 0 { return }
     self.writeLock.withLock {
       buffer.withUnsafeBufferPointer { buffer in
         self.writeNoLock(UnsafeMutableBufferPointer(mutating: buffer))
