@@ -10,6 +10,7 @@ extension FileCache {
     let cmakeDir = dir.absoluteURL.path
 
     let cmakeFiles = try self.db.prepare(self.cmakeProjects.table
+      .select(self.files.table[*])
       .join(.inner, self.cmakeFiles.table, on: self.cmakeProjects.id.qualified == self.cmakeFiles.cmakeProjectId.qualified)
       .join(.inner, self.files.table, on: self.files.id.qualified == self.cmakeFiles.fileId.qualified)
       .where(self.cmakeProjects.directory.qualified == cmakeDir && self.cmakeProjects.configId.qualified == configId))

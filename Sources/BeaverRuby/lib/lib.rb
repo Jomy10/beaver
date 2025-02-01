@@ -75,3 +75,7 @@ class Beaver::ProjectAccessor
     buildAsync(targetName).wait
   end
 end
+
+def sh(*args)
+  shAsync(*args).wait
+end

@@ -147,7 +147,7 @@ public struct Beaver: ~Copyable, Sendable {
 
   public func run(args: [String] = []) async throws {
     try await self.withCurrentProject { (project: borrowing AnyProject) in
-      try await project.run(args: args)
+      try await project.run(args: args, context: self)
     }
   }
 

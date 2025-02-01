@@ -26,7 +26,7 @@ public protocol Project: ~Copyable, Sendable {
   ) async throws
 
   /// Runs the default executable in this target, if any
-  func run(args: [String]) async throws
+  func getOnlyExecutable() async throws -> Int
 
   func withTarget<Result>(_ ref: TargetRef.Ref, _ cb: (borrowing AnyTarget) async throws -> Result) async rethrows -> Result
   mutating func withTarget<Result>(_ ref: TargetRef.Ref, _ cb: (inout AnyTarget) async throws -> Result) async rethrows -> Result
@@ -38,4 +38,18 @@ public protocol Project: ~Copyable, Sendable {
   func targetIndex(name: String) async -> Int?
   func targetName(_ index: Int) async -> String?
   func targetNames() async -> [String]
+}
+
+extension Project where Self: ~Copyable {
+  public func run(args: [String], context: borrowing Beaver) async throws {
+    try await self.run(try await self.getOnlyExecutable(), args: args, context: context)
+  }
+
+  public func run(_ targetIndex: Int, args: [String], context: borrowing Beaver) async throws {
+    try await self.build(targetIndex, artifact: .executable(.executable), context: context)
+
+    try await self.withExecutable(targetIndex) { (target: borrowing AnyExecutable) in
+      try await target.run(projectBuildDir: self.buildDir, args: args)
+    }
+  }
 }

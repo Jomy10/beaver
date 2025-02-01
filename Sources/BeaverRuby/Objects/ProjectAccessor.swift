@@ -51,10 +51,12 @@ struct ProjectAccessor: RbObjectConvertible, @unchecked Sendable {
             guard let targetIndex = await projectAccessor.ptr.pointee.targetIndex(name: executableName) else {
               throw TargetAccessError.noTarget(named: executableName)
             }
-            try await projectAccessor.ptr.pointee.withExecutable(targetIndex) { (exe: borrowing AnyExecutable) in
-              try await exe.run(projectBuildDir: projectAccessor.ptr.pointee.buildDir, args: args)
-              signal.complete()
-            }
+            try await projectAccessor.ptr.pointee.run(targetIndex, args: args, context: projectAccessor.context.pointee)
+            signal.complete()
+            //try await projectAccessor.ptr.pointee.withExecutable(targetIndex) { (exe: borrowing AnyExecutable) in
+            //  try await exe.run(projectBuildDir: projectAccessor.ptr.pointee.buildDir, args: args)
+            //  signal.complete()
+            //}
           } catch let error {
             signal.fail(error)
           }
@@ -76,7 +78,6 @@ struct ProjectAccessor: RbObjectConvertible, @unchecked Sendable {
         print("start building")
 
         queue.addTask {
-          print("executing task")
           do {
             guard let targetIndex = await projectAccessor.ptr.pointee.targetIndex(name: targetName) else {
               throw TargetAccessError.noTarget(named: targetName)

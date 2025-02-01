@@ -1,3 +1,5 @@
+buildDir "build"
+
 if !Dir.exist? "flatbuffers"
   sh "git clone https://github.com/google/flatbuffers"
 end
@@ -6,7 +8,8 @@ importCMake "flatbuffers"
 
 # TODO: pre "build" do
 flatbuffers = project("FlatBuffers")
-flatbuffers.build("flatc")
+# Run an executable defined in the FlatBuffers CMake project.
+# This will build and run the executable
 flatbuffers.run("flatc", "--cpp", "MyFileFormat.fbs")
 
 Project(name: "MyFileFormat")

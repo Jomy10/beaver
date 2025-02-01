@@ -90,12 +90,19 @@ extension CTarget where Self: ~Copyable {
       target: self.ref,
       artifact: artifact.asArtifactType()
     ) { [projectBaseDir = copy projectBaseDir] source, changed in
-      if changed || !FileManager.default.exists(at: source) {
+      let objectFile = self.objectFile(projectBaseDir: projectBaseDir, objectBuildDir: objectBuildDir, sourceFile: source, type: type)
+      if changed || !FileManager.default.exists(at: objectFile) {
         anyChanged = true
-        return try await self.buildObject(projectBaseDir: projectBaseDir, objectBuildDir: objectBuildDir, sourceFile: source, cflags: cflags, type: type, context: contextPtr.pointee)
-      } else {
-        return self.objectFile(projectBaseDir: projectBaseDir, objectBuildDir: objectBuildDir, sourceFile: source, type: type)
+        try await self.buildObject(
+          projectBaseDir: projectBaseDir,
+          objectBuildDir: objectBuildDir,
+          sourceFile: source,
+          objectFile: objectFile,
+          cflags: cflags,
+          type: type,
+          context: contextPtr.pointee)
       }
+      return objectFile
     }
     return (objectFiles, anyChanged)
   }
@@ -128,20 +135,18 @@ extension CTarget where Self: ~Copyable {
     projectBaseDir: borrowing URL,
     objectBuildDir: borrowing URL,
     sourceFile file: borrowing URL,
+    objectFile: borrowing URL,
     cflags: borrowing [String],
     type: CObjectType,
     context: borrowing Beaver
-  ) async throws -> URL {
-    let objectFileURL = self.objectFile(projectBaseDir: projectBaseDir, objectBuildDir: objectBuildDir, sourceFile: file, type: type)
-    let objectFileBase = objectFileURL.dirURL!
+  ) async throws {
+    let objectFileBase = objectFile.dirURL!
     try FileManager.default.createDirectoryIfNotExists(at: objectFileBase)
 
     var extraCflags = [String]()
     if type == .dynamic { extraCflags.append("-fPIC") }
-    let args = extraCflags + cflags + ["-c", file.path, "-o", objectFileURL.path]
+    let args = extraCflags + cflags + ["-c", file.path, "-o", objectFile.path]
     try await self.executeCC(args)
-
-    return objectFileURL
   }
 
   func objectBuildDir(projectBuildDir: borrowing URL) -> URL {

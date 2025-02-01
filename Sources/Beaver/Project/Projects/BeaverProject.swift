@@ -27,13 +27,14 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
   public init(
     name: String,
     baseDir: URL = URL.currentDirectory(),
-    buildDir: URL = URL.currentDirectory().appending(path: ".build"),
+    //buildDir: URL?,
     targets: consuming NonCopyableArray<AnyTarget> = NonCopyableArray(),
-    context: borrowing Beaver
-  ) {
+    context: inout Beaver
+  ) throws {
+    try context.requireBuildDir()
     self.name = name
     self.baseDir = baseDir
-    self.buildDir = buildDir.appending(path: context.optimizeMode.rawValue)
+    self.buildDir = context.buildDir(for: name)
     self.targets = AsyncRWLock(targets)
     self.commands = Commands()
   }
@@ -209,8 +210,8 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
     //}
   }
 
-  public func run(args: [String]) async throws {
-    let targetRef = try await self.targets.read { targets in
+  public func getOnlyExecutable() async throws -> Int {
+    try await self.targets.read { targets in
       var index: Int? = nil
       for targetIndex in targets.indices {
         switch (targets.buffer[targetIndex]) {
@@ -229,10 +230,6 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
       } else {
         throw Beaver.RunError.noExecutables
       }
-    }
-
-    try await self.withExecutable(targetRef) { (target: borrowing AnyExecutable) in
-      try await target.run(projectBuildDir: self.buildDir, args: args)
     }
   }
 

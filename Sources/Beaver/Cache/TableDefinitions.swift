@@ -534,7 +534,6 @@ struct TempTargetDependencyTable: SQLTempTable {
   }
 
   func insert(_ dependencies: [Dependency], _ db: Connection) throws {
-    print("inserting: \(dependencies)")
     try db.run(self.table.insertMany(dependencies.map { dependency in
       var inserts: [Setter] = Array()
       inserts.reserveCapacity(5)
@@ -555,7 +554,6 @@ struct TempTargetDependencyTable: SQLTempTable {
             self.stringData.unqualified <- dependency.stringValue!
           ])
       }
-      print("inserts: \(inserts)")
       return inserts
     }))
   }

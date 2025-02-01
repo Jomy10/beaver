@@ -12,6 +12,21 @@ fileprivate struct ShError: Error {
 }
 
 func loadUtilsMethods(in module: RbObject, queue: SyncTaskQueue, context: UnsafeSendable<Rc<Beaver>>) throws {
+  try module.defineMethod(
+    "buildDir",
+    argsSpec: RbMethodArgsSpec(
+      leadingMandatoryCount: 1
+    ),
+    body: { obj, method in
+      let dir: String = try method.args.mandatory[0].convert()
+      try context.value.withInner { (context: inout Beaver) in
+        try context.setBuildDir(URL(filePath: dir))
+      }
+
+      return RbObject.nilObject
+    }
+  )
+
   // Returns true if the file with the specific context was changed, false if not and nil
   // if the file doesn't exist
   try module.defineMethod(
@@ -36,27 +51,41 @@ func loadUtilsMethods(in module: RbObject, queue: SyncTaskQueue, context: Unsafe
   )
 
   try module.defineMethod(
-    "sh",
+    "shAsync",
     argsSpec: RbMethodArgsSpec(
       supportsSplat: true
     ),
     body: { obj, method in
       let cmd: [String] = try method.args.splatted.map { try $0.convert(to: String.self) }
+      let signal = RbSignalOneshot()
 
-      fatalError("TODO")
-      //if cmd.count == 0 {
-      //  throw ShError("no arguments")
-      //} else if cmd.count == 1 {
-      //  try await Tools.exec(Tools.sh!, ["-c", cmd.first!])
-      //} else {
-      //  guard let cmdName = Tools.which(cmd[cmd.startIndex]) else {
-      //    throw ShError("Executable named \(cmd[cmd.startIndex]) not found")
-      //  }
-      //  let arguments = cmd[cmd.index(after: cmd.startIndex)...]
-      //  try await Tools.exec(cmdName, Array(arguments))
-      //}
+      if cmd.count == 0 {
+        throw ShError("no arguments")
+      } else if cmd.count == 1 {
+        queue.addTask {
+          do {
+            try await Tools.exec(Tools.sh!, ["-c", cmd.first!])
+            signal.complete()
+          } catch let error {
+            signal.fail(error)
+          }
+        }
+      } else {
+        guard let cmdName = Tools.which(cmd[cmd.startIndex]) else {
+          throw ShError("Executable named \(cmd[cmd.startIndex]) not found")
+        }
+        let arguments = cmd[cmd.index(after: cmd.startIndex)...]
+        queue.addTask {
+          do {
+            try await Tools.exec(cmdName, Array(arguments))
+            signal.complete()
+          } catch let error {
+            signal.fail(error)
+          }
+        }
+      }
 
-      return RbObject.nilObject
+      return RbObject(signal)
     }
   )
 }
