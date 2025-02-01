@@ -55,6 +55,21 @@ struct FileTable: SQLTable {
       ])
     )
   }
+
+  func insertMany(_ files: [(URL, stat)], _ db: Connection) throws -> Int64 {
+    try db.run(self.table
+      .insertMany(files.map { (file, attrs) in
+        [
+          self.filename.unqualified <- file.absoluteURL.path,
+          self.mtime.unqualified <- Int64(timespec_to_ms(attrs.st_mtimespec)),
+          self.size.unqualified <- Int64(attrs.st_size),
+          self.inodeNumber.unqualified <- UInt64(attrs.st_ino),
+          self.fileMode.unqualified <- UInt64(attrs.st_mode),
+          self.ownerUid.unqualified <- UInt64(attrs.st_uid),
+          self.ownerGid.unqualified <- UInt64(attrs.st_gid),
+        ]
+      }))
+  }
 }
 
 /// Points to a source file, a given configuration and target and the type of object that
@@ -361,6 +376,64 @@ struct CustomFileTable: SQLTable {
       t.foreignKey(
         self.configId.unqualified,
         references: Table("Configuration"), SQLite.Expression<Int64>("id"))
+    })
+  }
+}
+
+struct CMakeProjectTable: SQLTable {
+  let table: Table
+  let id: TableColumn<Int64>
+  let configId: TableColumn<Int64>
+  let directory: TableColumn<String>
+
+  let tableName: String
+
+  init() {
+    self.tableName = "CMakeProject"
+    self.table = Table(self.tableName)
+    self.id = TableColumn("id", self.table)
+    self.configId = TableColumn("configID", self.table)
+    self.directory = TableColumn("directory", self.table)
+  }
+
+  func createIfNotExists(_ db: Connection) throws {
+    try db.run(self.table.create(ifNotExists: true) { t in
+      t.column(self.id.unqualified, primaryKey: .autoincrement)
+      t.column(self.configId.unqualified)
+      t.column(self.directory.unqualified)
+
+      t.foreignKey(
+        self.configId.unqualified,
+        references: Table("Configuration"), SQLite.Expression<Int64>("id"))
+    })
+  }
+}
+
+struct CMakeFileTable: SQLTable {
+  let table: Table
+  let cmakeProjectId: TableColumn<Int64>
+  let fileId: TableColumn<Int64>
+
+  let tableName: String
+
+  init() {
+    self.tableName = "CMakeFile"
+    self.table = Table(self.tableName)
+    self.cmakeProjectId = TableColumn("cmakeProjectID", self.table)
+    self.fileId = TableColumn("fileID", self.table)
+  }
+
+  func createIfNotExists(_ db: Connection) throws {
+    try db.run(self.table.create(ifNotExists: true) { t in
+      t.column(self.cmakeProjectId.unqualified)
+      t.column(self.fileId.unqualified)
+
+      t.foreignKey(
+        self.cmakeProjectId.unqualified,
+        references: Table("CMakeProject"), SQLite.Expression<Int64>("id"))
+      t.foreignKey(
+        self.fileId.unqualified,
+        references: Table("File"), SQLite.Expression<Int64>("id"))
     })
   }
 }

@@ -9,6 +9,11 @@ public final class SyncTaskQueue: @unchecked Sendable {
   private var currentTask: Task<(), any Error>? = nil
   private var followupTask: Task<(), any Error>? = nil
   private var finished = false
+  private let onError: ((any Error) async -> Void)?
+
+  init(onError: ((any Error) async -> Void)? = nil) {
+    self.onError = onError
+  }
 
   public func addTask(_ task: @escaping @Sendable () async throws -> ()) {
     self.lock.withLock {
@@ -24,14 +29,21 @@ public final class SyncTaskQueue: @unchecked Sendable {
     self.currentTask = Task(priority: .userInitiated, operation: self.taskFunctions[0])
     self.currentTaskIndex = 0
     self.followupTask = Task(priority: .utility) {
-      TASK: while true {
-        try await self.currentTask!.value
-        self.currentTaskIndex += 1
-        while self.currentTaskIndex >= self.taskFunctions.count {
-          if self.finished { break TASK }
-          await Task.yield()
+      do {
+        TASK: while true {
+          try await self.currentTask!.value
+          self.currentTaskIndex += 1
+          while self.currentTaskIndex >= self.taskFunctions.count {
+            if self.finished { break TASK }
+            await Task.yield()
+          }
+          self.currentTask = Task(priority: .userInitiated, operation: self.taskFunctions[self.currentTaskIndex])
         }
-        self.currentTask = Task(priority: .userInitiated, operation: self.taskFunctions[self.currentTaskIndex])
+      } catch let error {
+        if let onError = self.onError {
+          await onError(error)
+        }
+        throw error
       }
     }
   }

@@ -25,12 +25,14 @@ def fileChanged(filename)
   fileChangedWithContext(filename, caller_locations(1, 1).first)
 end
 
-def project(name)
-  promise = projectAsync(name)
-
+def __resolveAnyPromise(promise)
   begin
     while !promise.fulfilled?
       sleep(0.1)
+
+      if $BEAVER_ERROR
+        exit(300)
+      end
     end
 
     proj = promise.value
@@ -38,6 +40,29 @@ def project(name)
   ensure
     promise.release
   end
+end
+
+class Beaver::SignalOneshot
+  def wait
+    begin
+      while !self.finished?
+        sleep(0.1)
+
+        if $BEAVER_ERROR
+          exit(300)
+        end
+      end
+
+      self.check
+    ensure
+      self.release
+    end
+  end
+end
+
+def project(name)
+  promise = projectAsync(name)
+  return __resolveAnyPromise(promise)
 end
 
 class Beaver::ProjectAccessor
@@ -48,19 +73,5 @@ class Beaver::ProjectAccessor
   def build(targetName)
     puts "building #{targetName}"
     buildAsync(targetName).wait
-  end
-end
-
-class Beaver::SignalOneshot
-  def wait
-    begin
-      while !self.finished?
-        sleep(0.1)
-      end
-
-      self.check
-    ensure
-      self.release
-    end
   end
 end

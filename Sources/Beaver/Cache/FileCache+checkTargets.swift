@@ -85,7 +85,6 @@ extension FileCache {
                   )
                 ).count
             )
-            print("[\(targetTableId)] matching count = \(matchingCachedDepCount), totalCount = \(target.dependencies.count)")
             if matchingCachedDepCount != target.dependencies.count {
               try self.updateDependencies(targetId: targetTableId, target: target)
             }
@@ -158,7 +157,6 @@ extension FileCache {
     project: borrowing AnyProject,
     target: borrowing AnyTarget
   ) async throws -> Int64 {
-    print("adding target \(project.name):\(target.name)")
     let targetId = try self.db.run(self.targets.table
       .insert([
         self.targets.project.unqualified <- project.id,
@@ -189,7 +187,6 @@ extension FileCache {
       .where(self.targetDependencyCaches.targetId.qualified == targetId)
       .delete())
     try self.insertDependencies(targetId: targetId, target: target)
-    print("dependencies changed of \(targetId)")
     try self.setShouldRelink(targetId: targetId)
   }
 
@@ -204,7 +201,6 @@ extension FileCache {
   //}
 
   fileprivate func setShouldRelink(targetId: Int64) throws {
-    print("should relink: \(targetId)")
     try self.db.run(self.outputFiles.table
       .where(self.outputFiles.targetId.qualified == targetId)
       .update(self.outputFiles.relink.unqualified <- true))
