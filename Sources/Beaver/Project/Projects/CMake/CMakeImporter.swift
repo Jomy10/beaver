@@ -36,7 +36,8 @@ public struct CMakeImporter {
     }
 
     let reconfigure = try context.fileCache!.shouldReconfigureCMakeProject(baseDir)
-    if reconfigure || !buildDirExists || !queryDirExists || !FileManager.default.exists(at: replyDir) {
+    let cmakeReconfigured = reconfigure || !buildDirExists || !queryDirExists || !FileManager.default.exists(at: replyDir)
+    if cmakeReconfigured {
       try await Tools.exec(
         Tools.cmake!,
         [
@@ -104,7 +105,7 @@ public struct CMakeImporter {
         )
     }
 
-    if reconfigure {
+    if cmakeReconfigured {
       // Determine if needs to be reconfigured based on these files
       let cmakeFilesPath = replyDir.appending(path: cmakeIndex.cmakeFiles!.path)
       let cmakeFilesData = try Data(contentsOf: cmakeFilesPath)
@@ -194,7 +195,9 @@ public struct CMakeImporter {
                 artifact: .executable
               ))))
             default:
-              MessageHandler.warn("CMake target type '\(target.type)' is currently not supported")
+              if cmakeReconfigured {
+                MessageHandler.warn("CMake target type '\(target.type)' is currently not supported")
+              }
               continue
           }
         }

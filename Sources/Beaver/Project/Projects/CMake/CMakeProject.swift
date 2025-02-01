@@ -55,7 +55,7 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
     let targetName = await self.targetName(targetRef)!
     try await Tools.exec(
       Tools.make!,
-      ["-j", "-4", targetName],
+      ["-j", "4", targetName],
       baseDir: buildDir,
       context: self.name + ":\(targetName)"
     )
@@ -74,8 +74,25 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
     )
   }
 
-  public func run(args: [String]) async throws {
-    throw CMakeError.cannotRun
+  public func getOnlyExecutable() async throws -> Int {
+    var index: Int? = nil
+    for targetIndex in targets.indices {
+      switch (targets.buffer[targetIndex]) {
+        case .executable(_):
+          if index != nil {
+            throw Beaver.RunError.moreExecutables
+          }
+          index = targetIndex
+        default:
+          continue
+      }
+    }
+
+    if let index = index {
+      return index
+    } else {
+      throw Beaver.RunError.noExecutables
+    }
   }
 
   public func withTarget<Result>(_ ref: TargetRef.Ref, _ cb: (borrowing AnyTarget) async throws -> Result) async rethrows -> Result {
