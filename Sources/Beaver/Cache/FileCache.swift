@@ -9,15 +9,18 @@ import Utils
 
 /// ![schema](/docs/internal/Cache.md)
 struct FileCache: Sendable {
-  let db: Connection
+  var db: Connection
   let files: FileTable
   let csourceFiles: CSourceFileTable
   let configurations: ConfigurationTable
   let targets: TargetTable
+  let targetCaches: TargetCacheTable
+  let targetDependencyCaches: TargetDependencyCacheTable
   let globalConfigurations: GlobalConfigurationTable
   var globalConfiguration: (buildId: Int, env: Data)?
   let dependencyFiles: DependencyFileTable
   let customFiles: CustomFileTable
+  let outputFiles: OutputFileTable
 
   var configurationId: Int64? = nil
 
@@ -44,40 +47,53 @@ struct FileCache: Sendable {
     self.csourceFiles = CSourceFileTable()
     self.configurations = ConfigurationTable()
     self.targets = TargetTable()
+    self.targetCaches = TargetCacheTable()
+    self.targetDependencyCaches = TargetDependencyCacheTable()
     self.globalConfigurations = GlobalConfigurationTable()
     self.globalConfiguration = nil
     self.dependencyFiles = DependencyFileTable()
     self.customFiles = CustomFileTable()
+    self.outputFiles = OutputFileTable()
 
-    try self.files.createIfNotExists(self.db)
-    try self.configurations.createIfNotExists(self.db)
-    try self.targets.createIfNotExists(self.db)
-    try self.csourceFiles.createIfNotExists(self.db)
-    try self.globalConfigurations.createIfNotExists(self.db)
-    try self.dependencyFiles.createIfNotExists(self.db)
-    try self.customFiles.createIfNotExists(self.db)
-
-    if let globConf = try db.pluck(self.globalConfigurations.table.limit(1)) {
+    if let globConf = try? db.pluck(self.globalConfigurations.table.limit(1)) {
       self.globalConfiguration = (
         buildId: globConf[self.globalConfigurations.buildId.unqualified],
         env: globConf[self.globalConfigurations.environment.unqualified]
       )
 
+      var resetGlobalConfig = false
+
       if self.globalConfiguration!.buildId != buildId {
-        try self.db.run(self.globalConfigurations.table
-          .update(self.globalConfigurations.buildId.unqualified <- buildId))
-          // TODO: rebuild the database
-        MessageHandler.info("Previous artifacts were built with a different version of Beaver. Cache has been reset.")
-        try self.reset()
+        //try self.db.run(self.globalConfigurations.table
+        //  .update(self.globalConfigurations.buildId.unqualified <- buildId))
+        try FileManager.default.removeItem(at: cacheFile)
+        MessageHandler.info("Previous artifacts were built with a different version of Beaver. Cache has been reset.") // TODO: cache reset context
+        self.db = try Connection(cacheFile.path)
+        resetGlobalConfig = true
       }
 
       if self.globalConfiguration!.env.bytes != env.bytes {
+        //try self.db.run(self.globalConfigurations.table
+        //  .update(self.globalConfigurations.environment.unqualified <- env))
+        if !resetGlobalConfig {
+          try FileManager.default.removeItem(at: cacheFile)
+          MessageHandler.info("Environment variables were changed since last invocation. Cache has been reset.")
+          self.db = try Connection(cacheFile.path)
+        }
+      }
+
+      try self.createdb()
+
+      if resetGlobalConfig {
         try self.db.run(self.globalConfigurations.table
-          .update(self.globalConfigurations.environment.unqualified <- env))
-        MessageHandler.info("Environment variables were changed since last invocation. Cache has been reset.")
-        try self.reset()
+          .insert([
+            self.globalConfigurations.environment.unqualified <- env,
+            self.globalConfigurations.buildId.unqualified <- buildId
+          ]))
       }
     } else {
+      try self.createdb()
+
       try self.db.run(self.globalConfigurations.table
         .insert(
           self.globalConfigurations.buildId.unqualified <- buildId,
@@ -85,11 +101,25 @@ struct FileCache: Sendable {
         ))
     }
 
+
     #if DEBUG
     self.db.trace { msg in
       MessageHandler.trace(msg, context: .sql)
     }
     #endif
+  }
+
+  func createdb() throws {
+    try self.files.createIfNotExists(self.db)
+    try self.configurations.createIfNotExists(self.db)
+    try self.targets.createIfNotExists(self.db)
+    try self.targetCaches.createIfNotExists(self.db)
+    try self.targetDependencyCaches.createIfNotExists(self.db)
+    try self.csourceFiles.createIfNotExists(self.db)
+    try self.globalConfigurations.createIfNotExists(self.db)
+    try self.dependencyFiles.createIfNotExists(self.db)
+    try self.customFiles.createIfNotExists(self.db)
+    try self.outputFiles.createIfNotExists(self.db)
   }
 
   mutating func selectConfiguration(
@@ -111,9 +141,11 @@ struct FileCache: Sendable {
 
   // TODO: async lock?
   /// Lock when retrieving a target so that no double targets are created
-  let targetRetrievalLock: NSLock = NSLock()
+  //let targetRetrievalLock: NSLock = NSLock()
 
-  func getTargetIfExists(_ target: TargetRef) throws -> Int64? {
+  /// Get the id for the specified target.
+  /// If the target hasn't been defined in the database, this function returns nil
+  func getTarget(_ target: TargetRef) throws -> Int64? {
     guard let row = (try db.pluck(self.targets.table.select(self.targets.id.qualified)
       .where(self.targets.project.qualified == target.project)
       .where(self.targets.target.qualified == target.target))
@@ -125,22 +157,11 @@ struct FileCache: Sendable {
   }
 
   /// Get the id for the specified target
-  func getTarget(_ target: TargetRef) throws -> Int64 {
-    try self.targetRetrievalLock.withLock {
-      let targetId = try self.getTargetIfExists(target)
-      if let targetId = targetId {
-        return targetId
-      } else {
-        return try db.run(self.targets.table.insert([
-          self.targets.project.unqualified <- target.project,
-          self.targets.target.unqualified <- target.target
-        ]))
-      }
-    }
-  }
-
-  // try db.run(users.insert(or: .replace, email <- "alice@mac.com", name <- "Alice B."))
-  // INSERT OR REPLACE INTO "users" ("email", "name") VALUES ('alice@mac.com', 'Alice B.')
+  //func getTarget(_ target: TargetRef) throws -> Int64? {
+    //try self.targetRetrievalLock.withLock {
+      //try self.__getTargetIfExists(target)
+    //}
+  //}
 
   func loopSourceFiles<Result>(
     _ files: borrowing [URL],
@@ -153,13 +174,11 @@ struct FileCache: Sendable {
     let inputFiles = TempInputFileTable()
     try inputFiles.create(self.db)
     try inputFiles.insert(files, self.db)
-    //try db.run(inputFiles.table.insertMany(files.map { [inputFiles.filename.unqualified <- $0.absoluteURL.path] }))
-
 
     guard let configId = self.configurationId else {
       throw CacheError.noConfigurationSelected
     }
-    let targetId = try self.getTarget(target)
+    let targetId = try self.getTarget(target)!
     let objectType = artifactType.cObjectType!
 
     let subTable = Table("sub")
@@ -229,18 +248,7 @@ struct FileCache: Sendable {
     var returnValue: [Result] = []
     var error: (any Error)? = nil
     do {
-      //for fileStmnt in filesStmnt {
       for row in try self.db.prepare(filesQuery) {
-        //let file: FileChecker.File = (
-        //  filename: fileStmnt[0]! as! String,
-        //  id: fileStmnt[1].map { $0 as! Int64 },
-        //  mtime: fileStmnt[2].map { $0 as! Int64 },
-        //  size: fileStmnt[3].map { $0 as! Int64 },
-        //  ino: try fileStmnt[4].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) },
-        //  mode: try fileStmnt[5].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) },
-        //  uid: try fileStmnt[6].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) },
-        //  gid: try fileStmnt[7].map { try UInt64.fromDatatypeValue(($0 as! any SQLite.Number) as! Int64) }
-        //)
         let file: FileChecker.File = FileChecker.fileFromRow(row)
         let filename: String = file.filename
         let (changed, attrs) = try FileChecker.fileChanged(file: file)
@@ -290,8 +298,11 @@ struct FileCache: Sendable {
     return returnValue
   }
 
-  /// Returns wether any of the dependency files have changed, or if new files have been added.
-  /// Updates the cache.
+  /// Returns wether any of the dependency files have changed, or if new files have
+  /// been added. A dependency file can be an artifact generated by the target's
+  /// dependencies.
+  ///
+  /// Updates the cache to reflect the latest update date of these files.
   func dependencyFilesChanged(
     currentFiles: borrowing [URL],
     target: TargetRef,
@@ -300,7 +311,7 @@ struct FileCache: Sendable {
     guard let configId = self.configurationId else {
       throw CacheError.noConfigurationSelected
     }
-    let targetId = try self.getTarget(target)
+    let targetId = try self.getTarget(target)!
 
     let subTable = Table("sub_files")
 
@@ -398,15 +409,67 @@ struct FileCache: Sendable {
     return anyChanged
   }
 
+  func shouldRelinkArtifact(
+    target: TargetRef,
+    artifact: ArtifactType,
+    artifactFile: URL
+  ) throws -> Bool {
+    guard let configId = self.configurationId else {
+      throw CacheError.noConfigurationSelected
+    }
+    let targetId = try self.getTarget(target)!
+
+    let outputFileRow = try self.db.pluck(self.outputFiles.table
+      .select(self.outputFiles.filename.qualified, self.outputFiles.relink.qualified)
+      //.join(.inner, self.files.table, on: self.files.id.qualified == self.outputFiles.fileId.qualified)
+      .where(
+           self.outputFiles.targetId.qualified == targetId
+        && self.outputFiles.configId.qualified == configId
+      )
+    )
+    let currentFilepath = artifactFile.absoluteURL.path
+    if let outputFileRow = outputFileRow {
+      let relink = outputFileRow[self.outputFiles.relink.qualified]
+      print("relink = \(relink)")
+      if relink {
+        try self.db.run(self.outputFiles.table
+          .where(self.outputFiles.targetId.qualified == targetId && self.outputFiles.configId.qualified == configId)
+          .update(self.outputFiles.relink.unqualified <- false))
+      }
+      let outputFilepath = outputFileRow[self.outputFiles.filename.qualified]
+      if currentFilepath != outputFilepath {
+        try self.db.run(self.outputFiles.table
+          .where(self.outputFiles.targetId.qualified == targetId && self.outputFiles.configId.qualified == configId)
+          .update(self.outputFiles.filename.unqualified <- currentFilepath))
+        return true
+      } else {
+        return false || relink
+      }
+    } else {
+      try self.db.run(self.outputFiles.table
+        .insert([
+          self.outputFiles.filename.unqualified <- currentFilepath,
+          self.outputFiles.configId.unqualified <- configId,
+          self.outputFiles.targetId.unqualified <- targetId,
+          self.outputFiles.artifactType.unqualified <- artifact,
+          self.outputFiles.relink.unqualified <- false
+        ]))
+      return true
+    }
+  }
+
   /// Returns true if file has changed
   @usableFromInline
   func fileChanged(
     _ file: URL,
     context: String
   ) throws -> Bool {
+    guard let configId = self.configurationId else {
+      throw CacheError.noConfigurationSelected
+    }
     guard let fileRow = try db.pluck(self.files.table
       .join(.inner, self.customFiles.table, on: self.customFiles.fileId.qualified == self.files.id.qualified)
-      .where(self.customFiles.context.qualified == context)
+      .where(self.customFiles.context.qualified == context && self.customFiles.configId.qualified == configId)
     ) else {
       let attrs = try FileChecker.fileAttrs(file: file)
       let id = try self.db.run(self.files.table
@@ -422,6 +485,7 @@ struct FileCache: Sendable {
       try self.db.run(self.customFiles.table
         .insert([
           self.customFiles.fileId.unqualified <- id,
+          self.customFiles.configId.unqualified <- configId,
           self.customFiles.context.unqualified <- context
         ]))
       return true
@@ -431,27 +495,25 @@ struct FileCache: Sendable {
     let (changed, attrs) = try FileChecker.fileChanged(file: file)
 
     if changed {
-      try self.db.run(self.files.table
-        .where(self.files.id.qualified == file.id!)
-        .update([
-          self.files.mtime.unqualified <- Int64(timespec_to_ms(attrs.st_mtimespec)),
-          self.files.size.unqualified <- Int64(attrs.st_size),
-          self.files.inodeNumber.unqualified <- UInt64(attrs.st_ino),
-          self.files.fileMode.unqualified <- UInt64(attrs.st_mode),
-          self.files.ownerUid.unqualified <- UInt64(attrs.st_uid),
-          self.files.ownerGid.unqualified <- UInt64(attrs.st_gid),
-        ]))
+      try self.files.update(id: file.id!, attrs, self.db)
+      //try self.db.run(self.files.table
+      //  .where(self.files.id.qualified == file.id!)
+      //  .update([
+      //    self.files.mtime.unqualified <- Int64(timespec_to_ms(attrs.st_mtimespec)),
+      //    self.files.size.unqualified <- Int64(attrs.st_size),
+      //    self.files.inodeNumber.unqualified <- UInt64(attrs.st_ino),
+      //    self.files.fileMode.unqualified <- UInt64(attrs.st_mode),
+      //    self.files.ownerUid.unqualified <- UInt64(attrs.st_uid),
+      //    self.files.ownerGid.unqualified <- UInt64(attrs.st_gid),
+      //  ]))
     }
 
     return changed
   }
 
-  /// Returns false if nothing had to be removed
+  /// removes a target from its target id in the database
   @discardableResult
-  func removeTarget(target: TargetRef) throws -> Bool {
-    guard let targetId = try self.getTargetIfExists(target) else {
-      return false
-    }
+  func removeTarget(targetId: Int64) throws -> Bool {
     let files = (try (self.db.prepareRowIterator(self.files.table
       .select(self.files.id.qualified)
       .join(self.csourceFiles.table, on: self.csourceFiles.fileId.qualified == self.files.id.qualified)))
@@ -482,6 +544,16 @@ struct FileCache: Sendable {
     return true
   }
 
+  /// Returns false if nothing had to be removed
+  @discardableResult
+  func removeTarget(target: TargetRef) throws -> Bool {
+    guard let targetId = try self.getTarget(target) else {
+      return false
+    }
+    return try self.removeTarget(targetId: targetId)
+  }
+
+  @available(*, deprecated, message: "Remove the cache file instead")
   func reset() throws {
     try self.db.run(self.files.table.delete())
     try self.db.run(self.csourceFiles.table.delete())

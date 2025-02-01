@@ -13,7 +13,7 @@ fileprivate func conform(
     let cases: [SwitchCaseSyntax] = try enumCases.map { enumCase in
       if skipping.contains(enumCase.description) {
         return SwitchCaseSyntax("""
-        case .\(enumCase)(let val):
+        case .\(enumCase)(_):
           fatalError("cannot call on \(raw: enumCase.description)")
         """)
       } else {

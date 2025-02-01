@@ -1,7 +1,11 @@
 import Beaver
 
 extension BeaverCLI {
-  func clean(context: borrowing Beaver) async throws {
-    try await context.clean()
+  mutating func clean(context: borrowing Beaver) async throws {
+    if let projectName = self.takeArgument() {
+      try await context.clean(projectName: projectName)
+    } else {
+      try await context.clean()
+    }
   }
 }

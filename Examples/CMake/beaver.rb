@@ -11,10 +11,9 @@ flatbuffers.run("flatc", "--cpp", "MyFileFormat.fbs")
 
 Project(name: "MyFileFormat")
 
-C::Library(
+C::Executable(
   name: "MyFileFormat",
   language: :cpp,
-  artifacts: [:staticlib],
   sources: "src/*.cpp",
   # You can find all targets accessible for a CMake target with
   # `beaver list FlatBuffers` or `beaver list --targets` to see all possible targets
