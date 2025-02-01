@@ -8,7 +8,7 @@ import Musl
 #warning("Unhandled platform in OctoIO, all output will be redirected to stdout (pull requests are welcome)")
 #endif
 
-public enum IOStream: TextOutputStream {
+public enum IOStream: TextOutputStream, Sendable {
   case stdout
   case stderr
 
