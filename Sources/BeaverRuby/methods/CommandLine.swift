@@ -110,9 +110,10 @@ func loadCommandLineMethods<Args: Collection & BidirectionalCollection & Sendabl
       let callback = try method.captureBlock()
 
       let command: Commands.Command = { context in
-        try await RubyQueue.global.submitSync({
+        //try await RubyQueue.global.submitSync({
+        try await MainActor.run {
           _ = try callback.call("call")
-        })
+        }
       }
 
       queue.addTask {

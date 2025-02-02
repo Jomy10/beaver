@@ -70,22 +70,23 @@ struct BeaverCLI: Sendable {
       let args = ProcessInfo.processInfo.arguments.dropFirst()
       cli = try self.init(arguments: args)
       try await cli!.runCLI()
-      if cli!.rubySetup {
-        await RubyQueue.global.join()
-      }
+      //if cli!.rubySetup {
+      //  await RubyQueue.global.join()
+      //}
     } catch {
       print("error: \(error)", to: .stderr)
       if cli?.rubySetup == true {
-      await RubyQueue.global.join()
+      //await RubyQueue.global.join()
         // Ruby has been setup, so we clean it up again on the same thread it was
         // initialized from
-        try! RubyQueue.global.submit({
+        //try! RubyQueue.global.submit({
+        await MainActor.run {
           do {
             try cleanupRuby()
           } catch let error {
             MessageHandler.error("Error cleaning up Ruby: \(error)")
           }
-        }, onError: { _ in })
+        }
       }
       exit(1)
     }
@@ -118,7 +119,8 @@ struct BeaverCLI: Sendable {
     let queue: SyncTaskQueue
     do {
       // Ruby code has to be executed on the same thread!
-      queue = try await RubyQueue.global.submitSync {
+      //queue = try await RubyQueue.global.submitSync {
+      queue = try await MainActor.run {
         try executeRuby(
           scriptFile: scriptFile,
           args: args,
@@ -127,7 +129,8 @@ struct BeaverCLI: Sendable {
       }
       try await queue.wait() // Wait for method calls from ruby to finish setting up the context
     } catch let error as RbError {
-      let description = try await RubyQueue.global.submitSync {
+      //let description = try await RubyQueue.global.submitSync {
+      let description = await MainActor.run {
         error.errorDescription
       }
       throw ExecutionError(description)
@@ -173,10 +176,11 @@ struct BeaverCLI: Sendable {
 
     let (args, leftover) = self.getArguments()
 
-    let __selfPtr = withUnsafeMutablePointer(to: &self) { $0 }
-    try await RubyQueue.global.submitSync {
+    //let __selfPtr = withUnsafeMutablePointer(to: &self) { $0 }
+    //try await RubyQueue.global.submitSync {
+    await MainActor.run {
       setupRuby()
-      __selfPtr.pointee.rubySetup = true
+      self.rubySetup = true
     }
 
     let (context, queue) = try await self.runScript(args: leftover)
@@ -214,10 +218,10 @@ struct BeaverCLI: Sendable {
       }
     }
 
-    if self.rubySetup {
-      await RubyQueue.global.join()
-      self.rubySetup = false
-    }
+    //if self.rubySetup {
+    //  await RubyQueue.global.join()
+    //  self.rubySetup = false
+    //}
     try await queue.wait()
   }
 
