@@ -14,7 +14,9 @@ func __ruby_queue_execute(_ args: UnsafeMutableRawPointer?) {
   }
 }
 
+@available(*, deprecated)
 public struct RubyQueue {
+  @available(*, deprecated)
   public static nonisolated(unsafe) let global = RubyQueue()
 
   public enum QueueError: Error {
