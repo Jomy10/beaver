@@ -31,8 +31,8 @@ let package = Package(
     //.package(url: "https://github.com/Jomy10/TaskProgress", branch: "master"),
     .package(url: "https://github.com/stephencelis/SQLite.swift", from: "0.15.3"),
     //.package(url: "https://github.com/johnfairh/RubyGateway", from: "6.0.0"),
-    //.package(path: "../RubyGateway"),
-    .package(url: "https://github.com/Jomy10/RubyGateway", branch: "main"),
+    .package(path: "../RubyGateway"),
+    //.package(url: "https://github.com/Jomy10/RubyGateway", branch: "main"),
     //.package(url: "https://github.com/johnfairh/CRuby", from: "2.1.0"),
     .package(url: "https://github.com/apple/swift-syntax", from: "600.0.0"),
     .package(url: "https://github.com/krzyzanowskim/CryptoSwift", from: "1.8.4"),
@@ -67,6 +67,7 @@ let package = Package(
       dependencies: [
         "Beaver",
         "Utils",
+        "WorkQueue",
         //.product(name: "CRuby", package: "CRuby"),
         .product(name: "AsyncObjects", package: "AsyncObjects"),
         .product(name: "RubyGateway", package: "RubyGateway"),
@@ -130,6 +131,10 @@ let package = Package(
       name: "timespec",
       path: "deps/timespec",
       publicHeadersPath: "."
+    ),
+    .systemLibrary(
+      name: "WorkQueue",
+      path: "deps/c_workqueue/target/module"
     ),
     .systemLibrary(
       name: "ProgressIndicatorsFFI",

@@ -62,13 +62,31 @@ struct BeaverCLI: Sendable {
     }
   }
 
+  var rubySetup = false
+
   static func main() async {
+    var cli: BeaverCLI? = nil
     do {
       let args = ProcessInfo.processInfo.arguments.dropFirst()
-      var cli = try self.init(arguments: args)
-      try await cli.runCLI()
+      cli = try self.init(arguments: args)
+      try await cli!.runCLI()
+      if cli!.rubySetup {
+        await RubyQueue.global.join()
+      }
     } catch {
       print("error: \(error)", to: .stderr)
+      if cli?.rubySetup == true {
+      await RubyQueue.global.join()
+        // Ruby has been setup, so we clean it up again on the same thread it was
+        // initialized from
+        try! RubyQueue.global.submit({
+          do {
+            try cleanupRuby()
+          } catch let error {
+            MessageHandler.error("Error cleaning up Ruby: \(error)")
+          }
+        }, onError: { _ in })
+      }
       exit(1)
     }
   }
@@ -87,7 +105,7 @@ struct BeaverCLI: Sendable {
     }
   }
 
-  func runScript<C: Collection & BidirectionalCollection & Sendable>(args: C) async throws -> UnsafeSendable<Rc<Beaver>>
+  func runScript<C: Collection & BidirectionalCollection & Sendable>(args: C) async throws -> (UnsafeSendable<Rc<Beaver>>, SyncTaskQueue)
   where C.Element == String
   {
     let scriptFile = try self.getScriptFile()
@@ -97,9 +115,10 @@ struct BeaverCLI: Sendable {
       optimizeMode: self.optimizationMode
     )))
 
+    let queue: SyncTaskQueue
     do {
-      // Ruby code has to be executed on the main thread!
-      let queue = try await MainActor.run {
+      // Ruby code has to be executed on the same thread!
+      queue = try await RubyQueue.global.submitSync {
         try executeRuby(
           scriptFile: scriptFile,
           args: args,
@@ -108,7 +127,7 @@ struct BeaverCLI: Sendable {
       }
       try await queue.wait() // Wait for method calls from ruby to finish setting up the context
     } catch let error as RbError {
-      let description = await MainActor.run {
+      let description = try await RubyQueue.global.submitSync {
         error.errorDescription
       }
       throw ExecutionError(description)
@@ -116,7 +135,7 @@ struct BeaverCLI: Sendable {
       throw error
     }
 
-    return rcCtx
+    return (rcCtx, queue)
   }
 
   func getArguments() -> ([String], DiscontiguousSlice<ArraySlice<String>>.SubSequence) {
@@ -154,10 +173,17 @@ struct BeaverCLI: Sendable {
 
     let (args, leftover) = self.getArguments()
 
-    let context = try await self.runScript(args: leftover)
+    let __selfPtr = withUnsafeMutablePointer(to: &self) { $0 }
+    try await RubyQueue.global.submitSync {
+      setupRuby()
+      __selfPtr.pointee.rubySetup = true
+    }
+
+    let (context, queue) = try await self.runScript(args: leftover)
     try await context.value.withInner { (context: inout Beaver) in
       try await context.finalize()
     }
+    queue.resume() // allow cmd to call swift functions
     //MessageHandler.debug(await context.customDebugString(withSources: false, withDependencies: true))
 
     try await context.value.withInner { (context: borrowing Beaver) in
@@ -187,6 +213,12 @@ struct BeaverCLI: Sendable {
         }
       }
     }
+
+    if self.rubySetup {
+      await RubyQueue.global.join()
+      self.rubySetup = false
+    }
+    try await queue.wait()
   }
 
   func printVersion() {

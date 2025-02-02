@@ -189,7 +189,7 @@ public struct Tools {
 
     @usableFromInline
     func spawn() -> Task<(), any Error> {
-      Task {
+      Task.detached { [self = self] in
         var bytes: [UInt8] = []
         let newLine = Character("\n").asciiValue!
         for try await byte in pipe.fileHandleForReading.bytes {
@@ -236,6 +236,7 @@ public struct Tools {
     let stderrOut = PipeOutputter(pipe: stderrPipe, outputStream: .stderr, context: .shellOutputStderr, prefix: contextString)
     let stdoutPipe = Pipe()
     let stdoutOut = PipeOutputter(pipe: stdoutPipe, outputStream: .stdout, context: .shellOutputStdout, prefix: contextString)
+
     //stderrPipe.fileHandleForReading.readabilityHandler = { handle in // TODO: how do I get color output?
     //  let data: Data = handle.availableData
     //  if data.count == 0 {

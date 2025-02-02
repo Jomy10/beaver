@@ -25,6 +25,13 @@ def fileChanged(filename)
   fileChangedWithContext(filename, caller_locations(1, 1).first)
 end
 
+def __wait
+  sleep(0.1)
+  if $BEAVER_SHOULD_YIELD
+    $__task_yield.call()
+  end
+end
+
 def __resolveAnyPromise(promise)
   begin
     while !promise.fulfilled?

@@ -57,6 +57,29 @@ struct BeaverConstants {
   EOF
 )
 
+if !Dir.exist?("deps/c_workqueue/target/module")
+  Dir.chdir("deps/c_workqueue") do
+    sh "sh build.sh"
+    Dir.mkdir("target/module")
+    Dir.chdir("target/module") do
+      modulemap = <<-EOF
+      module WorkQueue {
+        umbrella header "include/workqueue.h"
+        export *
+      }
+      EOF
+      File.write("module.modulemap", modulemap)
+      Dir.mkdir("include")
+      File.write("include/workqueue.h", File.read("../../include/workqueue.h"))
+    end
+  end
+  # Dir.mkdir("deps/c_workqueue/build")
+  # Dir.chdir("deps/c_workqueue/build") do
+  #   sh "cmake .."
+  #   sh "make -j 4"
+  # end
+end
+
 baseMacroDir = "Sources/UtilMacros/generated"
 Dir.mkdir(baseMacroDir) unless Dir.exist?(baseMacroDir)
 File.write(
@@ -96,7 +119,7 @@ File.write(
   "\n\"\"\"#"
 )
 
-sh "swift #{command} #{mode_flag}#{argv.size == 0 ? "" : argv.join(" ") + " " }-Xlinker -Ltarget/#{mode} -Xlinker -lprogress_indicators",
+sh "swift #{command} #{mode_flag}#{argv.size == 0 ? "" : argv.join(" ") + " " }-Xlinker -Ltarget/#{mode} -Xlinker -lprogress_indicators -Xlinker -Ldeps/c_workqueue/target/lib -Xlinker -lworkqueue",
     envPrepend: { "PKG_CONFIG_PATH" => File.join(Dir.pwd, "Packages/CRuby") }
 
 case onFinish
@@ -108,7 +131,7 @@ when "install"
   exe_path = "./.build/#{mode}/beaver#{OS.windows? ? ".exe" : ""}"
   if OS.posix?
     puts "Where to install?"
-    puts "[1] /opt/compat"
+    puts "[1] /opt/beaver"
     puts "[2] /usr/local/bin"
     printf "[1/2] "
     answer = gets.strip

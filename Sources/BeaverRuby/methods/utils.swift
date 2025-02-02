@@ -88,4 +88,24 @@ func loadUtilsMethods(in module: RbObject, queue: SyncTaskQueue, context: Unsafe
       return RbObject(signal)
     }
   )
+
+  //try module.defineMethod(
+  //  "shOnceAsync",
+  //  argsSpec: RbMethodArgsSpec(
+  //    supportsSplat: true,
+
+  //  )
+  //)
+
+  try module.defineMethod(
+    "getArgs",
+    argsSpec: RbMethodArgsSpec(
+      leadingMandatoryCount: 1
+    ),
+    body: { obj, method in
+      let argsString = try method.args.mandatory[0].convert(to: String.self)
+      let parsedArgs = Tools.parseArgs(argsString)
+      return RbObject(parsedArgs.map { RbObject(String($0)) })
+    }
+  )
 }

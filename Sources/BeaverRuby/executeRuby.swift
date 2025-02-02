@@ -34,9 +34,15 @@ public func executeRuby<Args: Collection & BidirectionalCollection & Sendable>(
 
   try Ruby.defineGlobalVar(
     "$BEAVER_ERROR",
-    get: { queueError.value.load(ordering: .relaxed) },
+    get: {
+      //RubyQueue.global.submitSync {
+        queueError.value.load(ordering: .relaxed)
+      //}
+    },
     set: { (val: Bool) in
-      queueError.value.store(val, ordering: .relaxed)
+      //RubyQueue.queue.sync {
+        queueError.value.store(val, ordering: .relaxed)
+      //}
     }
   )
   try loadCommandLineMethods(in: beaverModule, args: slice, queue: queue, context: context)

@@ -43,4 +43,20 @@ extension CMakeTarget where Self: ~Copyable {
       }
     }
   }
+
+  public func debugString(_ opts: DebugTargetOptions) -> String {
+    var str = """
+    \(self.name)
+    """
+
+    //if opts.flags {
+    //  str += "\n  cflags: \(self.extraCFlags)"
+    //  str += "\n  linkerFlags: \(self.extraLinkerFlags)"
+    //  str += "\n  headers: \(self.headers)"
+    //}
+
+    str += "\n  artifacts: \(self.artifacts)"
+
+    return str
+  }
 }
