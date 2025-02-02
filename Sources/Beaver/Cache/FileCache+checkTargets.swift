@@ -13,6 +13,7 @@ extension FileCache {
     let targets = await context.loopProjectsAndTargets { (project: borrowing AnyProject, target: borrowing AnyTarget) in
       return (projectId: project.id, projectName: project.name, targetId: target.id, targetName: target.name)
     }
+    if targets.count == 0 { return }
     try tempTargets.insert(targets, self.db)
 
     let targetQuery = tempTargets.table

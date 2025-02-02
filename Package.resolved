@@ -1,5 +1,5 @@
 {
-  "originHash" : "6a9ed1bf997c7fc8fcdf0e9249407e5f5ecea739ed0e8a1897cb622cb8322d6d",
+  "originHash" : "fa3e3b6bf77e9c47b3a9ab8745dd0590542d1b7ea9d1789814efd44c810322e6",
   "pins" : [
     {
       "identity" : "asyncobjects",
@@ -44,15 +44,6 @@
       "state" : {
         "revision" : "8bf0b4cae3893f970e733025646d07fe8a39fb15",
         "version" : "3.0.1"
-      }
-    },
-    {
-      "identity" : "rubygateway",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/Jomy10/RubyGateway",
-      "state" : {
-        "branch" : "main",
-        "revision" : "b4452c1c526baf7f3789322ec218058bc3e58344"
       }
     },
     {

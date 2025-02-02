@@ -124,6 +124,7 @@ public struct CExecutable: CTarget, Executable, ~Copyable {
 
     let args: [String] = objects.map { $0.path }
       + depLinkerFlags
+      + self.extraLinkerFlags
       //+ depLanguages.compactFlatMap { $0.linkerFlags(targetLanguage: self.language) }
       + ["-o", outputFile.path]
     try await self.executeCC(args)

@@ -168,6 +168,7 @@ public struct CLibrary: CTarget, Library, ~Copyable {
     args.append(contentsOf: ["-o", outputFile.path]
       + objectFiles.map { $0.path }
       + depLinkerFlags
+      + self.extraLinkerFlags
       //+ depLanguages.compactFlatMap { $0.linkerFlags(targetLanguage: self.language) }
     )
 

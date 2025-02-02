@@ -14,6 +14,9 @@ extension BeaverCLI {
     let project = self.takeArgument()
     let (_, leftover) = self.getArguments()
     let listTargets = leftover.contains("--targets")
+    let debug = leftover.contains("--debug")
+    var debugOpts = DebugTargetOptions()
+    debugOpts.flags = leftover.contains("--debug-flags")
 
     if let project = project {
       guard let projectIndex = await context.projectRef(name: project) else {
@@ -21,9 +24,7 @@ extension BeaverCLI {
       }
       await context.withProject(projectIndex) { (project: borrowing AnyProject) in
         print("\(project.name)")
-        for targetName in await project.targetNames() {
-          print(" \(targetName)")
-        }
+        await Self.listTargets(project: project, debug: debug, debugOpts)
       }
     } else {
       await context.loopProjects { project in
@@ -34,10 +35,21 @@ extension BeaverCLI {
         }
         print(projectName)
         if listTargets {
-          for targetName in await project.targetNames() {
-            print(" \(targetName)")
-          }
+          await Self.listTargets(project: project, debug: debug, debugOpts)
         }
+      }
+    }
+  }
+
+  private static func listTargets(project: borrowing AnyProject, debug: Bool, _ debugOpts: DebugTargetOptions) async {
+    if debug {
+      await project.loopTargets { (target: borrowing AnyTarget) in
+        print(target.debugString(debugOpts)
+          .prependingRows("  "))
+      }
+    } else {
+      for targetName in await project.targetNames() {
+        print(" \(targetName)")
       }
     }
   }

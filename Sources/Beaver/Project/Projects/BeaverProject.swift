@@ -162,6 +162,14 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
     await self.commands.overwrites.contains(commandName)
   }
 
+  public func hasCommand(_ commandName: String) async -> Bool {
+    await self.commands.commands.keys.contains(commandName)
+  }
+
+  public func hasCommands() async -> Bool {
+    await self.commands.commands.count > 0
+  }
+
   // Build //
 
   public func build(context: borrowing Beaver) async throws {

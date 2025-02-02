@@ -40,6 +40,8 @@ public protocol TargetBase: ~Copyable, Sendable {
   ) async throws
 
   func clean(projectBuildDir: borrowing URL, context: borrowing Beaver) async throws
+
+  func debugString(_ opts: DebugTargetOptions) -> String
 }
 
 extension TargetBase where Self: ~Copyable {
@@ -123,4 +125,10 @@ extension Target where Self: ~Copyable {
       try await group.waitForAll()
     }
   }
+}
+
+public struct DebugTargetOptions {
+  public var flags: Bool = false
+
+  public init() {}
 }

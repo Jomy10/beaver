@@ -11,4 +11,7 @@ public protocol CommandCapableProject: ~Copyable, Project, Sendable {
   func callDefault(context: borrowing Beaver) async throws
 
   func isOverwritten(_ commandName: String) async -> Bool
+
+  func hasCommand(_ commandName: String) async -> Bool
+  func hasCommands() async -> Bool
 }

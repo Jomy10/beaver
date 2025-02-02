@@ -203,10 +203,31 @@ public struct Beaver: ~Copyable, Sendable {
 
   public func call(_ commandName: String) async throws {
     if self.currentProjectIndex != nil {
-      try await self.withCurrentProject { (project: borrowing AnyProject) async throws -> () in
-        //try await project.asProtocol { (project: borrowing any CommandCapableProject & ~Copyable) in try await project.call(commandName, context: self) }
-        try await project.asCommandCapable { (project: borrowing AnyCommandCapableProjectRef) in
-          try await project.call(commandName, context: self)
+      if commandName.contains(":") {
+        let commandParts = commandName.split(separator: ":", maxSplits: 1)
+        let project = String(commandParts[0])
+        let command = String(commandParts[1])
+        guard let projectIndex = await self.projectIndex(name: project) else {
+          throw ProjectAccessError.noProject(named: project)
+        }
+        try await self.withProject(projectIndex) { (project: borrowing AnyProject) async throws -> Void in
+          try await project.asCommandCapable { (project: borrowing AnyCommandCapableProjectRef) in
+            if await project.hasCommand(command) {
+              try await project.call(commandName, context: self)
+            } else {
+              try await self.commands.call(commandName, context: self)
+            }
+          }
+        }
+      } else {
+        try await self.withCurrentProject { (project: borrowing AnyProject) async throws -> () in
+          try await project.asCommandCapable { (project: borrowing AnyCommandCapableProjectRef) in
+            if await project.hasCommand(commandName) {
+              try await project.call(commandName, context: self)
+            } else {
+              try await self.commands.call(commandName, context: self)
+            }
+          }
         }
       }
     } else {
@@ -218,7 +239,11 @@ public struct Beaver: ~Copyable, Sendable {
     if self.currentProjectIndex != nil {
       try await self.withCurrentProject { (project: borrowing AnyProject) in
         try await project.asCommandCapable { (proj: borrowing AnyCommandCapableProjectRef) in
-          try await project.callDefault(context: self)
+          if await project.hasCommands() {
+            try await project.callDefault(context: self)
+          } else {
+            try await self.commands.callDefault(context: self)
+          }
         }
       }
     } else {
@@ -230,7 +255,11 @@ public struct Beaver: ~Copyable, Sendable {
     if self.currentProjectIndex != nil {
       try await self.withCurrentProject { (project: borrowing AnyProject) in
         try await project.asCommandCapable { (proj: borrowing AnyCommandCapableProjectRef) in
-          await project.isOverwritten(commandName)
+          if await project.hasCommand(commandName) {
+            await project.isOverwritten(commandName)
+          } else {
+            await self.commands.overwrites.contains(commandName)
+          }
         }
       }
     } else {

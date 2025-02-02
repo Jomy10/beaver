@@ -1,4 +1,7 @@
 import Foundation
+//#if DEBUG
+//import Utils
+//#endif
 
 /// A Task queue which executes tasks synchronously
 public final class SyncTaskQueue: @unchecked Sendable {
@@ -8,6 +11,7 @@ public final class SyncTaskQueue: @unchecked Sendable {
   private var currentTaskIndex = -1
   private var currentTask: Task<(), any Error>? = nil
   private var followupTask: Task<(), any Error>? = nil
+  private var canFinish = false
   private var finished = false
   private let onError: ((any Error) async -> Void)?
 
@@ -15,7 +19,26 @@ public final class SyncTaskQueue: @unchecked Sendable {
     self.onError = onError
   }
 
+  public func resume() {
+    if !self.finished || self.running {
+      fatalError("Attempted to resume queue when not finished or while still running (bug)")
+    }
+    self.finished = false
+    self.canFinish = false
+    self.currentTask = nil
+    self.followupTask = nil
+    self.currentTaskIndex = -1
+    self.taskFunctions = []
+  }
+
   public func addTask(_ task: @escaping @Sendable () async throws -> ()) {
+    if self.finished {
+      //#if DEBUG
+      //print(CallStackFormatter.symbols())
+      //#endif
+      //print(self)
+      fatalError("Attempted to add task to SyncTaskQueue after finish (bug)")
+    }
     self.lock.withLock {
       self.taskFunctions.append(task)
       if !self.running {
@@ -26,6 +49,8 @@ public final class SyncTaskQueue: @unchecked Sendable {
 
   private func start() {
     self.running = true
+    self.canFinish = false
+    self.finished = false
     self.currentTask = Task(priority: .userInitiated, operation: self.taskFunctions[0])
     self.currentTaskIndex = 0
     self.followupTask = Task(priority: .utility) {
@@ -34,7 +59,7 @@ public final class SyncTaskQueue: @unchecked Sendable {
           try await self.currentTask!.value
           self.currentTaskIndex += 1
           while self.currentTaskIndex >= self.taskFunctions.count {
-            if self.finished { break TASK }
+            if self.canFinish { break TASK }
             await Task.yield()
           }
           self.currentTask = Task(priority: .userInitiated, operation: self.taskFunctions[self.currentTaskIndex])
@@ -49,7 +74,23 @@ public final class SyncTaskQueue: @unchecked Sendable {
   }
 
   public func wait() async throws {
-    self.finished = true
+    self.canFinish = true
     try await self.followupTask?.value
+    self.finished = true
+    self.running = false
+  }
+}
+
+extension SyncTaskQueue: CustomStringConvertible {
+  public var description: String {
+    """
+    SyncTaskQueue(
+      queuedTasks: \(self.taskFunctions.count),
+      currentTaskIndex: \(self.currentTaskIndex),
+      running: \(self.running),
+      canFinish: \(self.canFinish),
+      finished: \(self.finished)
+    )
+    """
   }
 }

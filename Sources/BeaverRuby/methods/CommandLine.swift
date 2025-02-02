@@ -1,6 +1,8 @@
+import Foundation
 import Beaver
 import RubyGateway
 import Utils
+import Atomics
 
 func collectArgs(_ rbArgs: [RbObject]) throws -> [String] {
   let args: [String] = try rbArgs
@@ -88,6 +90,13 @@ func loadCommandLineMethods<Args: Collection & BidirectionalCollection & Sendabl
     }
   )
 
+  //var shouldYield = UnsafeSharedbox(ManagedAtomic(false))
+  //try Ruby.defineGlobalVar(
+  //  "$BEAVER_SHOULD_YIELD",
+  //  get: { shouldYield.value.load(ordering: .relaxed) },
+  //  set: { (newValue: Bool) in shouldYield.value.store(newValue, ordering: .relaxed) }
+  //)
+
   try module.defineMethod(
     "cmd",
     argsSpec: RbMethodArgsSpec(
@@ -101,9 +110,9 @@ func loadCommandLineMethods<Args: Collection & BidirectionalCollection & Sendabl
       let callback = try method.captureBlock()
 
       let command: Commands.Command = { context in
-        try await MainActor.run {
+        try await RubyQueue.global.submitSync({
           _ = try callback.call("call")
-        }
+        })
       }
 
       queue.addTask {
