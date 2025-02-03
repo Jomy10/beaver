@@ -180,7 +180,7 @@ public struct Tools {
   /// Output to stderr/stdout with a prefix before each line of `[context]`
   @inlinable
   public static func exec(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory(), context: String) async throws {
-    let contextString: String = "[\(context)]"
+    let contextString: String = "[\(context)] "
     let task = Process()
     let stderrPipe = Pipe()
     let stderrOut = PipeOutputter(pipe: stderrPipe, outputStream: .stderr, context: .shellOutputStderr, prefix: contextString)
