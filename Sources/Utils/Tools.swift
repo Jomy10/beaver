@@ -79,6 +79,7 @@ public struct Tools {
     }
   }
 
+  /// Execute a command and return the output to stderr/stdout as a string
   @inlinable
   public static func execWithOutput(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) throws -> (stderr: String, stdout: String) {
     let task = Process()
@@ -104,6 +105,7 @@ public struct Tools {
     return (stdout, stderr)
   }
 
+  /// Execute a command without output and return the exit code
   @inlinable
   public static func execWithExitCode(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) throws -> Int {
     let task = Process()
@@ -118,69 +120,16 @@ public struct Tools {
     return Int(task.terminationStatus)
   }
 
-  // TODO: first line is lost somehow
-  //@usableFromInline
-  //final class OutputQueue: @unchecked Sendable {
-  //  @usableFromInline
-  //  var queue: ConcurrentDataQueue<Character>
-  //  let finished: ManagedAtomic<Bool>
-  //  // Prepend on each line of output
-  //  let prefixString: String?
-  //  let outputStream: IOStream
-  //  let context: MessageHandler.MessageVisibility
-  //  //let task: Task<(), Never>
-
-  //  @usableFromInline
-  //  init(prefix: String?, to stream: IOStream) {
-  //    self.queue = ConcurrentDataQueue(zero: "\0")
-  //    self.finished = ManagedAtomic(false)
-  //    //self.prefixString = if let context = pr { "[\(context)] " } else { nil }
-  //    self.prefixString = prefix
-  //    self.outputStream = stream
-  //    self.context = stream == .stdout ? .shellOutputStdout : .shellOutputStderr
-  //  }
-
-  //  @usableFromInline
-  //  func start() -> Task<(), Never> {
-  //    return Task {
-  //      var tmpBuffer: [Character] = []
-  //      while !self.finished.load(ordering: .relaxed) {
-  //        if self.queue.read(into: &tmpBuffer, untilValue: "\n") > 0 {
-  //          if tmpBuffer.last == "\n" {
-  //            MessageHandler.print(String(tmpBuffer), to: self.outputStream, context: self.context, terminator: "")
-  //            tmpBuffer.removeAll(keepingCapacity: true)
-  //          }
-  //        }
-  //        // TODO: collect until new line character, then output
-  //        await Task.yield()
-  //      }
-  //      self.queue.read(into: &tmpBuffer)
-  //      if tmpBuffer.count > 0 {
-  //        MessageHandler.print(String(tmpBuffer), to: self.outputStream, context: self.context, terminator: "")
-  //      }
-  //    }
-  //  }
-
-  //  @usableFromInline
-  //  func append(_ string: String) {
-  //    self.queue.write(Array(string))
-  //  }
-
-  //  @usableFromInline
-  //  func finish() {
-  //    self.finished.store(true, ordering: .relaxed)
-  //  }
-  //}
-
+  /// Outputs data received by a pipe, line by line, where each line is prefixed by a prefix string
   @usableFromInline
   final class PipeOutputter: Sendable {
     let pipe: Pipe
     let outputStream: IOStream
     let context: MessageHandler.MessageVisibility
-    let prefix: String?
+    let prefix: String
 
     @usableFromInline
-    init(pipe: Pipe, outputStream: IOStream, context: MessageHandler.MessageVisibility, prefix: String?) {
+    init(pipe: Pipe, outputStream: IOStream, context: MessageHandler.MessageVisibility, prefix: String) {
       self.pipe = pipe
       self.outputStream = outputStream
       self.context = context
@@ -189,7 +138,8 @@ public struct Tools {
 
     @usableFromInline
     func spawn() -> Task<(), any Error> {
-      Task.detached { [self = self] in
+      // TODO: priority -> when compiling lower, when running, higher
+      Task { [self = self] in
         var bytes: [UInt8] = []
         let newLine = Character("\n").asciiValue!
         for try await byte in pipe.fileHandleForReading.bytes {
@@ -203,8 +153,8 @@ public struct Tools {
               )
             }
             let string = String(data: data, encoding: .utf8)!
-            let str = if let prefix = self.prefix { prefix + string } else { string }
-            MessageHandler.print(str, to: self.outputStream, context: self.context, terminator: "")
+            //let str = if let prefix = self.prefix { prefix + string } else { string }
+            MessageHandler.print(self.prefix + string, to: self.outputStream, context: self.context, terminator: "")
             bytes.removeAll(keepingCapacity: true)
             //MessageHandler.print(String(bytes))
           }
@@ -219,49 +169,23 @@ public struct Tools {
             )
           }
           let string = String(data: data, encoding: .utf8)!
-          let str = if let prefix = self.prefix { prefix + string } else { string }
-          MessageHandler.print(str, to: self.outputStream, context: self.context, terminator: bytes.last == newLine ? "" : "\n")
+          for string in string.split(whereSeparator: \.isNewline) {
+            MessageHandler.print(self.prefix + string, to: self.outputStream, context: self.context, terminator: bytes.last == newLine ? "" : "\n")
+          }
         }
       }
     }
   }
 
-  // TODO: make async again
+  /// Output to stderr/stdout with a prefix before each line of `[context]`
   @inlinable
-  public static func exec(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory(), context: String? = nil) async throws {
-    let contextString: String? = if let context = context { "[\(context)] " } else { nil }
+  public static func exec(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory(), context: String) async throws {
+    let contextString: String = "[\(context)]"
     let task = Process()
-    //let stderrQueue = OutputQueue(prefix: contextString, to: .stderr)
     let stderrPipe = Pipe()
     let stderrOut = PipeOutputter(pipe: stderrPipe, outputStream: .stderr, context: .shellOutputStderr, prefix: contextString)
     let stdoutPipe = Pipe()
     let stdoutOut = PipeOutputter(pipe: stdoutPipe, outputStream: .stdout, context: .shellOutputStdout, prefix: contextString)
-
-    //stderrPipe.fileHandleForReading.readabilityHandler = { handle in // TODO: how do I get color output?
-    //  let data: Data = handle.availableData
-    //  if data.count == 0 {
-    //    handle.readabilityHandler = nil
-    //    //MessageHandler.flush(.stderr)
-    //    stderrQueue.finish()
-    //  } else {
-    //    let str = String(data: data, encoding: .utf8)!
-    //    //MessageHandler.print(str, to: .stderr)
-    //    stderrQueue.append(str)
-    //  }
-    //}
-    //stdoutPipe.fileHandleForReading.readabilityHandler = { handle in
-    //  let data: Data = handle.availableData
-    //  if data.count == 0 {
-    //    handle.readabilityHandler = nil
-    //    //MessageHandler.flush(.stdout)
-    //    stdoutQueue.finish()
-    //  } else {
-    //    let str = String(data: data, encoding: .utf8)!
-    //    //MessageHandler.print(str, to: .stdout)
-    //    stdoutQueue.append(str)
-    //    //MessageHandler.print(String(data: data, encoding: .utf8)!.prependingRowsIfNeeded(contextStr), to: .stdout, context: .shellOutputStdout, terminator: "")
-    //  }
-    //}
 
     task.standardError = stderrPipe
     task.standardOutput = stdoutPipe
@@ -278,14 +202,37 @@ public struct Tools {
     //for try await val in stderrPipe.fileHandleForReading.bytes.characters {
     //  MessageHandler.print("\(val)", to: .stderr, context: .shellOutputStderr, terminator: "")
     //}
+
+    _ = try await stderrTask.value
+    _ = try await stdoutTask.value
     task.waitUntilExit()
 
     if task.terminationStatus != 0 {
       throw ProcessError(terminationStatus: task.terminationStatus, reason: task.terminationReason)
     }
+  }
 
-    _ = try await stderrTask.value
-    _ = try await stdoutTask.value
+  /// Output immediately to stderr/stdout
+  @inlinable
+  public static func exec(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) async throws {
+    let task = Process()
+
+    task.standardError = FileHandle.standardError
+    task.standardOutput = FileHandle.standardOutput
+    task.executableURL = cmdURL
+    task.arguments = args
+    task.currentDirectoryURL = baseDir
+    task.environment = ProcessInfo.processInfo.environment
+
+    MessageHandler.print((cmdURL.path + " " + args.joined(separator: " ")).darkGray(), to: .stderr, context: .shellCommand)
+
+    try task.run()
+
+    task.waitUntilExit()
+
+    if task.terminationStatus != 0 {
+      throw ProcessError(terminationStatus: task.terminationStatus, reason: task.terminationReason)
+    }
   }
 
   /// Statics are lazy variables
