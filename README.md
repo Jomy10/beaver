@@ -147,3 +147,8 @@ Feel free to ask any questions you may have by opening an issue.
 ## License
 
 This software is licensed under the [MIT](LICENSE) license.
+
+## References
+
+- ["Correct, Efficiant and Tailored: The Future of Build Systems" by Guillaume Maudoux and Kim Mens, Université catholique de Louvain, Journal of Software Engineering.](https://dial.uclouvain.be/pr/boreal/object/boreal%3A189586/datastream/PDF_01/view)
+- ["Build System Rules and Algorithms" by Mike Shal, 2009.](https://gittup.org/tup/build_system_rules_and_algorithms.pdf)

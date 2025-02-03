@@ -20,4 +20,11 @@ extension OptimizationMode {
       case .release: "Release"
     }
   }
+
+  var cflags: [String] {
+    switch (self) {
+      case .debug: ["-g", "-O0"]
+      case .release: ["-O3"]
+    }
+  }
 }

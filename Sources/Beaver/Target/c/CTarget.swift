@@ -245,6 +245,7 @@ extension CTarget where Self: ~Copyable {
   public func cflags(projectBaseDir: borrowing URL, context: borrowing Beaver) async throws -> [String] {
     try await self.publicCflags(projectBaseDir: projectBaseDir)
       + self.privateCflags(projectBaseDir: projectBaseDir, context: context)
+      + context.optimizeMode.cflags
   }
 
   //public func allLinkerFlags(context: borrowing Beaver, visited: inout Set<Dependency>) async throws -> [String] {
