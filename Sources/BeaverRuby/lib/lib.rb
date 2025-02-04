@@ -21,8 +21,13 @@ def dynamic(inner)
 end
 
 # Returns true if the file has changed, false if not and nil if the file doesn't exist
-def fileChanged(filename)
-  fileChangedWithContext(filename, caller_locations(1, 1).first)
+# Will return the or'ed result for all files if multiple files were passed
+def fileChanged(*filename)
+  out = nil
+  for file in filename
+    out ||= (fileChangedWithContext(file, caller_locations(1, 1).first) || false)
+  end
+  return out
 end
 
 def __wait
