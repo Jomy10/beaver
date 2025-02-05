@@ -17,6 +17,8 @@ public struct Beaver: ~Copyable, Sendable {
 
   public var optimizeMode: OptimizationMode
 
+  let enableColor: Bool
+
   var buildDir: URL
 
   var cacheFile: URL
@@ -52,8 +54,10 @@ public struct Beaver: ~Copyable, Sendable {
     self.fileCache = nil
     self.commands = Commands()
     self.config = BeaverConfig()
+    self.enableColor = enableColor ?? Tools.enableColor
+    Tools.enableColor = self.enableColor
 
-    MessageHandler.setColorEnabled(enableColor)
+    //MessageHandler.setColorEnabled(self.enableColor)
 
     // TODO: if script file changed, or any of the requires; rebuild
     // At the end of execution, save all of the files the script requires into cache and retrieve them the next time Beaver is used
