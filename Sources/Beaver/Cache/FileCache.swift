@@ -20,6 +20,7 @@ struct FileCache: Sendable {
   var globalConfiguration: (buildId: Int, env: Data)?
   let dependencyFiles: DependencyFileTable
   let customFiles: CustomFileTable
+  let customCache: CustomCacheTable
   let outputFiles: OutputFileTable
   let cmakeProjects: CMakeProjectTable
   let cmakeFiles: CMakeFileTable
@@ -55,6 +56,7 @@ struct FileCache: Sendable {
     self.globalConfiguration = nil
     self.dependencyFiles = DependencyFileTable()
     self.customFiles = CustomFileTable()
+    self.customCache = CustomCacheTable()
     self.outputFiles = OutputFileTable()
     self.cmakeProjects = CMakeProjectTable()
     self.cmakeFiles = CMakeFileTable()
@@ -122,6 +124,7 @@ struct FileCache: Sendable {
     try self.globalConfigurations.createIfNotExists(self.db)
     try self.dependencyFiles.createIfNotExists(self.db)
     try self.customFiles.createIfNotExists(self.db)
+    try self.customCache.createIfNotExists(self.db)
     try self.outputFiles.createIfNotExists(self.db)
     try self.cmakeProjects.createIfNotExists(self.db)
     try self.cmakeFiles.createIfNotExists(self.db)
@@ -462,18 +465,22 @@ struct FileCache: Sendable {
     }
   }
 
-  /// Returns true if file has changed
+  /// Returns true if file has changed (CustomFile)
   @usableFromInline
   func fileChanged(
     _ file: URL,
     context: String
   ) throws -> Bool {
+    let filename = file.absoluteURL.path
     guard let configId = self.configurationId else {
       throw CacheError.noConfigurationSelected
     }
     guard let fileRow = try db.pluck(self.files.table
       .join(.inner, self.customFiles.table, on: self.customFiles.fileId.qualified == self.files.id.qualified)
-      .where(self.customFiles.context.qualified == context && self.customFiles.configId.qualified == configId)
+      .where(
+           self.customFiles.context.qualified == context
+        && self.customFiles.configId.qualified == configId
+        && self.files.filename.qualified == filename)
     ) else {
       let attrs = try FileChecker.fileAttrs(file: file)
       let id = try self.db.run(self.files.table
@@ -503,6 +510,78 @@ struct FileCache: Sendable {
     }
 
     return changed
+  }
+
+  func cacheSetVar(context: String, value: CacheVarVal?) throws {
+    guard let configId = self.configurationId else {
+      throw CacheError.noConfigurationSelected
+    }
+
+    let entryExists = try self.db.scalar(self.customCache.table
+      .where(
+           self.customCache.context.qualified == context
+        && self.customCache.configId.qualified == configId
+      ).exists)
+
+    if entryExists {
+      let query = self.customCache.table
+        .where(
+             self.customCache.context.qualified == context
+          && self.customCache.configId.qualified == configId
+        )
+      let insert: SQLite.Insert
+      switch (value) {
+        case .string(let s): insert = query.insert(self.customCache.strVal.unqualified <- s)
+        case .int(let i): insert = query.insert(self.customCache.intVal.unqualified <- i)
+        case .double(let d): insert = query.insert(self.customCache.doubleVal.unqualified <- d)
+        case .bool(let b): insert = query.insert(self.customCache.boolVal.unqualified <- b)
+        case .none:
+          insert = query.insert([
+            self.customCache.strVal.unqualified <- nil,
+            self.customCache.boolVal.unqualified <- nil,
+            self.customCache.doubleVal.unqualified <- nil,
+            self.customCache.boolVal.unqualified <- nil
+          ])
+      }
+      try self.db.run(insert)
+    } else {
+      let query = self.customCache.table
+      let update: SQLite.Update
+      switch (value) {
+        case .string(let s): update = query.update(self.customCache.strVal.unqualified <- s)
+        case .int(let i): update = query.update(self.customCache.intVal.unqualified <- i)
+        case .double(let d): update = query.update(self.customCache.doubleVal.unqualified <- d)
+        case .bool(let b): update = query.update(self.customCache.boolVal.unqualified <- b)
+        case .none:
+          update = query.update([
+            self.customCache.strVal.unqualified <- nil,
+            self.customCache.boolVal.unqualified <- nil,
+            self.customCache.doubleVal.unqualified <- nil,
+            self.customCache.boolVal.unqualified <- nil
+          ])
+      }
+      try self.db.run(update)
+    }
+  }
+
+  func cacheGetVar(context: String) throws -> CacheVarVal? {
+    guard let data = try self.db.pluck(self.customCache.table
+      .where(self.customCache.context.qualified == context))
+    else {
+      return nil
+    }
+
+    if let strVal = data[self.customCache.strVal.qualified] {
+      return .string(strVal)
+    } else if let intVal = data[self.customCache.intVal.qualified] {
+      return .int(intVal)
+    } else if let doubleVal = data[self.customCache.doubleVal.qualified] {
+      return .double(doubleVal)
+    } else if let boolVal = data[self.customCache.boolVal.qualified] {
+      return .bool(boolVal)
+    } else {
+      return nil
+    }
   }
 
   /// removes a target from its target id in the database
@@ -554,4 +633,11 @@ struct FileCache: Sendable {
     try self.db.run(self.configurations.table.delete())
     try self.db.run(self.targets.table.delete())
   }
+}
+
+public enum CacheVarVal {
+  case string(String)
+  case int(Int)
+  case double(Double)
+  case bool(Bool)
 }

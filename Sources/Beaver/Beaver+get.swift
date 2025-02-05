@@ -9,10 +9,14 @@ extension Beaver {
     await self.projectIndex(name: name)
   }
 
-  public func projectName(_ idx: ProjectRef) async -> String? {
+  public func projectName(_ idx: ProjectRef) async -> String {
     await self.projects.read { projects in
       projects.withElement(idx) { $0.name }
     }
+  }
+
+  public func unsafeProjectName(_ idx: ProjectRef) -> String {
+    self.projects.withUnsafeInnerValue { proj in proj.withElement(idx) { $0.name } }
   }
 
   public func targetIndex(name: String, project: ProjectRef) async -> Int? {
