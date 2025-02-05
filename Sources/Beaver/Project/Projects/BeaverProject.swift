@@ -180,7 +180,9 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
           artifact: nil,
           context: context
         )
-        await builder.build(context: context)
+        if (await builder.build(context: context)) {
+          throw Beaver.BuildError.buildError
+        }
       }
     }
   }
@@ -191,7 +193,9 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
       artifact: nil,
       context: context
     )
-    await builder.build(context: context)
+    if (await builder.build(context: context)) {
+      throw Beaver.BuildError.buildError
+    }
     //try await self.withTarget(targetIndex) { (target: borrowing AnyTarget) in
     //  try await target.asProtocol { try await $0.build(
     //    projectBaseDir: self.baseDir,
@@ -207,7 +211,9 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
       artifact: artifact,
       context: context
     )
-    await builder.build(context: context)
+    if (await builder.build(context: context)) {
+      throw Beaver.BuildError.buildError
+    }
     //try await self.withTarget(targetIndex) { (target: borrowing any Target) in
     //  try await target.asProtocol { try await $0.build(
     //    artifact: artifact,

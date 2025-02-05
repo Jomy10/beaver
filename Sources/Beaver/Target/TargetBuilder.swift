@@ -211,13 +211,15 @@ actor TargetBuilder {
       }
     } catch let error {
       status = .error(error)
+      self.hasError.store(true, ordering: .relaxed)
       postfix = ": \(error)"
     }
     await spinner?.finish()
     MessageHandler.print("[\(status!.formatted)] \(message!)\(postfix ?? "")")
   }
 
-  func build(context: borrowing Beaver) async {
+  /// Returns true if an error occurred
+  func build(context: borrowing Beaver) async -> Bool {
     MessageHandler.enableIndicators()
     defer { MessageHandler.closeIndicators() }
     let contextPtr = UnsafeSendable(withUnsafePointer(to: context) { $0 })
@@ -227,6 +229,8 @@ actor TargetBuilder {
       }
     }
     await self.buildLast(context: contextPtr)
+
+    return self.hasError.load(ordering: .relaxed)
   }
 }
 

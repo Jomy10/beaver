@@ -58,9 +58,6 @@ public struct Beaver: ~Copyable, Sendable {
     Tools.enableColor = self.enableColor
 
     //MessageHandler.setColorEnabled(self.enableColor)
-
-    // TODO: if script file changed, or any of the requires; rebuild
-    // At the end of execution, save all of the files the script requires into cache and retrieve them the next time Beaver is used
   }
 
   /// Should be called after all configuration has been set and targets have been declared
@@ -125,6 +122,8 @@ public struct Beaver: ~Copyable, Sendable {
   enum BuildError: Error {
     case noTarget(named: String)
     case noDefaultTarget
+    /// Any error happened during compilation/linking
+    case buildError
   }
 
   public func buildCurrentProject() async throws {
@@ -138,9 +137,12 @@ public struct Beaver: ~Copyable, Sendable {
     try await self.build(try await self.evaluateTarget(targetName: targetName), artifact: artifact)
   }
 
+  /// Returns true if any occured during build
   public func build(_ targetRef: TargetRef, artifact: ArtifactType? = nil) async throws {
     let builder = try await TargetBuilder(target: targetRef, artifact: artifact, context: self)
-    await builder.build(context: self)
+    if (await builder.build(context: self)) {
+      throw BuildError.buildError
+    }
   }
 
   enum RunError: Error {
