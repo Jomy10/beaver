@@ -168,17 +168,17 @@ extension CTarget where Self: ~Copyable {
       case .objcxx:
         try await Tools.exec(Tools.objcCompiler!, args, context: self.name)
       case .c:
-        if let extraArgs = Tools.ccExtraArgs {
-          try await Tools.exec(Tools.cc!, extraArgs + args, context: self.name)
-        } else {
-          try await Tools.exec(Tools.cc!, args, context: self.name)
+        var extraArgs = Tools.ccExtraArgs ?? []
+        if Tools.enableColor {
+          extraArgs.append("-fdiagnostics-color=always")
         }
+        try await Tools.exec(Tools.cc!, extraArgs + args, context: self.name)
       case .cxx:
-        if let extraArgs = Tools.cxxExtraArgs {
-          try await Tools.exec(Tools.cxx!, extraArgs + args, context: self.name)
-        } else {
-          try await Tools.exec(Tools.cxx!, args, context: self.name)
+        var extraArgs = Tools.cxxExtraArgs ?? []
+        if Tools.enableColor {
+          extraArgs.append("-fdiagnostics-color=always")
         }
+        try await Tools.exec(Tools.cxx!, extraArgs + args, context: self.name)
       default:
         throw TargetValidationError(self, .invalidLanguage(self.language))
     }

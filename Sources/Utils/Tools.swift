@@ -3,7 +3,30 @@ import Platform
 import ColorizeSwift
 import Atomics
 
+#if canImport(Darwin)
+import Darwin
+#elseif canImport(Glibc)
+import Glibc
+#elseif canImport(Musl)
+import Musl
+#elseif os(Windows)
+import ucrt
+#else
+#warning("Need implementation for current platform to determine isatty")
+#endif
+
 public struct Tools {
+  private static nonisolated(unsafe) var _enableColor: Bool = (isatty(fileno(stdout)) == 1 && isatty(fileno(stderr)) == 1)
+  public static nonisolated(unsafe) var enableColor: Bool {
+    get {
+      self._enableColor
+    }
+    set {
+      self._enableColor = newValue
+      MessageHandler.setColorEnabled(self._enableColor)
+    }
+  }
+
   @inlinable
   public static func which(_ cmdName: String) -> URL? {
     let env = ProcessInfo.processInfo.environment
