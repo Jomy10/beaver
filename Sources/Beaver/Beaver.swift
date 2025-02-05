@@ -270,7 +270,7 @@ public struct Beaver: ~Copyable, Sendable {
   // Custom Cache //
 
   public func fileChanged(_ file: URL, context: String) throws -> Bool {
-    try self.fileCache!.fileChanged(file, context: context)
+    return try self.fileCache!.fileChanged(file, context: context)
   }
 
   public func cacheSetVar(context: String, value: String) throws {

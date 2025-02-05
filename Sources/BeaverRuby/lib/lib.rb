@@ -25,7 +25,8 @@ end
 def fileChanged(*filename)
   out = nil
   for file in filename
-    out ||= (fileChangedWithContext(file, caller_locations(1, 1).first) || false)
+    var = (fileChangedWithContext(file, caller_locations(1, 1).first) || false)
+    out ||= var
   end
   return out
 end
