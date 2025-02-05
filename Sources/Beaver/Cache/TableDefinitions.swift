@@ -380,6 +380,44 @@ struct CustomFileTable: SQLTable {
   }
 }
 
+struct CustomCacheTable: SQLTable {
+  let table: Table
+  let context: TableColumn<String>
+  let configId: TableColumn<Int64>
+  let strVal: TableColumn<String?>
+  let intVal: TableColumn<Int?>
+  let doubleVal: TableColumn<Double?>
+  let boolVal: TableColumn<Bool?>
+
+  let tableName: String
+
+  init() {
+    self.tableName = "CustomCache"
+    self.table = Table(self.tableName)
+    self.context = TableColumn("context", self.table)
+    self.configId = TableColumn("configID", self.table)
+    self.strVal = TableColumn("strVal", self.table)
+    self.intVal = TableColumn("intVal", self.table)
+    self.doubleVal = TableColumn("doubleVal", self.table)
+    self.boolVal = TableColumn("boolVal", self.table)
+  }
+
+  func createIfNotExists(_ db: Connection) throws {
+    try db.run(self.table.create(ifNotExists: true) { t in
+      t.column(self.context.unqualified, primaryKey: true)
+      t.column(self.configId.unqualified)
+      t.column(self.strVal.unqualified)
+      t.column(self.intVal.unqualified)
+      t.column(self.doubleVal.unqualified)
+      t.column(self.boolVal.unqualified)
+
+      t.foreignKey(
+        self.configId.unqualified,
+        references: Table("Configuration"), SQLite.Expression<Int64>("id"))
+    })
+  }
+}
+
 struct CMakeProjectTable: SQLTable {
   let table: Table
   let id: TableColumn<Int64>

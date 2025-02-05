@@ -267,10 +267,36 @@ public struct Beaver: ~Copyable, Sendable {
     }
   }
 
+  // Custom Cache //
+
   public func fileChanged(_ file: URL, context: String) throws -> Bool {
     try self.fileCache!.fileChanged(file, context: context)
   }
 
+  public func cacheSetVar(context: String, value: String) throws {
+    try self.cacheSetVar(context: context, value: .string(value))
+  }
+
+  public func cacheSetVar(context: String, value: Int) throws {
+    try self.cacheSetVar(context: context, value: .int(value))
+  }
+
+  public func cacheSetVar(context: String, value: Double) throws {
+    try self.cacheSetVar(context: context, value: .double(value))
+  }
+
+  public func cacheSetVar(context: String, value: Bool) throws {
+    try self.cacheSetVar(context: context, value: .bool(value))
+  }
+
+  public func cacheSetVar(context: String, value: CacheVarVal?) throws {
+    try self.fileCache!.cacheSetVar(context: context, value: value)
+  }
+
+  public func cacheGetVar(context: String) throws -> CacheVarVal? {
+    try self.fileCache!.cacheGetVar(context: context)
+  }
+
   // call in init()
-  func check() {}
+  //func check() {}
 }

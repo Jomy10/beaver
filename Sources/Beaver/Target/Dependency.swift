@@ -16,7 +16,7 @@ public struct TargetRef: Hashable, Equatable, Sendable {
 extension TargetRef {
   public func description(context: borrowing Beaver) async -> String? {
     guard let targetName = await context.targetName(self) else { return nil }
-    guard let projectName = await context.projectName(self.project) else { return nil }
+    let projectName = await context.projectName(self.project)
     return if context.currentProjectIndex == self.project {
       targetName
     } else {
@@ -182,7 +182,7 @@ extension Beaver {
           throw Dependency.ParsingError.noDefaultProject
         }
         guard let targetIndex = await self.targetIndex(name: target, project: currentProject) else {
-          let projectName = await self.projectName(currentProject)!
+          let projectName = await self.projectName(currentProject)
           throw Dependency.ParsingError.unknownTarget(name: target, inProject: projectName)
         }
         return TargetRef(target: targetIndex, project: currentProject)

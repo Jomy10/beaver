@@ -37,7 +37,6 @@ GlobalConfiguration {
   int env
 }
 
-%% An artifact file of a dependency
 DependencyFile {
 	inf fileID
 	int configID
@@ -46,14 +45,21 @@ DependencyFile {
 	int artifactType
 }
 
-%% User defined file
 CustomFile {
 	int fileID
 	int configID
 	string context
 }
 
-%% An artifact
+CustomCache {
+	string context
+	int configID
+	string strVal
+	int intVal
+	double doubleVal
+	int boolVal
+}
+
 OutputFile {
 	string filename
 	int configID
@@ -61,19 +67,6 @@ OutputFile {
 	int artifactType
 	%% Should this artifact be relinked, regardless of any other conditions
 	bool relink
-}
-
-%% Files CMake configuration depends on
-%% When one of these changes, then we need to reconfigure the CMake project
-CMakeFile {
-	int cmakeProjectID
-	int fileID
-}
-
-CMakeProject {
-	int id
-	int configID
-	string directory
 }
 
 TargetCache {
@@ -107,12 +100,10 @@ DependencyFile }o--|| Target: targetID
 File ||--|| CustomFile: fileID
 CustomFile }o--|| Configuration: configID
 
+CustomCache }o--|| Configuration: configID
+
 OutputFile }o--|| Configuration: ConfigID
 OutputFile }o--|| Target: targetID
-
-File ||--|| CMakeFile: fileID
-CMakeFile }o--|| CMakeProject: cmakeProjectID
-Configuration ||--o{ CMakeProject: configID
 
 Target ||--|| TargetCache: targetID
 TargetCache ||--o{ TargetDependencyCache: targetID
