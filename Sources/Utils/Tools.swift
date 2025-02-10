@@ -184,8 +184,6 @@ public struct Tools {
           }
         } // end for
 
-        MessageHandler.info("finished receiving bytes")
-
         if bytes.count > 0 {
           let data = bytes.withUnsafeMutableBufferPointer { data in
             Data(
@@ -224,7 +222,6 @@ public struct Tools {
     try task.run()
 
     await task.waitUntilExitAsync()
-    MessageHandler.info("Process done")
     _ = try await outputTask.value
 
     if task.terminationStatus != 0 {
