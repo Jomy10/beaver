@@ -33,7 +33,6 @@ extension FileCache {
 
     var visitedTargets: [Int64] = []
     for targetRow in try self.db.prepare(targetQuery) {
-      MessageHandler.debug("targetRow: \(targetRow)")
       let targetId = targetRow[tempTargets.target.qualified]
       let targets_targetId = targetRow[self.targets.table[SQLite.Expression<Int?>("target")]]
       //let targetName = targetRow[SQLite.Expression<String>("targetName")]
@@ -47,14 +46,14 @@ extension FileCache {
           // check targetId has changed
           if targetId != targets_targetId {
             try self.db.run(self.targets.table
-              .where(self.targets.id.qualified == targetTableId)
-              .update([self.targets.target.qualified <- targetId]))
+              .where(self.targets.id.unqualified == targetTableId)
+              .update([self.targets.target.unqualified <- targetId]))
           }
           // check projectId has changed //
           if projectId != targets_projectId {
             try self.db.run(self.targets.table
-              .where(self.targets.id.qualified == targetTableId)
-              .update([self.targets.project.qualified <- projectId]))
+              .where(self.targets.id.unqualified == targetTableId)
+              .update([self.targets.project.unqualified <- projectId]))
           }
 
           let cachedDepCount = try self.db.scalar(self.targetDependencyCaches.table
