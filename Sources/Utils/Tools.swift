@@ -159,6 +159,7 @@ public struct Tools {
       self.prefix = prefix
     }
 
+    // TODO: why hanging?
     @usableFromInline
     func spawn() -> Task<(), any Error> {
       // TODO: priority -> when compiling lower, when running, higher
@@ -183,6 +184,8 @@ public struct Tools {
           }
         } // end for
 
+        MessageHandler.info("finished receiving bytes")
+
         if bytes.count > 0 {
           let data = bytes.withUnsafeMutableBufferPointer { data in
             Data(
@@ -205,30 +208,24 @@ public struct Tools {
   public static func exec(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory(), context: String) async throws {
     let contextString: String = "[\(context)] "
     let task = Process()
-    let stderrPipe = Pipe()
-    let stderrOut = PipeOutputter(pipe: stderrPipe, outputStream: .stderr, context: .shellOutputStderr, prefix: contextString)
-    let stdoutPipe = Pipe()
-    let stdoutOut = PipeOutputter(pipe: stdoutPipe, outputStream: .stdout, context: .shellOutputStdout, prefix: contextString)
+    let outputPipe = Pipe()
+    let outputter = PipeOutputter(pipe: outputPipe, outputStream: .stderr, context: .shellOutputStderr, prefix: contextString)
+    //let stderrOut = PipeOutputter(pipe: stderrPipe, outputStream: .stderr, context: .shellOutputStderr, prefix: contextString)
+    //let stdoutOut = PipeOutputter(pipe: stdoutPipe, outputStream: .stdout, context: .shellOutputStdout, prefix: contextString)
 
-    task.standardError = stderrPipe
-    task.standardOutput = stdoutPipe
+    task.standardError = outputPipe
+    task.standardOutput = outputPipe
     task.executableURL = cmdURL
     task.arguments = args
     task.currentDirectoryURL = baseDir
     task.environment = ProcessInfo.processInfo.environment
-    //let stderrTask = stderrQueue.start()
-    //let stdoutTask = stdoutQueue.start()
     MessageHandler.print(((cmdURL.path + " " + args.joined(separator: " ")).prependingIfNeeded(contextString)).darkGray(), to: .stderr, context: .shellCommand)
-    let stderrTask = stderrOut.spawn()
-    let stdoutTask = stdoutOut.spawn()
+    let outputTask = outputter.spawn()
     try task.run()
-    //for try await val in stderrPipe.fileHandleForReading.bytes.characters {
-    //  MessageHandler.print("\(val)", to: .stderr, context: .shellOutputStderr, terminator: "")
-    //}
 
-    _ = try await stderrTask.value
-    _ = try await stdoutTask.value
-    task.waitUntilExit()
+    await task.waitUntilExitAsync()
+    MessageHandler.info("Process done")
+    _ = try await outputTask.value
 
     if task.terminationStatus != 0 {
       throw ProcessError(terminationStatus: task.terminationStatus, reason: task.terminationReason)
