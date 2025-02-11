@@ -19,6 +19,8 @@ public enum TargetAccessError: Error {
   case notExecutable
 
   case notOfType((any Target & ~Copyable).Type)
+
+  case noCMakeLibrary(cmakeId: String)
 }
 
 //extension AnyTarget {

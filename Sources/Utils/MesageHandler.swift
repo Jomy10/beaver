@@ -75,8 +75,8 @@ public struct MessageHandler {
     return value
   }
 
-  public static func newSpinner(_ message: String) -> ProgressBar {
-    Self.progress!.registerSpinner(message: message)
+  public static func newSpinner(_ message: String) async -> ProgressBar {
+    await Self.progress!.registerSpinner(message: message)
   }
 
   private static func checkContext(_ context: MessageVisibility?) -> Bool {
@@ -94,24 +94,7 @@ public struct MessageHandler {
     if !Self.checkContext(context) { return }
 
     if let progress = Self.progress {
-      progress.println(message)
-      //try! Self.progressBuffer.write { buffer in
-      //  if terminator != "\n" && message.last != "\n" {
-      //    if buffer == nil {
-      //      buffer = message
-      //    } else {
-      //      buffer!.append(message)
-      //    }
-      //  } else {
-      //    if let progressBuffer = buffer {
-      //      progress.println(progressBuffer + message + terminator)
-      //      buffer = nil
-      //    } else {
-      //      progress.println(message + terminator)
-      //    }
-      //  }
-      //}
-      //ProgressIndicators.global.globalMessage(message)
+      Task { await progress.println(message) }
     } else {
       Utils.print(message, to: IOStream.stderr, terminator: terminator)
     }
@@ -122,7 +105,7 @@ public struct MessageHandler {
 
     if let progress = Self.progress {
       //ProgressIndicators.global.globalMessage(message)
-      progress.println(message)
+      Task { await progress.println(message) } // TODO
     } else {
       Utils.print(message, to: stream, terminator: terminator)
     }

@@ -116,10 +116,10 @@ actor TargetBuilder {
 
     static func ==(lhs: BuildStatus, rhs: BuildStatus) -> Bool {
       switch (lhs) {
-        case .pending: rhs == .pending
-        case .done: rhs == .done
+        case .pending: switch (rhs) { case .pending: true; default: false }
+        case .done: switch (rhs) { case .done: true; default: false }
         case .error(_): if case .error(_) = rhs { true } else { false }
-        case .cancelled: rhs == .cancelled
+        case .cancelled: switch (rhs) { case .cancelled: true; default: false }
       }
     }
   }
@@ -172,7 +172,7 @@ actor TargetBuilder {
             "\(project.name):\(library.name)"
           }
           message = "Building \(name) (\(target.artifact))"
-          spinner = MessageHandler.newSpinner(message!)
+          spinner = await MessageHandler.newSpinner(message!)
           try await library.build(artifact: target.artifact, projectBaseDir: project.baseDir, projectBuildDir: project.buildDir, context: context.value.pointee)
         }
         status = .done
@@ -201,7 +201,7 @@ actor TargetBuilder {
           status = .cancelled
           return
         }
-        spinner = MessageHandler.newSpinner(message!)
+        spinner = await MessageHandler.newSpinner(message!)
         if let artifact = resultTargetArtifact {
           try await target.build(artifact: artifact, projectBaseDir: project.baseDir, projectBuildDir: project.buildDir, context: context.value.pointee)
         } else {

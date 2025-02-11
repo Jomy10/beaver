@@ -24,7 +24,7 @@ public final class ProgressIndicators: @unchecked Sendable {
     self.tick_thread = nil
     self.tick_thread = Task.detached(priority: .background) {
       while true {
-        self.tick()
+        await self.tick()
         try? await Task.sleep(for: .seconds(0.1), tolerance: .seconds(0.5))
       }
     }
@@ -34,14 +34,20 @@ public final class ProgressIndicators: @unchecked Sendable {
     ProgressIndicators(stream: stream)
   }
 
-  func tick() {
-    ProgressIndicatorsFFI.indicators_tick(self.ptr!)
+  func tick() async {
+    await withCheckedContinuation { continuation in
+      ProgressIndicatorsFFI.indicators_tick(self.ptr!)
+      continuation.resume()
+    }
   }
 
   func stop() async {
     self.tick_thread!.cancel()
     _ = await self.tick_thread!.result
-    ProgressIndicatorsFFI.indicators_stop(self.ptr!)
+    await withCheckedContinuation { continuation in
+      ProgressIndicatorsFFI.indicators_stop(self.ptr!)
+      continuation.resume()
+    }
     self.ptr = nil
     self.tick_thread = nil
   }
@@ -56,14 +62,17 @@ public final class ProgressIndicators: @unchecked Sendable {
     }
   }
 
-  public func println(_ message: String) {
-    message.withCString { ptr in
-      ProgressIndicatorsFFI.indicators_println(self.ptr!, ptr)
+  public func println(_ message: String) async {
+    await withCheckedContinuation { continuation in
+      message.withCString { ptr in
+        ProgressIndicatorsFFI.indicators_println(self.ptr!, ptr)
+      }
+      continuation.resume()
     }
   }
 
-  public func println(_ components: Any..., separator: String = " ") {
-    self.println(components.map { String(describing: $0) }.joined(separator: separator))
+  public func println(_ components: Any..., separator: String = " ") async {
+    await self.println(components.map { String(describing: $0) }.joined(separator: separator))
   }
 
   public func registerSpinner(
@@ -71,17 +80,19 @@ public final class ProgressIndicators: @unchecked Sendable {
     styleString: String? = nil,
     tickChars: String? = nil,
     prefix: String? = nil
-  ) -> ProgressBar {
-    let spinnerPtr = message.withCString { cmessage in
-      styleString.withCString { cstyleString in
-        tickChars.withCString { ctickChars in
-          prefix.withCString { cprefix in
-            ProgressIndicatorsFFI.indicators_register_spinner(self.ptr!, cmessage, cstyleString, ctickChars, cprefix)
+  ) async -> ProgressBar {
+    await withCheckedContinuation { continuation in
+      let spinnerPtr = message.withCString { cmessage in
+        styleString.withCString { cstyleString in
+          tickChars.withCString { ctickChars in
+            prefix.withCString { cprefix in
+              ProgressIndicatorsFFI.indicators_register_spinner(self.ptr!, cmessage, cstyleString, ctickChars, cprefix)
+            }
           }
         }
       }
+      continuation.resume(returning: ProgressBar(spinnerPtr))
     }
-    return ProgressBar(spinnerPtr)
   }
 
   deinit {
@@ -113,9 +124,12 @@ public actor ProgressBar {
     return str
   }
 
-  public func finish(message: String? = nil) {
-    message.withCString { messagePtr in
-      ProgressIndicatorsFFI.progress_bar_finish(self.ptr!, messagePtr)
+  public func finish(message: String? = nil) async {
+    await withCheckedContinuation { continuation in
+      message.withCString { messagePtr in
+        ProgressIndicatorsFFI.progress_bar_finish(self.ptr!, messagePtr)
+      }
+      continuation.resume()
     }
     self.ptr = nil
   }

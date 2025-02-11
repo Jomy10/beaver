@@ -11,29 +11,38 @@ public struct CMakeExecutable: CMakeTarget, Executable, ~Copyable, Sendable {
 
   public var id: Int
   public var projectId: ProjectRef
+  public var cmakeId: String
 
-  public var dependencies: [Dependency] { [] }
+  public var dependencies: [Dependency]
 
   public var artifacts: [ArtifactType]
+  public let _artifactURL: URL
 
   public typealias ArtifactType = ExecutableArtifactType
 
   init(
+    cmakeId: String,
     name: String,
     language: Language,
     projectId: ProjectRef = -1,
     id: Int = -1,
-    artifact: ArtifactType
+    artifact: ArtifactType,
+    artifactURL: URL,
+    dependencies: [Dependency]
   ) {
+    self.cmakeId = cmakeId
     self.name = name
     self.language = language
     self.projectId = projectId
     self.id = id
     self.artifacts = [artifact]
+    self._artifactURL = artifactURL
+    self.dependencies = dependencies
   }
 
   // TODO: get from targetDefinition
   public func artifactURL(projectBuildDir: borrowing URL, artifact: ExecutableArtifactType) -> URL? {
-    return projectBuildDir.appending(path: "\(self.name)\(artifact.extension)")
+    //return projectBuildDir.appending(path: "\(self.name)\(artifact.extension)")
+    return self._artifactURL
   }
 }

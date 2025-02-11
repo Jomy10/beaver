@@ -17,6 +17,7 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
   public let name: String
   public var baseDir: URL
   public var buildDir: URL
+  public var makeFlags: [String]
 
   private var targets: NonCopyableArray<AnyTarget>
 
@@ -24,12 +25,14 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
     name: String,
     baseDir: URL,
     buildDir: URL? = nil,
+    makeFlags: [String],
     targets: consuming NonCopyableArray<AnyTarget>
   ) {
     self.name = name
     self.baseDir = baseDir
     self.buildDir = buildDir ?? baseDir.appending(path: ".build")
     self.targets = targets
+    self.makeFlags = makeFlags
   }
 
   public func clean(context: borrowing Beaver) async throws {
@@ -41,7 +44,7 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
   public func build(context: borrowing Beaver) async throws {
     try await Tools.exec(
       Tools.make!,
-      ["-j", "4"],
+      ["-j", "4"] + self.makeFlags,
       baseDir: buildDir,
       context: self.name
     )
@@ -55,7 +58,7 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
     let targetName = await self.targetName(targetRef)!
     try await Tools.exec(
       Tools.make!,
-      ["-j", "4", targetName],
+      ["-j", "4", targetName] + self.makeFlags,
       baseDir: buildDir,
       context: self.name + ":\(targetName)"
     )
@@ -68,7 +71,7 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
     let targetName = await self.targetName(targetRef)!
     try await Tools.exec(
       Tools.make!,
-      ["-j", "4", targetName],
+      ["-j", "4", targetName] + self.makeFlags,
       baseDir: buildDir,
       context: self.name + ":\(targetName)"
     )
@@ -125,6 +128,10 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
 
   public func loopTargets(_ cb: (borrowing AnyTarget) async throws -> Void) async rethrows {
     try await self.targets.forEach(cb)
+  }
+
+  public func loopTargetsUntil(_ cb: (borrowing AnyTarget) async throws -> Bool) async rethrows {
+    try await self.targets.forEachUntil(cb)
   }
 
   public func targetIndex(name: String) async -> Int? {

@@ -1,7 +1,9 @@
 import Foundation
 import Utils
 
-public protocol CMakeTarget: Target, ~Copyable, Sendable {}
+public protocol CMakeTarget: Target, ~Copyable, Sendable {
+  var cmakeId: String { get }
+}
 
 extension CMakeTarget where Self: ~Copyable {
   public func artifactOutputDir(projectBuildDir: borrowing URL, artifact: ArtifactType) -> URL? {

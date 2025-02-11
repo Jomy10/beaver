@@ -115,6 +115,15 @@ public struct NonCopyableArray<Element: ~Copyable>: ~Copyable {
   }
 
   @inlinable
+  public func forEachUntil(_ cb: (borrowing Element) async throws -> Bool) async rethrows {
+    for i in self.indices {
+      if (try await self.withElement(i, cb)) {
+        return
+      }
+    }
+  }
+
+  @inlinable
   public func map<Result>(_ cb: (borrowing Element) async throws -> Result) async rethrows -> [Result] {
     var res: [Result] = []
     for i in self.indices {

@@ -208,8 +208,6 @@ public struct Tools {
     let task = Process()
     let outputPipe = Pipe()
     let outputter = PipeOutputter(pipe: outputPipe, outputStream: .stderr, context: .shellOutputStderr, prefix: contextString)
-    //let stderrOut = PipeOutputter(pipe: stderrPipe, outputStream: .stderr, context: .shellOutputStderr, prefix: contextString)
-    //let stdoutOut = PipeOutputter(pipe: stdoutPipe, outputStream: .stdout, context: .shellOutputStdout, prefix: contextString)
 
     task.standardError = outputPipe
     task.standardOutput = outputPipe
@@ -222,11 +220,14 @@ public struct Tools {
     try task.run()
 
     await task.waitUntilExitAsync()
+    MessageHandler.info("\(contextString)task finished")
     _ = try await outputTask.value
+    MessageHandler.info("\(contextString)output done")
 
     if task.terminationStatus != 0 {
       throw ProcessError(terminationStatus: task.terminationStatus, reason: task.terminationReason)
     }
+    MessageHandler.info("\(contextString)returning")
   }
 
   /// Output immediately to stderr/stdout
@@ -245,7 +246,7 @@ public struct Tools {
 
     try task.run()
 
-    task.waitUntilExit()
+    await task.waitUntilExitAsync()
 
     if task.terminationStatus != 0 {
       throw ProcessError(terminationStatus: task.terminationStatus, reason: task.terminationReason)
