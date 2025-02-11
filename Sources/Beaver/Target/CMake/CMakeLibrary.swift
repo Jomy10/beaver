@@ -11,10 +11,12 @@ public struct CMakeLibrary: CMakeTarget, Library, ~Copyable, Sendable {
 
   public var id: Int
   public var projectId: ProjectRef
+  public var cmakeId: String
 
-  public var dependencies: [Dependency] { [] }
+  public var dependencies: [Dependency]
 
   public var artifacts: [ArtifactType]
+  public var _artifactURL: URL
 
   public var linkerFlags: [String]
   public var cflags: [String]
@@ -22,14 +24,18 @@ public struct CMakeLibrary: CMakeTarget, Library, ~Copyable, Sendable {
   public typealias ArtifactType = LibraryArtifactType
 
   init(
+    cmakeId: String,
     name: String,
     language: Language,
     projectId: ProjectRef = -1,
     id: Int = -1,
     artifact: ArtifactType,
+    artifactURL: URL,
     linkerFlags: [String],
-    cflags: [String]
+    cflags: [String],
+    dependencies: [Dependency]
   ) {
+    self.cmakeId = cmakeId
     self.name = name
     self.language = language
     self.projectId = projectId
@@ -37,14 +43,21 @@ public struct CMakeLibrary: CMakeTarget, Library, ~Copyable, Sendable {
     self.artifacts = [artifact]
     self.linkerFlags = linkerFlags
     self.cflags = cflags
+    self._artifactURL = artifactURL
+    self.dependencies = dependencies
   }
 
   public func artifactURL(projectBuildDir: borrowing URL, artifact: LibraryArtifactType) -> URL? {
-    return projectBuildDir.appending(path: "lib\(self.name)\(artifact.extension)")
+    return self._artifactURL
+    //return projectBuildDir.appending(path: "lib\(self.name)\(artifact.extension)")
   }
 
   public func linkAgainstLibrary(projectBuildDir: borrowing URL, artifact: ArtifactType) -> [String] {
     self.linkAgainstArtifact(projectBuildDir: projectBuildDir, artifact: artifact) + self.linkerFlags
+  }
+
+  public func linkAgainstLibrary(projectBuildDir: borrowing URL) -> [String] {
+    self.linkAgainstArtifact(projectBuildDir: projectBuildDir, artifact: self.artifacts[0]) + self.linkerFlags
   }
 
   public func publicCflags(projectBaseDir: borrowing URL) async throws -> [String] {

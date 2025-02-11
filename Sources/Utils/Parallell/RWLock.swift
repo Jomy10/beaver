@@ -205,6 +205,10 @@ public final class AsyncRWLock<T: ~Copyable>: @unchecked Sendable {
   private var value: T
   private let readerCount = ManagedAtomic(0)
 
+  public var currentReaderCount: Int {
+    self.readerCount.load(ordering: .relaxed)
+  }
+
   public func withUnsafeInnerValue<Result>(_ cb: (borrowing T) throws -> Result) rethrows -> Result {
     try cb(self.value)
   }

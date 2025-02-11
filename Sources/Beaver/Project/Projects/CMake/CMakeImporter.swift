@@ -8,6 +8,8 @@ public struct CMakeImporter {
   public static func `import`(
     baseDir: URL,
     buildDir: URL,
+    cmakeFlags: [String],
+    makeFlags: [String],
     context: inout Beaver
   ) async throws {
     try context.requireBuildDir()
@@ -44,7 +46,7 @@ public struct CMakeImporter {
           baseDir.absoluteURL.path,
           "-DCMAKE_BUILD_TYPE=\(context.optimizeMode.cmakeDescription)",
           "-G", "Unix Makefiles"
-        ],
+        ] + cmakeFlags,
         baseDir: buildDir
       )
     }
@@ -154,6 +156,13 @@ public struct CMakeImporter {
           }
           let flagsInclude = context.config.cmake.flagsInclude
           let addLibrary = { (artifactType: LibraryArtifactType, targets: inout NonCopyableArray<AnyTarget>) in
+            if (target.artifacts?.count != 1) {
+              if (target.artifacts == nil || target.artifacts?.count == 0) {
+                MessageHandler.warn("\(target.name) is not imported because it has no artifacts")
+              } else if ((target.artifacts?.count ?? 99) > 1) {
+                MessageHandler.warn("\(target.name) is not imported because it has multiple artifacts. Please open an issue on GitHub (artifacts are \(target.artifacts!))")
+              }
+            }
             let cflags: [String] = target.compileGroups?.flatMap({ compileGroup in
               var cflags: [String] = []
               if flagsInclude.compileCommandFragments {
@@ -171,15 +180,19 @@ public struct CMakeImporter {
               }
               return cflags
             }) ?? []
+            let path = target.artifacts!.first!.path
             targets.append(.library(.cmake(CMakeLibrary(
+              cmakeId: target.id,
               name: target.name,
               language: target.link == nil ? .c : Language(fromCMake: target.link!.language)!,
               id: targets.count,
               artifact: artifactType,
+              artifactURL: path.first == "/" ? URL(filePath: path) : buildDir.appending(path: path),
               linkerFlags: target.link?.commandFragments.flatMap { fragment in
                 Tools.parseArgs(fragment.fragment).map { String($0) }
               } ?? [],
-              cflags: cflags
+              cflags: cflags,
+              dependencies: target.dependencies?.map { dep in Dependency.cmakeId(dep.id) } ?? []
             ))))
           }
           switch (target.type) {
@@ -188,11 +201,22 @@ public struct CMakeImporter {
             case "SHARED_LIBRARY":
               addLibrary(.dynlib, &targets)
             case "EXECUTABLE":
+              if (target.artifacts?.count != 1) {
+                if (target.artifacts == nil || target.artifacts?.count == 0) {
+                  MessageHandler.warn("\(target.name) is not imported because it has no artifacts")
+                } else if ((target.artifacts?.count ?? 99) > 1) {
+                  MessageHandler.warn("\(target.name) is not imported because it has multiple artifacts. Please open an issue on GitHub (artifacts are \(target.artifacts!))")
+                }
+              }
+              let path = target.artifacts!.first!.path
               targets.append(.executable(.cmake(CMakeExecutable(
+                cmakeId: target.id,
                 name: target.name,
                 language: target.link == nil ? .c : Language(fromCMake: target.link!.language)!,
                 id: targets.count,
-                artifact: .executable
+                artifact: .executable,
+                artifactURL: path.first == "/" ? URL(filePath: path) : buildDir.appending(path: path),
+                dependencies: target.dependencies?.map { dep in Dependency.cmakeId(dep.id) } ?? []
               ))))
             default:
               if cmakeReconfigured {
@@ -207,6 +231,7 @@ public struct CMakeImporter {
         name: project.name,
         baseDir: baseDir,
         buildDir: buildDir,
+        makeFlags: makeFlags,
         targets: targets
       )))
     }

@@ -76,6 +76,8 @@ public enum Dependency: Hashable, Equatable, Sendable {
   case pkgconfig(PkgConfigDependency)
   case system(String)
   case customFlags(cflags: [String], linkerFlags: [String])
+  /// reference can be found in reply of API
+  case cmakeId(String)
 
   public enum ParsingError: Error {
     case unexpectedNoComponents
@@ -94,6 +96,7 @@ public enum Dependency: Hashable, Equatable, Sendable {
       case .pkgconfig(_): .pkgconfig
       case .system(_): .system
       case .customFlags(cflags: _, linkerFlags: _): .customFlags
+      case .cmakeId(_): .cmakeId
     }
   }
 }
@@ -103,12 +106,14 @@ enum DependencyType: Int {
   case pkgconfig
   case system
   case customFlags
+  case cmakeId
 }
 
 extension Dependency {
   var isBuildable: Bool {
     switch (self) {
-      case .library(_):
+      case .library(_): fallthrough
+      case .cmakeId(_):
         return true
       case .pkgconfig(_): fallthrough
       case .system(_): fallthrough
@@ -130,6 +135,10 @@ extension Dependency {
         return nil
       case .customFlags(cflags: let cflags, linkerFlags: _):
         return cflags
+      case .cmakeId(let cmakeId):
+        return try await context.withProjectAndLibrary(cmakeId: cmakeId) { (project: borrowing CMakeProject, library: borrowing CMakeLibrary) in
+          return try await library.publicCflags(projectBaseDir: project.baseDir)
+        }
     }
   }
 
@@ -146,6 +155,10 @@ extension Dependency {
         return ["-l\(name)"]
       case .customFlags(cflags: _, linkerFlags: let linkerFlags):
         return linkerFlags
+      case .cmakeId(let cmakeId):
+        return try await context.withProjectAndLibrary(cmakeId: cmakeId) { (project: borrowing CMakeProject, library: borrowing CMakeLibrary) in
+          return library.linkAgainstLibrary(projectBuildDir: project.buildDir)
+        }
     }
   }
 
@@ -167,6 +180,14 @@ extension Dependency {
         return (["-l\(name)"], nil)
       case .customFlags(cflags: _, linkerFlags: let linkerFlags):
         return (linkerFlags, nil)
+      case .cmakeId(let cmakeId):
+        return try await context.withProjectAndLibrary(cmakeId: cmakeId) { (project: borrowing CMakeProject, library: borrowing CMakeLibrary) in
+          langs.insert(library.language)
+          return (
+            library.linkAgainstLibrary(projectBuildDir: project.buildDir),
+            library._artifactURL
+          )
+        }
     }
   }
 }

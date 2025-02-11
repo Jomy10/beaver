@@ -76,6 +76,41 @@ extension Beaver {
     }
   }
 
+  public func withProjectAndLibrary<Result>(cmakeId: String, _ cb: (borrowing CMakeProject, borrowing CMakeLibrary) async throws -> Result) async throws -> Result {
+    var val: Result? = nil
+    try await self.projects.read { projects in
+      try await projects.forEachUntil { project in
+        switch (project) {
+          case .cmake(let cmakeProject):
+            let cmakeProjectPtr = withUnsafePointer(to: cmakeProject) { $0 }
+            try await cmakeProject.loopTargetsUntil { (target: borrowing AnyTarget) -> Bool in
+              switch (target) {
+                case .library(let lib):
+                  switch (lib) {
+                    case .cmake(let cmakeLib):
+                      if cmakeLib.cmakeId == cmakeId {
+                        val = try await cb(cmakeProjectPtr.pointee, cmakeLib)
+                        return true
+                      } else {
+                        return false
+                      }
+                    default: return false
+                  }
+                default: return false
+              }
+            }
+            return val != nil
+          default: return false
+        }
+      }
+    }
+    if let val = val {
+      return val
+    } else {
+      throw TargetAccessError.noCMakeLibrary(cmakeId: cmakeId)
+    }
+  }
+
   // Loop //
 
   public func loopProjects(_ cb: (borrowing AnyProject) async throws -> Void) async rethrows {

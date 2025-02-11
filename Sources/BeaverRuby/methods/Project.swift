@@ -51,18 +51,25 @@ func loadProjectMethod(in module: RbObject, queue: SyncTaskQueue, context: Unsaf
     "importCMake",
     argsSpec: RbMethodArgsSpec(
       leadingMandatoryCount: 1,
-      optionalValues: [RbObject.nilObject]
+      optionalKeywordValues: [
+        "cmakeFlags": [String](),
+        "makeFlags": [String]()
+      ]
     ),
     body: { (obj, method) in
       let basePath = try method.args.mandatory[0].convert(to: String.self)
       let baseDir = URL(filePath: basePath)
-      let buildDirArg = method.args.optional.first!
-      let buildDir = buildDirArg.isNil ? context.value.withInner { (ctx: borrowing Beaver) in ctx.buildDir(for: basePath) } : URL(filePath: try buildDirArg.convert(to: String.self))
+      //let buildDirArg = method.args.optional.first!
+      let buildDir = context.value.withInner { (ctx: borrowing Beaver) in ctx.buildDir(for: basePath) }// : URL(filePath: try buildDirArg.convert(to: String.self))
+      let cmakeFlags = try method.args.keyword["cmakeFlags"]!.convert(to: [String].self)
+      let makeFlags = try method.args.keyword["makeFlags"]!.convert(to: [String].self)
       queue.addTask {
         try await context.value.withInner { (context: inout Beaver) in
           try await CMakeImporter.import(
             baseDir: baseDir,
             buildDir: buildDir,
+            cmakeFlags: cmakeFlags,
+            makeFlags: makeFlags,
             context: &context
           )
         }

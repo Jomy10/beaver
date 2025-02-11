@@ -206,6 +206,8 @@ extension Dependency {
         "cflags:\(cflags),linkerflags:\(linkerFlags)"
       case .library(_):
         nil
+      case .cmakeId(let cmakeId):
+        "cmakeId:\(cmakeId)"
     }
   }
 }
