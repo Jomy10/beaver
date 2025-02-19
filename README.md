@@ -9,7 +9,7 @@ It is an excellent replacement for make and cmake.
 ## Example
 
 ```ruby
-Project("Game")
+Project(name: "Game")
 
 C::Library(
   name: "Physics",

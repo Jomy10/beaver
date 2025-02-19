@@ -1,6 +1,3 @@
 [submodule "deps/timespec"]
 	path = deps/timespec
 	url = https://github.com/solemnwarning/timespec
-[submodule "deps/c_workqueue"]
-	path = deps/c_workqueue
-	url = https://github.com/sagiegurari/c_workqueue
