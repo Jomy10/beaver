@@ -42,6 +42,7 @@ extension Language {
     }
   }
 
+  /// Used in ninja rules
   func cflags() -> [String]? {
     switch (self) {
       case .objc: Tools.objcCflags
@@ -71,7 +72,7 @@ extension Language {
       case (.objcxx, .objcxx): return nil
     }
   }
- 
+
   var compiler: URL? {
     switch (self) {
       case .c: return Tools.cc

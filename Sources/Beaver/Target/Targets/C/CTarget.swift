@@ -223,13 +223,14 @@ extension CTarget where Self: ~Copyable {
       dependencyCflags.append(contentsOf: cflags)
     }
 
-    var cflags: [String] = self.extraCFlags.private
+    return self.extraCFlags.private
       + dependencyCflags
       + (self.headers.privateHeaders(baseDir: projectBaseDir).map({ "-I\($0.path)" }))
-    if let langFlags = self.language.cflags() {
-      cflags.append(contentsOf: langFlags)
-    }
-    return cflags
+    // moved to ninja rules now:
+    //if let langFlags = self.language.cflags() {
+    //  cflags.append(contentsOf: langFlags)
+    //}
+    //return cflags
   }
 
   //@available(*, deprecated)
@@ -254,12 +255,13 @@ extension CTarget where Self: ~Copyable {
   //}
 
   var ccRule: String {
-    switch (self.language) {
-      case .c: "cc"
-      case .cxx: "cxx"
-      case .objc: "objcc"
-      case .objcxx: "objcxx"
-    }
+    self.language.compileRule
+    //switch (self.language) {
+    //  case .c: "cc"
+    //  case .cxx: "cxx"
+    //  case .objc: "objcc"
+    //  case .objcxx: "objcxx"
+    //}
   }
 
   //lazy var ccExtraArgs: [String]? = switch (self.language) {
