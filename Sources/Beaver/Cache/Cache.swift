@@ -79,17 +79,17 @@ struct Cache: Sendable {
     }
 
     let tmpTable = try TmpFile.createTemporary(self.db)
-    let tmpFiles = files.map { file in
-      TmpFile(file: file)
+    let tmpFileSetters = files.map { file in
+      TmpFile(file: file).setter
     }
-    try TmpFile.insertMany(tmpFiles, self.db)
+    try self.db.run(tmpTable.insertMany(tmpFileSetters))
 
-    for file in try self.db.prepare(TmpFile.table
+    for file in try self.db.prepare(tmpTable
       .join(.leftOuter, CMakeFile.table, on: CMakeFile.Columns.file.qualifiedOptional == tmpTable[TmpFile.Columns.file.unqualified]
                                           && CMakeFile.Columns.cmakeProjectId.qualifiedOptional == project.id)
     ) {
       if file[CMakeFile.Columns.file.qualifiedOptional] == nil {
-        let path = file[tmpTable[TmpFile.Columns.file.qualified]]
+        let path = file[tmpTable[TmpFile.Columns.file.unqualified]]
         let attrs = try FileChecker.fileAttrs(file: path)
         let newCMakeFile = CMakeFile(cmakeProjectId: project.id, file: path)
         let newFile = FileCache(file: path, fromAttrs: attrs)

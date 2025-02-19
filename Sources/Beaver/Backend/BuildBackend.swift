@@ -1,3 +1,5 @@
+import Foundation
+
 fileprivate extension String {
   mutating func appendLine(_ val: String) {
     self.append(val)
@@ -24,6 +26,12 @@ public struct BuildBackendBuilder: Sendable, ~Copyable {
     }
   }
 
+  mutating func addNinjaRule() {
+    self.addRule(name: "ninja", [
+      "command": "ninja -C $ninjaBaseDir -f $ninjaFile $targets"
+    ])
+  }
+
   mutating func addBuildCommand(in input: [String], out output: String, rule: String, flags: [String] = []) {
     self.storage.appendLine("build \(output): \(rule) \(input.joined(separator: " "))")
     for flag in flags {
@@ -33,6 +41,20 @@ public struct BuildBackendBuilder: Sendable, ~Copyable {
 
   mutating func addBuildCommand(in input: [String], out output: String, rule: String, flags: [String: String]) {
     self.addBuildCommand(in: input, out: output, rule: rule, flags: flags.map { k, v in "\(k) = \(v)" })
+  }
+
+  mutating func addNinjaCommand(
+    name: String,
+    baseDir: URL,
+    filename: String,
+    targets: [String]?
+  ) {
+    self.storage.appendLine("build \(name): ninja")
+    self.storage.appendLine("    ninjaBaseDir = \"\(baseDir)\"")
+    self.storage.appendLine("    ninjaFile = \"\(filename)\"")
+    if let targets {
+      self.storage.appendLine("    targets = \(targets.map { $0.replacing(" ", with: "$").replacing(":", with: "$") }.joined(separator: " "))")
+    }
   }
 
   mutating func addPhonyCommand(name: String, commands: [String]) {

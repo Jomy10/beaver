@@ -122,6 +122,8 @@ extension Tools {
 
     try task.run()
 
+    MessageHandler.debug((cmdURL.path + " " + args.joined(separator: " ")).darkGray(), context: .shellCommand)
+
     await task.waitUntilExitAsync()
 
     if task.terminationStatus != 0 {

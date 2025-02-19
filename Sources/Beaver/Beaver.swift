@@ -59,12 +59,23 @@ public struct Beaver: ~Copyable, Sendable {
     var stmts = BuildBackendBuilder()
     stmts.add("builddir = \(self.buildDir.ninjaPath)")
     var languages = Set<Language>()
+    var hasCMake = false
 
-    await self.loopTargets { (target: borrowing AnyTarget) in
-      languages.insert(target.language)
+    await self.loopProjects { (project: borrowing AnyProject) in
+      switch (project) {
+        case .cmake(_):
+          hasCMake = true
+        case .beaver(let proj):
+          await proj.loopTargets { (target: borrowing AnyTarget) in
+            languages.insert(target.language)
+          }
+      }
     }
 
     try stmts.addRules(forLanguages: languages)
+    if hasCMake {
+      stmts.addNinjaRule()
+    }
 
     try await self.loopProjects { project in
       stmts.join(try await project.buildStatements(context: self))
@@ -76,7 +87,8 @@ public struct Beaver: ~Copyable, Sendable {
 
   private mutating func initializeCache() throws {
     if self.cache != nil || self.ninja != nil {
-      throw InitializationError.fileCacheAlreadyInitialized
+      return
+      //throw InitializationError.fileCacheAlreadyInitialized
     }
 
     try FileManager.default.createDirectoryIfNotExists(at: self.buildDir, withIntermediateDirectories: true)
@@ -151,12 +163,17 @@ public struct Beaver: ~Copyable, Sendable {
   /// Returns true if any occured during build
   public func build(_ targetRef: TargetRef, artifact: ArtifactType? = nil) async throws {
     try await self.withProjectAndTarget(targetRef) { (project: borrowing AnyProject, target: borrowing AnyTarget) in
-      if let artifact {
-        try await self.ninja!.build(targets: target.ninjaTarget(inProject: project, artifact: artifact))
-      //  try await target.build(artifact: artifact, projectBaseDir: project.baseDir, projectBuildDir: self.buildDir(for: project.name), context: self)
-      } else {
-        try await self.ninja!.build(targets: target.ninjaTarget(inProject: project))
-      //  try await target.build(projectBaseDir: project.baseDir, projectBuildDir: self.buildDir(for: project.name), context: self)
+      switch (project) {
+        case .cmake(let project):
+          try await project.build(target, context: self)
+        default:
+          if let artifact {
+            try await self.ninja!.build(targets: target.ninjaTarget(inProject: project, artifact: artifact))
+          //  try await target.build(artifact: artifact, projectBaseDir: project.baseDir, projectBuildDir: self.buildDir(for: project.name), context: self)
+          } else {
+            try await self.ninja!.build(targets: target.ninjaTarget(inProject: project))
+          //  try await target.build(projectBaseDir: project.baseDir, projectBuildDir: self.buildDir(for: project.name), context: self)
+          }
       }
     }
     //let builder = try await TargetBuilder(target: targetRef, artifact: artifact, context: self)

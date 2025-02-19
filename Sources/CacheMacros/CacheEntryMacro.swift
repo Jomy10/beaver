@@ -70,6 +70,7 @@ public struct CacheEntryMacro: ExtensionMacro, MemberMacro {
         }) {
           let param = attr.as(AttributeSyntax.self)!.arguments!.as(LabeledExprListSyntax.self)!.first!.expression
           primaryKey = param
+          //print("PRIMARY KEY FOUND FOR \(tableName)")
         } else {
           primaryKey = nil
         }

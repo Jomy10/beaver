@@ -35,11 +35,32 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
     self.makeFlags = makeFlags
   }
 
+  // TODO: find a better way than just calling ninja from ninja
   public func buildStatements(context: borrowing Beaver) async throws -> BuildBackendBuilder {
     var stmts = BuildBackendBuilder()
-    stmts.add("subninja \(context.buildDir(for: self.name).appending(path: "build.ninja").ninjaPath)")
-    try await self.defaultBuildStatements(in: &stmts, context: context)
+
+    var commands = [String]()
+    let contextPtr = withUnsafePointer(to: context) { $0 }
+    let projectPointer = withUnsafePointer(to: self) { $0 }
+    _ = try await self.loopTargets { target in
+      stmts.join(try await target.buildStatements(inProject: projectPointer.pointee, context: contextPtr.pointee))
+      commands.append("\(projectPointer.pointee.name)$:\(target.name)")
+    }
+
+    //stmts.add("subninja \(.appending(path: "build.ninja").ninjaPath)")
+    stmts.addNinjaCommand(
+      name: self.name,
+      baseDir: context.buildDir(for: self.name),
+      filename: "build.ninja",
+      targets: nil // all
+    )
     return stmts
+  }
+
+  /// Build the specified target from the ninja file
+  public func build(_ target: borrowing AnyTarget, context: borrowing Beaver) async throws {
+    let ninja = try NinjaRunner(buildFile: context.buildDir(for: self.name).appending(path: "build.ninja").path)
+    try await ninja.build(targets: target.name, dir: context.buildDir(for: self.name).path)
   }
 
   //public func clean(context: borrowing Beaver) async throws {

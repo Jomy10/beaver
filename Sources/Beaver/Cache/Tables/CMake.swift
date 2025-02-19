@@ -3,6 +3,7 @@ import Foundation
 
 @CacheEntry(name: "CMakeProject")
 struct CMakeProjectCache {
+  @PrimaryKey(.autoincrement)
   let id: Int64
   let path: URL
 
@@ -24,7 +25,7 @@ struct CMakeProjectCache {
 
   static func getRow(path: URL, _ db: Connection) throws -> Row? {
     try db.pluck(Self.table
-      .where(Self.Columns.path.qualified == path))
+      .where(Self.Columns.path.unqualified == path))
   }
 
   static func get(path: URL, _ db: Connection) throws -> Self? {
@@ -37,7 +38,7 @@ struct CMakeProjectCache {
 
   static func getRow(id: Int64, _ db: Connection) throws -> Row? {
     try db.pluck(Self.table
-      .where(Self.Columns.id.qualified == id))
+      .where(Self.Columns.id.unqualified == id))
   }
 
   static func get(id: Int64, _ db: Connection) throws -> Self? {
