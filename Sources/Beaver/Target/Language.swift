@@ -1,3 +1,4 @@
+import Foundation
 import Utils
 
 public enum Language: Sendable, Equatable, Hashable {
@@ -5,7 +6,6 @@ public enum Language: Sendable, Equatable, Hashable {
   case cxx
   case objc
   case objcxx
-  case swift
 }
 
 extension Language {
@@ -27,8 +27,8 @@ extension Language {
       case "objcpp": fallthrough
       case "obj-cpp":
         self = .objcxx
-      case "swift":
-        self = .swift
+      //case "swift":
+      //  self = .swift
       default: return nil
     }
   }
@@ -44,40 +44,79 @@ extension Language {
 
   func cflags() -> [String]? {
     switch (self) {
-      case .objc: return Tools.objcCflags
-      case .objcxx: return Tools.objcxxCflags
-      default: return nil
+      case .objc: Tools.objcCflags
+      case .objcxx: Tools.objcxxCflags
+      case .c: Tools.ccExtraArgs
+      case .cxx: Tools.cxxExtraArgs
     }
   }
 
-  /// Linker flags to link from language `self` to `targetLanguage`
-  func linkerFlags(targetLanguage: Language) -> [String]? {
+  static func linkerFlags(from fromLang: Language, to toLang: Language) -> [String]? {
+    switch (fromLang, toLang) {
+      case (.cxx, .objc): fallthrough
+      case (.cxx, .c): return ["-lstdc++"]
+      case (.cxx, .objcxx): fallthrough
+      case (.cxx, .cxx): return nil
+
+      case (.c, _): return nil
+
+      case (.objc, .cxx): fallthrough
+      case (.objc, .c): return Tools.objcLinkerFlags
+      case (.objc, .objcxx): fallthrough
+      case (.objc, .objc): return nil
+
+      case (.objcxx, .cxx): return Tools.objcLinkerFlags
+      case (.objcxx, .c): return ["-lstdc++"] + Tools.objcLinkerFlags
+      case (.objcxx, .objc): return ["-lstdc++"]
+      case (.objcxx, .objcxx): return nil
+    }
+  }
+ 
+  var compiler: URL? {
     switch (self) {
-      case .c: break
-      case .objc:
-        return Tools.objcLinkerFlags
-      case .objcxx:
-        if let cxxLinkerFlags = Self.cxxLinkerFlags(targetLanguage: targetLanguage) {
-          return Tools.objcLinkerFlags + cxxLinkerFlags
-        } else {
-          return Tools.objcLinkerFlags
-        }
-      case .cxx:
-        return Self.cxxLinkerFlags(targetLanguage: targetLanguage)
-      case .swift:
-        MessageHandler.warn("Unimplemented: Swift")
-        break
+      case .c: return Tools.cc
+      case .cxx: return Tools.cxx
+      case .objc: fallthrough
+      case .objcxx: return Tools.objcCompiler
     }
-    return nil
   }
 
-  static func cxxLinkerFlags(targetLanguage: Language) -> [String]? {
-    if Array<Language>([.c, .objc]).contains(targetLanguage) {
-      return ["-lstdc++"]
-    } else {
-      return nil
-    }
-  }
+  //func cflags() -> [String]? {
+  //  switch (self) {
+  //    case .objc: return Tools.objcCflags
+  //    case .objcxx: return Tools.objcxxCflags
+  //    default: return nil
+  //  }
+  //}
+
+  ///// Linker flags to link from language `self` to `targetLanguage`
+  //func linkerFlags(targetLanguage: Language) -> [String]? {
+  //  switch (self) {
+  //    case .c: break
+  //    case .objc:
+  //      return Tools.objcLinkerFlags
+  //    case .objcxx:
+  //      if let cxxLinkerFlags = Self.cxxLinkerFlags(targetLanguage: targetLanguage) {
+  //        return Tools.objcLinkerFlags + cxxLinkerFlags
+  //      } else {
+  //        return Tools.objcLinkerFlags
+  //      }
+  //    case .cxx:
+  //      return Self.cxxLinkerFlags(targetLanguage: targetLanguage)
+  //    //case .swift:
+  //    //  MessageHandler.warn("Unimplemented: Swift")
+  //    //  break
+  //  }
+  //  return nil
+  //}
+
+  //static func cxxLinkerFlags(targetLanguage: Language) -> [String]? {
+  //  if Array<Language>([.c, .objc]).contains(targetLanguage) {
+  //    return ["-lstdc++"]
+  //  } else {
+  //    return nil
+  //  }
+  //}
 }
 
 extension Language: CustomStringConvertible {
@@ -87,7 +126,7 @@ extension Language: CustomStringConvertible {
       case .cxx: "C++"
       case .objc: "Obj-C"
       case .objcxx: "Obj-C++"
-      case .swift: "Swift"
+      //case .swift: "Swift"
     }
   }
 }

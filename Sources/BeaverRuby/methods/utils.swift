@@ -96,7 +96,7 @@ func loadUtilsMethods(in module: RbObject, queue: SyncTaskQueue, context: Unsafe
               let val = try valArg.convert(to: Bool.self)
               try ctx.cacheSetVar(context: contextString, value: val)
             case .T_NIL:
-              try ctx.cacheSetVar(context: contextString, value: nil)
+              try ctx.cacheSetVar(context: contextString, value: .none)
             default:
               throw CacheVarError.invalidValueType(UnsafeSendable(valArg.rubyType))
           }

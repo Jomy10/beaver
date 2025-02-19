@@ -25,9 +25,13 @@ extension Library where Self: ~Copyable {
         fatalError("todo")
       case .pkgconfig:
         fatalError("Can't link against pkgconfig (bug)")
-      case .staticlanglib(_): fallthrough
-      case .dynamiclanglib(_):
-        fatalError("Found incompatible artifact for \(Self.self) (bug)")
+    }
+  }
+
+  public func ninjaTarget<P: Project & ~Copyable>(inProject project: borrowing P, artifact: eArtifactType) -> String {
+    switch (artifact) {
+      case .library(let artifact): return self.ninjaTarget(inProject: project, artifact: artifact)
+      default: fatalError("invalid artifact for library: \(artifact)")
     }
   }
 }
