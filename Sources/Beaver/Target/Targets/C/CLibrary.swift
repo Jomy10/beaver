@@ -166,7 +166,7 @@ public struct CLibrary: CTarget, Library, ~Copyable {
           stmts.addBuildCommand(
             in: objectFiles,
             out: artifactFile,
-            rule: "link",
+            rule: self.linkRule,
             flags: ["linkerFlags": try await self.linkerFlags(forArtifact: artifact, context: context).map { "\"\($0)\"" }.joined(separator: " ")]
           )
         default:

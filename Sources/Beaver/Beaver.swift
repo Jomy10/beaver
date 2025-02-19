@@ -66,31 +66,12 @@ public struct Beaver: ~Copyable, Sendable {
 
     try stmts.addRules(forLanguages: languages)
 
-    //stmts.addRule(
-    //  name: "cc",
-    //  [
-    //    "depfile": "$out.d",
-    //    "deps": "gcc",
-    //    "command": "\(Tools.cc!.path) $cflags -MD -MF $out.d -c $in -o $out",
-    //  ]
-    //)
-    //stmts.addRule(
-    //  name: "link",
-    //  [
-    //    "command": "\(Tools.cc!.path) $linkerFlags $in -o $out",
-    //  ]
-    //)
     try await self.loopProjects { project in
       stmts.join(try await project.buildStatements(context: self))
     }
     let fileContents: String = stmts.finalize()
     try fileContents.write(to: self.buildBackendFile, atomically: true, encoding: .utf8)
-    self.ninja = NinjaRunner(buildFile: self.buildBackendFile.path)
-
-
-    //if self.cache == nil {
-    //  try self.initializeCache()
-    //}
+    self.ninja = try NinjaRunner(buildFile: self.buildBackendFile.path)
   }
 
   private mutating func initializeCache() throws {
