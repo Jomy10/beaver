@@ -16,7 +16,7 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
   }
   public let name: String
   public var baseDir: URL
-  public var buildDir: URL
+//  public var buildDir: URL
   public var makeFlags: [String]
 
   private var targets: NonCopyableArray<AnyTarget>
@@ -24,58 +24,88 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
   public init(
     name: String,
     baseDir: URL,
-    buildDir: URL? = nil,
+//    buildDir: URL? = nil,
     makeFlags: [String],
     targets: consuming NonCopyableArray<AnyTarget>
   ) {
     self.name = name
     self.baseDir = baseDir
-    self.buildDir = buildDir ?? baseDir.appending(path: ".build")
+//    self.buildDir = buildDir ?? baseDir.appending(path: ".build")
     self.targets = targets
     self.makeFlags = makeFlags
   }
 
-  public func clean(context: borrowing Beaver) async throws {
-    if FileManager.default.exists(at: self.buildDir) {
-      try FileManager.default.removeItem(at: self.buildDir)
+  // TODO: find a better way than just calling ninja from ninja
+  public func buildStatements(context: borrowing Beaver) async throws -> BuildBackendBuilder {
+    var stmts = BuildBackendBuilder()
+
+    var commands = [String]()
+    let contextPtr = withUnsafePointer(to: context) { $0 }
+    let projectPointer = withUnsafePointer(to: self) { $0 }
+    _ = try await self.loopTargets { target in
+      stmts.join(try await target.buildStatements(inProject: projectPointer.pointee, context: contextPtr.pointee))
+      commands.append("\(projectPointer.pointee.name)$:\(target.name)")
     }
+
+    //stmts.add("subninja \(.appending(path: "build.ninja").ninjaPath)")
+    stmts.addNinjaCommand(
+      name: self.name,
+      baseDir: context.buildDir(for: self.name),
+      filename: "build.ninja",
+      targets: nil // all
+    )
+    return stmts
   }
 
-  public func build(context: borrowing Beaver) async throws {
-    try await Tools.exec(
-      Tools.make!,
-      ["-j", "4"] + self.makeFlags,
-      baseDir: buildDir,
-      context: self.name
-    )
+  /// Build the specified target from the ninja file
+  public func build(_ target: borrowing AnyTarget, context: borrowing Beaver) async throws {
+    let ninja = try NinjaRunner(buildFile: context.buildDir(for: self.name).appending(path: "build.ninja").path)
+    try await ninja.build(targets: target.name, dir: context.buildDir(for: self.name).path)
   }
 
-  public func build(
-    _ targetRef: TargetRef.Ref,
-    artifact: ArtifactType,
-    context: borrowing Beaver
-  ) async throws {
-    let targetName = await self.targetName(targetRef)!
-    try await Tools.exec(
-      Tools.make!,
-      ["-j", "4", targetName] + self.makeFlags,
-      baseDir: buildDir,
-      context: self.name + ":\(targetName)"
-    )
-  }
+  //public func clean(context: borrowing Beaver) async throws {
+  //  if FileManager.default.exists(at: self.buildDir) {
+  //    try FileManager.default.removeItem(at: self.buildDir)
+  //  }
+  //}
 
-  public func build(
-    _ targetRef: TargetRef.Ref,
-    context: borrowing Beaver
-  ) async throws {
-    let targetName = await self.targetName(targetRef)!
-    try await Tools.exec(
-      Tools.make!,
-      ["-j", "4", targetName] + self.makeFlags,
-      baseDir: buildDir,
-      context: self.name + ":\(targetName)"
-    )
-  }
+
+  //public func build(context: borrowing Beaver) async throws {
+  //  try await context.ninja(self.name)
+  //  //try await Tools.exec(
+  //  //  Tools.make!,
+  //  //  ["-j", "4"] + self.makeFlags,
+  //  //  baseDir: buildDir,
+  //  //  context: self.name
+  //  //)
+  //}
+
+  //public func build(
+  //  _ targetRef: TargetRef.Ref,
+  //  artifact: ArtifactType,
+  //  context: borrowing Beaver
+  //) async throws {
+  //  let targetName = await self.targetName(targetRef)!
+  //  try await Tools.exec(
+  //    Tools.make!,
+  //    ["-j", "4", targetName] + self.makeFlags,
+  //    baseDir: buildDir,
+  //    context: self.name + ":\(targetName)"
+  //  )
+  //}
+
+  //public func build(
+  //  _ targetRef: TargetRef.Ref,
+  //  context: borrowing Beaver
+  //) async throws {
+  //  let targetName = await self.targetName(targetRef)!
+  //  try await Tools.exec(
+  //    Tools.make!,
+  //    ["-j", "4", targetName] + self.makeFlags,
+  //    baseDir: buildDir,
+  //    context: self.name + ":\(targetName)"
+  //  )
+  //}
 
   public func getOnlyExecutable() async throws -> Int {
     var index: Int? = nil
@@ -126,8 +156,8 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
     }
   }
 
-  public func loopTargets(_ cb: (borrowing AnyTarget) async throws -> Void) async rethrows {
-    try await self.targets.forEach(cb)
+  public func loopTargets<Result>(_ cb: (borrowing AnyTarget) async throws -> Result) async rethrows -> [Result] {
+    try await self.targets.map(cb)
   }
 
   public func loopTargetsUntil(_ cb: (borrowing AnyTarget) async throws -> Bool) async rethrows {
@@ -138,7 +168,7 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
     self.targets.firstIndex(where: { $0.name == name })
   }
 
-  public func targetName(_ index: Int) async -> String? {
+  public func targetName(_ index: Int) async -> String {
     self.targets.withElement(index) { $0.name }
   }
 

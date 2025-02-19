@@ -25,9 +25,15 @@ extension Beaver {
     }
   }
 
-  public func targetName(_ ref: TargetRef) async -> String? {
+  public func targetName(_ ref: TargetRef) async -> String {
     await self.withProject(ref.project) { (project: borrowing AnyProject) in
       await project.targetName(ref.target)
+    }
+  }
+
+  public func projectAndTargetName(_ ref: TargetRef) async -> (String, String) {
+    await self.withProjectAndTarget(ref) { (project: borrowing AnyProject, target: borrowing AnyTarget) in
+      (project.name, target.name)
     }
   }
 }

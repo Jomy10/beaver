@@ -11,9 +11,6 @@ let package = Package(
     .executable(
       name: "beaver",
       targets: ["BeaverCLI"]),
-    //.executable(
-    //  name: "Test",
-    //  targets: ["Test"]),
     .library(
       name: "Beaver",
       targets: ["Beaver"]),
@@ -23,27 +20,26 @@ let package = Package(
     .package(url: "https://github.com/davbeck/swift-glob.git", from: "0.1.0"),
     .package(url: "https://github.com/mtynior/ColorizeSwift.git", from: "1.5.0"),
     .package(url: "https://github.com/apple/swift-atomics", from: "1.2.0"),
-    .package(url: "https://github.com/apple/swift-collections.git", from: "1.1.4"),
-    //.package(url: "https://github.com/groue/Semaphore", from: "0.1.0"),
-    .package(url: "https://github.com/FabrizioBrancati/Queuer.git", from: "3.0.0"),
-    .package(url: "https://github.com/SwiftyLab/AsyncObjects.git", from: "2.1.0"),
+    //.package(url: "https://github.com/apple/swift-collections.git", from: "1.1.4"),
+    //.package(url: "https://github.com/FabrizioBrancati/Queuer.git", from: "3.0.0"),
+    //.package(url: "https://github.com/SwiftyLab/AsyncObjects.git", from: "2.1.0"),
     .package(url: "https://github.com/apple/swift-async-algorithms", from: "1.0.3"),
     //.package(url: "https://github.com/Jomy10/TaskProgress", branch: "master"),
-    .package(url: "https://github.com/stephencelis/SQLite.swift", from: "0.15.3"),
-    //.package(url: "https://github.com/johnfairh/RubyGateway", from: "6.0.0"),
-    .package(path: "../RubyGateway"),
-    //.package(url: "https://github.com/Jomy10/RubyGateway", branch: "main"),
-    //.package(url: "https://github.com/johnfairh/CRuby", from: "2.1.0"),
+    .package(url: "https://github.com/Jomy10/SQLite.swift.git", branch: "master"),
+    //.package(path: "../RubyGateway"),
+    .package(url: "https://github.com/Jomy10/RubyGateway.git", branch: "main"),
     .package(url: "https://github.com/apple/swift-syntax", from: "600.0.0"),
     .package(url: "https://github.com/krzyzanowskim/CryptoSwift", from: "1.8.4"),
+    //.package(path: "../simple-graph-swift"),
   ],
   targets: [
+    //=== CLI ===//
     .executableTarget(
       name: "BeaverCLI",
       dependencies: [
         "Beaver",
         "BeaverRuby",
-        "UtilMacros",
+        //"UtilMacros",
         "Utils",
         "CLIPackage",
       ],
@@ -62,20 +58,104 @@ let package = Package(
       ],
       path: "Sources/BeaverCLI/CLIMacros"
     ),
+
+    //=== Ruby ===//
     .target(
       name: "BeaverRuby",
       dependencies: [
         "Beaver",
         "Utils",
-        "WorkQueue",
+        //"WorkQueue",
         //.product(name: "CRuby", package: "CRuby"),
-        .product(name: "AsyncObjects", package: "AsyncObjects"),
+        //.product(name: "AsyncObjects", package: "AsyncObjects"),
         .product(name: "RubyGateway", package: "RubyGateway"),
         .product(name: "Atomics", package: "swift-atomics"),
-        .product(name: "Queuer", package: "Queuer"),
+        //.product(name: "Queuer", package: "Queuer"),
         .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
       ],
-      resources: [.copy("lib")]
+      resources: [.embedInCode("lib")]
+    ),
+
+    //=== Beaver Library ===//
+    .target(
+      name: "Beaver",
+      dependencies: [
+        "csqlite3_glue",
+        "UtilMacros",
+        "CacheMacros",
+        "Platform",
+        "timespec",
+        "Utils",
+        .product(name: "Glob", package: "swift-glob"),
+        .product(name: "Semver", package: "Semver"),
+        .product(name: "SQLite", package: "SQLite.swift"),
+        .product(name: "CryptoSwift", package: "CryptoSwift"),
+      ]
+    ),
+    // Utils //
+    .macro(
+      name: "CacheMacros",
+      dependencies: [
+        .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+        .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+        .product(name: "SwiftSyntax", package: "swift-syntax"),
+        .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
+        .product(name: "SwiftParser", package: "swift-syntax"),
+      ]
+    ),
+    .target(
+      name: "csqlite3_glue",
+      dependencies: [
+        .product(name: "CSQLite", package: "SQLite.swift")
+      ]
+    ),
+    // Platform-specific implementations in C
+    .target(
+      name: "CPlatform",
+      path: "Sources/Platform/CPlatform"
+    ),
+    .target(
+      name: "Platform",
+      dependencies: [
+        "CPlatform"
+      ],
+      path: "Sources/Platform/Platform"
+    ),
+    .target(
+      name: "timespec",
+      path: "deps/timespec",
+      publicHeadersPath: "."
+    ),
+    .macro(
+      name: "UtilMacros",
+      dependencies: [
+        .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+        .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+        .product(name: "SwiftSyntax", package: "swift-syntax"),
+        .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
+        .product(name: "SwiftParser", package: "swift-syntax"),
+      ]
+    ),
+    .target(
+      name: "Utils",
+      dependencies: [
+        "Platform",
+        //"ProgressIndicators",
+        //"UtilMacros",
+        .product(name: "ColorizeSwift", package: "ColorizeSwift"),
+        .product(name: "Atomics", package: "swift-atomics"),
+      ]
+    )
+  ]
+  /*
+    .target(
+      name: "csqlite3_glue",
+      dependencies: [
+        .product(name: "CSQLite", package: "SQLite.swift")
+      ],
+      swiftSettings: [
+        .define("SIMPLE_GRAPH_SQLITE_PKGCONFIG")
+      ]
     ),
     .target(
       name: "Beaver",
@@ -83,16 +163,18 @@ let package = Package(
         "Platform",
         "timespec",
         "Utils",
+        "CacheMacros",
+        "csqlite3_glue",
         .product(name: "Semver", package: "Semver"),
         .product(name: "Glob", package: "swift-glob"),
-        //.product(name: "ColorizeSwift", package: "ColorizeSwift"),
         .product(name: "Atomics", package: "swift-atomics"),
-        //.product(name: "Tree", package: "tree"),
         .product(name: "Collections", package: "swift-collections"),
-        //.product(name: "Semaphore", package: "Semaphore"),
         .product(name: "SQLite", package: "SQLite.swift"),
         .product(name: "CryptoSwift", package: "CryptoSwift"),
-        //.product(name: "TaskProgress", package: "TaskProgress"),
+        .product(name: "SimpleGraph", package: "simple-graph-swift"),
+      ],
+      swiftSettings: [
+        .define("SIMPLE_GRAPH_SQLITE_PKGCONFIG")
       ]
     ),
     .macro(
@@ -114,18 +196,6 @@ let package = Package(
         .product(name: "ColorizeSwift", package: "ColorizeSwift"),
         .product(name: "Atomics", package: "swift-atomics"),
       ]
-    ),
-    // Platform-specific implementations in C
-    .target(
-      name: "CPlatform",
-      path: "Sources/Platform/CPlatform"
-    ),
-    .target(
-      name: "Platform",
-      dependencies: [
-        "CPlatform"
-      ],
-      path: "Sources/Platform/Platform"
     ),
     .target(
       name: "timespec",
@@ -171,4 +241,5 @@ let package = Package(
       ]
     )
   ]
+  */
 )

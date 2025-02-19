@@ -1,4 +1,0 @@
-module ProgressIndicatorsFFI {
-  umbrella header "include/ProgressIndicators.h"
-  export *
-}

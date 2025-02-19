@@ -2,7 +2,7 @@ import Foundation
 import Beaver
 import RubyGateway
 import Utils
-import AsyncAlgorithms
+//import AsyncAlgorithms
 import Atomics
 //import RubyRaise
 
@@ -52,8 +52,9 @@ public func executeRuby<Args: Collection & BidirectionalCollection & Sendable>(
   try loadUtilsMethods(in: beaverModule, queue: queue, context: context)
   try loadAccessorMethods(in: beaverModule, queue: queue, context: context)
 
-  let libFilePath = Bundle.module.path(forResource: "lib", ofType: "rb", inDirectory: "lib")!
-  try Ruby.require(filename: libFilePath)
+  //let libFilePath = Bundle.module.path(forResource: "lib", ofType: "rb", inDirectory: "lib")!
+  //try Ruby.require(filename: libFilePath)
+  try Ruby.eval(ruby: String(bytes: PackageResources.lib_rb, encoding: .utf8)!)
   do {
     try Ruby.eval(ruby: scriptContents)
   } catch let error as RbError {
