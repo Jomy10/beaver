@@ -6,7 +6,7 @@ onFinish = nil
 argv = ARGV
 
 if argv[0] == "clean"
-  sh "cargo clean"
+  # sh "cargo clean"
   sh "swift package clean"
   exit(0)
 end

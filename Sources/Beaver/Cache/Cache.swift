@@ -1,5 +1,6 @@
 import Foundation
 import Utils
+import CryptoSwift
 @preconcurrency import SQLite
 import csqlite3_glue
 
@@ -9,8 +10,28 @@ struct Cache: Sendable {
   var configId: Int64? = nil
 
   // TODO: global configuration
-  init(_ cacheFile: URL) throws {
+  init(
+    _ cacheFile: URL,
+    buildId: Int,
+    env: Data = try! Data(PropertyListSerialization.data(
+      fromPropertyList: ProcessInfo.processInfo.environment
+        .map { k, v in (k, v) }
+        .sorted { a, b in a.0 > b.0 }
+        .map { (k, v) in NSString(string: "\(k):\(v)") },
+      format: .binary,
+      options: 0
+    ).bytes.md5()),
+    clean: inout Bool
+  ) throws {
     self.db = try Connection(cacheFile.path)
+
+    try GlobalCache.createIfNotExists(self.db)
+    if try GlobalCache.changed(buildId: buildId, env: env, self.db) {
+      Self.reset(self.db)
+      try GlobalCache.createIfNotExists(self.db)
+      try GlobalCache.insert(buildId: buildId, env: env, self.db)
+      clean = true
+    }
 
     try ConfigurationCache.createIfNotExists(self.db)
     try FileCache.createIfNotExists(self.db)
@@ -35,6 +56,12 @@ struct Cache: Sendable {
           ConfigurationCache.Columns.mode.unqualified <- mode
         ]))
     }
+  }
+
+  static func reset(_ db: Connection) {
+    sqliteglue_db_config_reset_database(db.handle, 1, 0)
+    sqlite3_exec(db.handle, "VACUUM", nil, nil, nil)
+    sqliteglue_db_config_reset_database(db.handle, 0, 0)
   }
 
   func shouldReconfigureCMakeProject(_ cmakeBaseDir: URL) throws -> Bool {
@@ -111,11 +138,7 @@ struct Cache: Sendable {
   }
 
   func setVar(name: String, value: CacheVarVal) throws {
-    try CacheVariable.updateOrInsert(value, self.db)
-  }
-
-  func configChanged(context: String) throws -> Bool {
-    fatalError("TODO")
+    try CacheVariable.updateOrInsert(CacheVariable(name: name, val: value), self.db)
   }
 }
 
@@ -126,28 +149,4 @@ public enum CacheVarVal {
   case bool(Bool)
   /// All non-existant cache variables are implicitly nil
   case none
-
-  //func asEntry(withName name: String) -> CustomVariable {
-  //  switch (self) {
-  //    case .string(let s): CustomVariable(name: name, strVal: s)
-  //    case .int(let i): CustomVariable(name: name, intVal: i)
-  //    case .double(let d): CustomVariable(name: name, doubleVal: d)
-  //    case .bool(let b): CustomVariable(name: name, boolVal: b)
-  //    case .none: CustomVariable(name: name)
-  //  }
-  //}
-
-  //init(fromEntry entry: CustomVariable) {
-  //  if let strVal = entry.strVal {
-  //    self = .string(strVal)
-  //  } else if let intVal = entry.intVal {
-  //    self = .int(intVal)
-  //  } else if let doubleVal = entry.doubleVal {
-  //    self = .double(doubleVal)
-  //  } else if let boolVal = entry.boolVal {
-  //    self = .bool(boolVal)
-  //  } else {
-  //    self = .none
-  //  }
-  //}
 }

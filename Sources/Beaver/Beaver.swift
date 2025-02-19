@@ -55,7 +55,7 @@ public struct Beaver: ~Copyable, Sendable {
 
   /// Should be called after all configuration has been set and targets have been declared
   public mutating func finalize() async throws {
-    try self.initializeCache()
+    try await self.initializeCache()
     var stmts = BuildBackendBuilder()
     stmts.add("builddir = \(self.buildDir.ninjaPath)")
     var languages = Set<Language>()
@@ -85,14 +85,18 @@ public struct Beaver: ~Copyable, Sendable {
     self.ninja = try NinjaRunner(buildFile: self.buildBackendFile.path)
   }
 
-  private mutating func initializeCache() throws {
+  private mutating func initializeCache() async throws {
     if self.cache != nil || self.ninja != nil {
       return
       //throw InitializationError.fileCacheAlreadyInitialized
     }
 
     try FileManager.default.createDirectoryIfNotExists(at: self.buildDir, withIntermediateDirectories: true)
-    self.cache = try Cache(self.buildDir.appending(path: "cache"))
+    var clean: Bool = false
+    self.cache = try Cache(self.buildDir.appending(path: "cache"), buildId: BeaverConstants.buildId, clean: &clean)
+    if clean {
+      try await self.clean()
+    }
     try self.cache!.selectConfiguration(mode: self.optimizeMode)
   }
 
@@ -116,9 +120,9 @@ public struct Beaver: ~Copyable, Sendable {
     //try self.initializeCache()
   }
 
-  public mutating func requireBuildDir() throws {
+  public mutating func requireBuildDir() async throws {
     if self.cache == nil {
-      try self.initializeCache()
+      try await self.initializeCache()
     }
   }
 
@@ -209,6 +213,8 @@ public struct Beaver: ~Copyable, Sendable {
 
   public func clean() async throws {
     try await self.ninja!.run(tool: "clean")
+    // TODO: clean CMake projects!
+
     //guard let projectRef = await self.projectRef(name: projectName) else {
     //  throw ProjectAccessError.noProject(named: projectName)
     //}
