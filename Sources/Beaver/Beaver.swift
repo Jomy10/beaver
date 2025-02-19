@@ -55,7 +55,6 @@ public struct Beaver: ~Copyable, Sendable {
 
   /// Should be called after all configuration has been set and targets have been declared
   public mutating func finalize() async throws {
-    try await self.initializeCache()
     var stmts = BuildBackendBuilder()
     stmts.add("builddir = \(self.buildDir.ninjaPath)")
     var languages = Set<Language>()
@@ -83,6 +82,8 @@ public struct Beaver: ~Copyable, Sendable {
     let fileContents: String = stmts.finalize()
     try fileContents.write(to: self.buildBackendFile, atomically: true, encoding: .utf8)
     self.ninja = try NinjaRunner(buildFile: self.buildBackendFile.path)
+
+    try await self.initializeCache()
   }
 
   private mutating func initializeCache() async throws {
