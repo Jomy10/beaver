@@ -28,13 +28,16 @@ extension Language {
         rules.insert(.init(name: self.compileRule, values: [
           "depfile": "$out.d",
           "deps": "gcc",
-          "command": "\(try Tools.requireCC.path) \(self.cflags()?.map { "\"\($0)\"" }.joined(separator: " ") ?? "") $cflags -MD -MF $out.d -c $in -o $out"
+          "command": "\(try Tools.requireCC.path) \(self.cflags()?.map { "\"\($0)\"" }.joined(separator: " ") ?? "") $cflags -MD -MF $out.d -c $in -o $out",
+          "description": "cc $in > $out"
         ]))
         rules.insert(.init(name: self.linkRule, values: [
-          "command": "\(Tools.cc!.path) $linkerFlags $in -o $out"
+          "command": "\(Tools.cc!.path) $linkerFlags $in -o $out",
+          "description": "link $in > $out"
         ]))
         rules.insert(.init(name: "ar", values: [
-          "command": "\(try Tools.requireAR.path) -rc $out $in"
+          "command": "\(try Tools.requireAR.path) -rc $out $in",
+          "description": "ar $in > $out"
         ]))
       case .objcxx:
         #if !os(macOS)
@@ -45,13 +48,16 @@ extension Language {
         rules.insert(.init(name: self.compileRule, values: [
           "depfile": "$out.d",
           "deps": "gcc",
-          "command": "\(try Tools.requireCXX.path) \(self.cflags()?.map { "\"\($0)\"" }.joined(separator: " ") ?? "") $cflags -MD -MF $out.d -c $in -o $out"
+          "command": "\(try Tools.requireCXX.path) \(self.cflags()?.map { "\"\($0)\"" }.joined(separator: " ") ?? "") $cflags -MD -MF $out.d -c $in -o $out",
+          "description": "cxx $in > $out"
         ]))
         rules.insert(.init(name: self.linkRule, values: [
-          "command": "\(Tools.cxx!.path) $linkerFlags $in -o $out"
+          "command": "\(Tools.cxx!.path) $linkerFlags $in -o $out",
+          "description": "link $in > $out"
         ]))
         rules.insert(.init(name: "ar", values: [
-          "command": "\(try Tools.requireAR.path) -rc $out $in"
+          "command": "\(try Tools.requireAR.path) -rc $out $in",
+          "description": "ar $in > $out"
         ]))
     }
   }

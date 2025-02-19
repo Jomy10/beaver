@@ -82,21 +82,30 @@ let package = Package(
       dependencies: [
         "csqlite3_glue",
         "UtilMacros",
+        "CacheMacros",
         "Platform",
         "timespec",
         "Utils",
         .product(name: "Glob", package: "swift-glob"),
         .product(name: "Semver", package: "Semver"),
+        .product(name: "SQLite", package: "SQLite.swift")
       ]
     ),
     // Utils //
+    .macro(
+      name: "CacheMacros",
+      dependencies: [
+        .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+        .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+        .product(name: "SwiftSyntax", package: "swift-syntax"),
+        .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
+        .product(name: "SwiftParser", package: "swift-syntax"),
+      ]
+    ),
     .target(
       name: "csqlite3_glue",
       dependencies: [
         .product(name: "CSQLite", package: "SQLite.swift")
-      ],
-      swiftSettings: [
-        .define("SIMPLE_GRAPH_SQLITE_PKGCONFIG")
       ]
     ),
     // Platform-specific implementations in C
@@ -138,16 +147,6 @@ let package = Package(
     )
   ]
   /*
-    .macro(
-      name: "CacheMacros",
-      dependencies: [
-        .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
-        .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-        .product(name: "SwiftSyntax", package: "swift-syntax"),
-        .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
-        .product(name: "SwiftParser", package: "swift-syntax"),
-      ]
-    ),
     .target(
       name: "csqlite3_glue",
       dependencies: [

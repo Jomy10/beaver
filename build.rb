@@ -119,7 +119,7 @@ File.write(
   "\n\"\"\"#"
 )
 
-sh "swift #{command} #{mode_flag}#{argv.size == 0 ? "" : argv.join(" ") + " " }-Xlinker -Ltarget/#{mode} -Xlinker -lprogress_indicators -Xlinker -Ldeps/c_workqueue/target/lib -Xlinker -lworkqueue -Xswiftc -DSIMPLE_GRAPH_SQLITE_PKGCONFIG -Xswiftc -DSQLITE_SWIFT_STANDALONE",
+sh "swift #{command} #{mode_flag}#{argv.size == 0 ? "" : argv.join(" ") + " " }-Xlinker -Ltarget/#{mode} -Xswiftc -DSQLITE_SWIFT_STANDALONE",
     envPrepend: { "PKG_CONFIG_PATH" => File.join(Dir.pwd, "Packages/CRuby") }
 
 case onFinish
