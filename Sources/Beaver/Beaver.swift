@@ -58,20 +58,28 @@ public struct Beaver: ~Copyable, Sendable {
     try self.initializeCache()
     var stmts = BuildBackendBuilder()
     stmts.add("builddir = \(self.buildDir.ninjaPath)")
-    stmts.addRule(
-      name: "cc",
-      [
-        "depfile": "$out.d",
-        "deps": "gcc",
-        "command": "\(Tools.cc!.path) $cflags -MD -MF $out.d -c $in -o $out",
-      ]
-    )
-    stmts.addRule(
-      name: "link",
-      [
-        "command": "\(Tools.cc!.path) $linkerFlags $in -o $out",
-      ]
-    )
+    var languages = Set<Language>()
+
+    await self.loopTargets { (target: borrowing AnyTarget) in
+      languages.insert(target.language)
+    }
+
+    try stmts.addRules(forLanguages: languages)
+
+    //stmts.addRule(
+    //  name: "cc",
+    //  [
+    //    "depfile": "$out.d",
+    //    "deps": "gcc",
+    //    "command": "\(Tools.cc!.path) $cflags -MD -MF $out.d -c $in -o $out",
+    //  ]
+    //)
+    //stmts.addRule(
+    //  name: "link",
+    //  [
+    //    "command": "\(Tools.cc!.path) $linkerFlags $in -o $out",
+    //  ]
+    //)
     try await self.loopProjects { project in
       stmts.join(try await project.buildStatements(context: self))
     }

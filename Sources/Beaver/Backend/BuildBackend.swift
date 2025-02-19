@@ -5,57 +5,6 @@ fileprivate extension String {
   }
 }
 
-//private actor MutableString {
-//  var storage = String()
-
-//  @inlinable
-//  func appendLine(_ str: String) {
-//    self.storage.appendLine(str)
-//  }
-
-//  @inlinable
-//  func mutating(_ cb: (inout String) -> Void) {
-//    cb(&self.storage)
-//  }
-//}
-
-///// ninja backened
-//struct SharedBuildBackendBuilder: Sendable {
-//  private let buildFile = MutableString()
-
-//  func addRule(name: String, _ values: [String: String]) async {
-//    await self.buildFile.mutating { str in
-//      str.appendLine("rule \(name)")
-//      str.appendLine(values.map { k, v in "    \(k) = \(v)" }.joined(separator: "\n"))
-//    }
-//  }
-
-//  func addBuildCommand(in input: [String], out output: String, rule: String, flags: [String]) async {
-//    await self.buildFile.mutating { str in
-//      str.appendLine("build \(output): \(rule) \(input.joined(separator: " "))")
-//      for flag in flags {
-//        str.appendLine("    \(flag)")
-//      }
-//    }
-//  }
-
-//  func addBuildCommend(in input: [String], out output: String, rule: String, flags: [String: String]) async {
-//    await self.addBuildCommand(in: input, out: output, rule: rule, flags: flags.map { k, v in "\(k) = \(v)" })
-//  }
-
-//  func add(_ arbitrary: String) async {
-//    await self.buildFile.appendLine(arbitrary)
-//  }
-
-//  func join(_ other: consuming SharedBuildBackendBuilder) async {
-//    await self.buildFile.appendLine(await other.buildFile.storage)
-//  }
-
-//  func join(_ other: consuming BuildBackendBuilder) async {
-//    await self.buildFile.appendLine(other.storage)
-//  }
-//}
-
 /// ninja backend
 public struct BuildBackendBuilder: Sendable, ~Copyable {
   fileprivate var storage = String()
@@ -63,6 +12,16 @@ public struct BuildBackendBuilder: Sendable, ~Copyable {
   mutating func addRule(name: String, _ values: [String: String]) {
     self.storage.appendLine("rule \(name)")
     self.storage.appendLine(values.map { k, v in "    \(k) = \(v)" }.joined(separator: "\n"))
+  }
+
+  mutating func addRules(forLanguages languages: Set<Language>) throws {
+    var rules: Set<NinjaRule> = Set()
+    for language in languages {
+      try language.ninjaRules(into: &rules)
+    }
+    for rule in rules {
+      self.addRule(name: rule.name, rule.values)
+    }
   }
 
   mutating func addBuildCommand(in input: [String], out output: String, rule: String, flags: [String] = []) {
