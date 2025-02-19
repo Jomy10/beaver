@@ -44,6 +44,46 @@ extension OptimizationMode: SQLite.Value {
   }
 }
 
+extension CacheVarVal: SQLite.Value {
+  public typealias DataType = String
+
+  public static var declaredDatatype: String {
+    String.declaredDatatype
+  }
+
+  struct InvalidDatatypeValue: Error {
+    let value: String
+  }
+
+  public static func fromDatatypeValue(_ datatypeValue: DataType) throws -> ValueType {
+    let components = datatypeValue.split(separator: ":", maxSplits: 1)
+    switch (components[0]) {
+      case "string":
+        return .string(String(components[1]))
+      case "int":
+        return .int(Int(components[1])!)
+      case "double":
+        return .double(Double(components[1])!)
+      case "bool":
+        return .bool(components[1] == "true")
+      case "none":
+        return .none
+      default:
+        throw InvalidDatatypeValue(value: datatypeValue)
+    }
+  }
+
+  public var datatypeValue: DataType {
+    switch (self) {
+      case .string(let val): "string:\(val)"
+      case .int(let i): "int:\(i)"
+      case .double(let d): "double:\(d)"
+      case .bool(let b): "bool:\(b)"
+      case .none: "none"
+    }
+  }
+}
+
 extension CObjectType: SQLite.Value {
   public typealias DataType = Int64
 

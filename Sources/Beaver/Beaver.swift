@@ -61,12 +61,12 @@ public struct Beaver: ~Copyable, Sendable {
     var languages = Set<Language>()
     var hasCMake = false
 
-    await self.loopProjects { (project: borrowing AnyProject) in
+    _ = await self.loopProjects { (project: borrowing AnyProject) in
       switch (project) {
         case .cmake(_):
           hasCMake = true
         case .beaver(let proj):
-          await proj.loopTargets { (target: borrowing AnyTarget) in
+          _ = await proj.loopTargets { (target: borrowing AnyTarget) in
             languages.insert(target.language)
           }
       }

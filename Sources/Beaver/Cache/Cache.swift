@@ -16,6 +16,7 @@ struct Cache: Sendable {
     try FileCache.createIfNotExists(self.db)
     try CMakeProjectCache.createIfNotExists(self.db)
     try CMakeFile.createIfNotExists(self.db)
+    try CacheVariable.createIfNotExists(self.db)
 
     self.db.trace { msg in
       MessageHandler.trace(msg, context: .sql)
@@ -106,11 +107,11 @@ struct Cache: Sendable {
   }
 
   func getVar(name: String) throws -> CacheVarVal {
-    fatalError("TODO")
+    try CacheVariable.getValue(name: name, self.db) ?? .none
   }
 
   func setVar(name: String, value: CacheVarVal) throws {
-    fatalError("TODO")
+    try CacheVariable.updateOrInsert(value, self.db)
   }
 
   func configChanged(context: String) throws -> Bool {
