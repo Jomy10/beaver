@@ -88,7 +88,8 @@ let package = Package(
         "Utils",
         .product(name: "Glob", package: "swift-glob"),
         .product(name: "Semver", package: "Semver"),
-        .product(name: "SQLite", package: "SQLite.swift")
+        .product(name: "SQLite", package: "SQLite.swift"),
+        .product(name: "CryptoSwift", package: "CryptoSwift"),
       ]
     ),
     // Utils //
