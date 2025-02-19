@@ -136,7 +136,7 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
     }
   }
 
-  public func targetName(_ index: Int) async -> String? {
+  public func targetName(_ index: Int) async -> String {
     await self.targets.read { targets in
       targets.buffer[index].name
     }

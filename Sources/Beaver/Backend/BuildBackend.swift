@@ -32,15 +32,19 @@ public struct BuildBackendBuilder: Sendable, ~Copyable {
     ])
   }
 
-  mutating func addBuildCommand(in input: [String], out output: String, rule: String, flags: [String] = []) {
-    self.storage.appendLine("build \(output): \(rule) \(input.joined(separator: " "))")
+  mutating func addBuildCommand(in input: [String], out output: String, rule: String, flags: [String] = [], dependencies: [String] = []) {
+    var line = "build \(output): \(rule) \(input.joined(separator: " "))"
+    if dependencies.count > 0 {
+      line += " || \(dependencies.joined(separator: " "))"
+    }
+    self.storage.appendLine(line)
     for flag in flags {
       self.storage.appendLine("    \(flag)")
     }
   }
 
-  mutating func addBuildCommand(in input: [String], out output: String, rule: String, flags: [String: String]) {
-    self.addBuildCommand(in: input, out: output, rule: rule, flags: flags.map { k, v in "\(k) = \(v)" })
+  mutating func addBuildCommand(in input: [String], out output: String, rule: String, flags: [String: String], dependencies: [String] = []) {
+    self.addBuildCommand(in: input, out: output, rule: rule, flags: flags.map { k, v in "\(k) = \(v)" }, dependencies: dependencies)
   }
 
   mutating func addNinjaCommand(
