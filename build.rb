@@ -6,7 +6,7 @@ onFinish = nil
 argv = ARGV
 
 if argv[0] == "clean"
-  sh "cargo clean"
+  # sh "cargo clean"
   sh "swift package clean"
   exit(0)
 end
@@ -46,7 +46,7 @@ end
 
 ## BUILD ##
 
-sh "cargo build #{mode == :release ? "--release" : ""}"
+# sh "cargo build #{mode == :release ? "--release" : ""}"
 
 File.write(
   "Sources/Beaver/Generated.swift",
@@ -119,7 +119,7 @@ File.write(
   "\n\"\"\"#"
 )
 
-sh "swift #{command} #{mode_flag}#{argv.size == 0 ? "" : argv.join(" ") + " " }-Xlinker -Ltarget/#{mode} -Xlinker -lprogress_indicators -Xlinker -Ldeps/c_workqueue/target/lib -Xlinker -lworkqueue",
+sh "swift #{command} #{mode_flag}#{argv.size == 0 ? "" : argv.join(" ") + " " }-Xlinker -Ltarget/#{mode} -Xswiftc -DSQLITE_SWIFT_STANDALONE",
     envPrepend: { "PKG_CONFIG_PATH" => File.join(Dir.pwd, "Packages/CRuby") }
 
 case onFinish

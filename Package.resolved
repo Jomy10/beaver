@@ -1,15 +1,6 @@
 {
-  "originHash" : "fa3e3b6bf77e9c47b3a9ab8745dd0590542d1b7ea9d1789814efd44c810322e6",
+  "originHash" : "e949f20529d57f682870c75596c203b7bd3af30226b7d5a1e5276367892340d0",
   "pins" : [
-    {
-      "identity" : "asyncobjects",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/SwiftyLab/AsyncObjects.git",
-      "state" : {
-        "revision" : "93aacfba87d738ac94fb50c2a6768c43ec9d42eb",
-        "version" : "2.1.0"
-      }
-    },
     {
       "identity" : "colorizeswift",
       "kind" : "remoteSourceControl",
@@ -38,12 +29,12 @@
       }
     },
     {
-      "identity" : "queuer",
+      "identity" : "rubygateway",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/FabrizioBrancati/Queuer.git",
+      "location" : "https://github.com/Jomy10/RubyGateway.git",
       "state" : {
-        "revision" : "8bf0b4cae3893f970e733025646d07fe8a39fb15",
-        "version" : "3.0.1"
+        "branch" : "main",
+        "revision" : "b4452c1c526baf7f3789322ec218058bc3e58344"
       }
     },
     {
@@ -58,10 +49,10 @@
     {
       "identity" : "sqlite.swift",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/stephencelis/SQLite.swift",
+      "location" : "https://github.com/Jomy10/SQLite.swift.git",
       "state" : {
-        "revision" : "a95fc6df17d108bd99210db5e8a9bac90fe984b8",
-        "version" : "0.15.3"
+        "branch" : "master",
+        "revision" : "dcc8f93141ea9400c5996d6e031e29d5269ef3d5"
       }
     },
     {

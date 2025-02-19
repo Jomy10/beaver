@@ -82,13 +82,21 @@ struct ProjectAccessor: RbObjectConvertible, @unchecked Sendable {
             guard let targetIndex = await projectAccessor.ptr.pointee.targetIndex(name: targetName) else {
               throw TargetAccessError.noTarget(named: targetName)
             }
-            try await projectAccessor.ptr.pointee.withTarget(targetIndex) { (target: borrowing AnyTarget) in
-              try await target.build(
-                projectBaseDir: projectAccessor.ptr.pointee.baseDir,
-                projectBuildDir: projectAccessor.ptr.pointee.buildDir,
-                context: projectAccessor.context.pointee
-              )
-            }
+
+            try await projectAccessor.context.pointee.build(TargetRef(
+              target: targetIndex,
+              project: projectAccessor.ptr.pointee.id
+            ))
+            //guard let targetIndex = await projectAccessor.ptr.pointee.targetIndex(name: targetName) else {
+            //  throw TargetAccessError.noTarget(named: targetName)
+            //}
+            //try await projectAccessor.ptr.pointee.withTarget(targetIndex) { (target: borrowing AnyTarget) in
+            //  try await target.build(
+            //    projectBaseDir: projectAccessor.ptr.pointee.baseDir,
+            //    projectBuildDir: projectAccessor.ptr.pointee.buildDir,
+            //    context: projectAccessor.context.pointee
+            //  )
+            //}
             signal.complete()
           } catch let error {
             signal.fail(error)

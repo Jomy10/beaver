@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <assert.h>
 #include <string.h>
+#include <iostream>
 
 int main(void) {
   flatbuffers::FlatBufferBuilder builder;
@@ -17,5 +18,6 @@ int main(void) {
   assert(strcmp(deserializedPerson->fname()->c_str(), "John") == 0);
   assert(strcmp(deserializedPerson->lname()->c_str(), "Doe") == 0);
   assert(deserializedPerson->birthdate() == 0);
-}
 
+  std::cout << "Tests passed successfully!" << std::endl;
+}

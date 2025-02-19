@@ -1,5 +1,5 @@
 //import TaskProgress
-import ProgressIndicators
+//import ProgressIndicators
 import ColorizeSwift
 
 #if canImport(Darwin)
@@ -15,7 +15,7 @@ import ucrt
 #endif
 
 public struct MessageHandler {
-  private nonisolated(unsafe) static var progress: ProgressIndicators? = nil
+  //private nonisolated(unsafe) static var progress: ProgressIndicators? = nil
   /// Should only be used on the main thread by Beaver, so no locking mechanism is provided here
   private nonisolated(unsafe) static var messageVisibility: MessageVisibility = MessageVisibility.default
 
@@ -57,27 +57,27 @@ public struct MessageHandler {
     String.isColorizationEnabled = val ?? Self.terminalColorEnabled
   }
 
-  public static func enableIndicators() {
-    Self.progress = ProgressIndicators.start(stream: .stderr)
-  }
+  //public static func enableIndicators() {
+  //  Self.progress = ProgressIndicators.start(stream: .stderr)
+  //}
 
-  public static func closeIndicators() {
-    Self.progress = nil
-    //await Self.data.write { data in
-    //  data.targetToSpinner.removeAll()
-    //}
-  }
+  //public static func closeIndicators() {
+  //  Self.progress = nil
+  //  //await Self.data.write { data in
+  //  //  data.targetToSpinner.removeAll()
+  //  //}
+  //}
 
-  public static func withIndicators<Result, E>(_ cb: () async throws(E) -> Result) async rethrows -> Result {
-    self.enableIndicators()
-    let value = try await cb()
-    self.closeIndicators()
-    return value
-  }
+  //public static func withIndicators<Result, E>(_ cb: () async throws(E) -> Result) async rethrows -> Result {
+  //  self.enableIndicators()
+  //  let value = try await cb()
+  //  self.closeIndicators()
+  //  return value
+  //}
 
-  public static func newSpinner(_ message: String) async -> ProgressBar {
-    await Self.progress!.registerSpinner(message: message)
-  }
+  //public static func newSpinner(_ message: String) async -> ProgressBar {
+  //  await Self.progress!.registerSpinner(message: message)
+  //}
 
   private static func checkContext(_ context: MessageVisibility?) -> Bool {
     if context?.rawValue == 0 { return true }
@@ -93,28 +93,28 @@ public struct MessageHandler {
   public static func print(_ message: String, context: MessageVisibility? = nil, terminator: String = "\n") {
     if !Self.checkContext(context) { return }
 
-    if let progress = Self.progress {
-      Task { await progress.println(message) }
-    } else {
+    //if let progress = Self.progress {
+    //  Task { await progress.println(message) }
+    //} else {
       Utils.print(message, to: IOStream.stderr, terminator: terminator)
-    }
+    //}
   }
 
   public static func print(_ message: String, to stream: IOStream, context: MessageVisibility? = nil, terminator: String = "\n") {
     if !Self.checkContext(context) { return }
 
-    if let progress = Self.progress {
-      //ProgressIndicators.global.globalMessage(message)
-      Task { await progress.println(message) } // TODO
-    } else {
+    //if let progress = Self.progress {
+    //  //ProgressIndicators.global.globalMessage(message)
+    //  Task { await progress.println(message) } // TODO
+    //} else {
       Utils.print(message, to: stream, terminator: terminator)
-    }
+    //}
   }
 
   public static func flush(_ stream: IOStream) {
-    if Self.progress == nil {
+    //if Self.progress == nil {
       stream.flush()
-    }
+    //}
   }
 
   public enum LogLevel {

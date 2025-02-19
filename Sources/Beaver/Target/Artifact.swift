@@ -68,9 +68,6 @@ public enum LibraryArtifactType: ArtifactTypeProtocol, Equatable, Hashable, Send
   /// macOS framework
   case framework
   case xcframework
-  /// A dynamic library callable through the specified `Language`
-  case dynamiclanglib(Language)
-  case staticlanglib(Language)
 
   public init?(_ string: String) {
     switch (string) {
@@ -102,8 +99,6 @@ public enum LibraryArtifactType: ArtifactTypeProtocol, Equatable, Hashable, Send
       case .framework: ".framework"
       case .xcframework: ".xcframework"
       case .pkgconfig: ".pc"
-      default:
-        fatalError("unimplemented")
     }
   }
 }
