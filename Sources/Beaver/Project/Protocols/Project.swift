@@ -6,24 +6,25 @@ public protocol Project: ~Copyable, Sendable {
   var id: Int { get set }
   var name: String { get }
   var baseDir: URL { get }
-  var buildDir: URL { get }
 
-  func clean(context: borrowing Beaver) async throws
+  func buildStatements(context: borrowing Beaver) async throws -> BuildBackendBuilder
 
   /// Builds all targets in a project
-  func build(context: borrowing Beaver) async throws
+  //func build(context: borrowing Beaver) async throws
+
   /// Builds the specified artifact of the specified target.
   /// If the ArtifactType doesn't match the target type, this function panics
-  func build(
-    _ targetRef: TargetRef.Ref,
-    artifact: ArtifactType,
-    context: borrowing Beaver
-  ) async throws
+  //func build(
+  //  _ targetRef: TargetRef.Ref,
+  //  artifact: ArtifactType,
+  //  context: borrowing Beaver
+  //) async throws
+
   /// Builds all artifacts of the specified target
-  func build(
-    _ targetRef: TargetRef.Ref,
-    context: borrowing Beaver
-  ) async throws
+  //func build(
+  //  _ targetRef: TargetRef.Ref,
+  //  context: borrowing Beaver
+  //) async throws
 
   /// Runs the default executable in this target, if any
   func getOnlyExecutable() async throws -> Int
@@ -33,7 +34,8 @@ public protocol Project: ~Copyable, Sendable {
   func withLibrary<Result>(_ ref: TargetRef.Ref, _ cb: (borrowing AnyLibrary) async throws -> Result) async throws -> Result
   func withExecutable<Result>(_ ref: TargetRef.Ref, _ cb: (borrowing AnyExecutable) async throws -> Result) async throws -> Result
 
-  func loopTargets(_ cb: (borrowing AnyTarget) async throws -> Void) async rethrows
+  @discardableResult
+  func loopTargets<Result>(_ cb: (borrowing AnyTarget) async throws -> Result) async rethrows -> [Result]
 
   func targetIndex(name: String) async -> Int?
   func targetName(_ index: Int) async -> String?
@@ -46,10 +48,50 @@ extension Project where Self: ~Copyable {
   }
 
   public func run(_ targetIndex: Int, args: [String], context: borrowing Beaver) async throws {
-    try await self.build(targetIndex, artifact: .executable(.executable), context: context)
+    //try await self.build(targetIndex, artifact: .executable(.executable), context: context)
+    try await context.build(TargetRef(target: targetIndex, project: self.id), artifact: .executable(.executable))
 
     try await self.withExecutable(targetIndex) { (target: borrowing AnyExecutable) in
-      try await target.run(projectBuildDir: self.buildDir, args: args)
+      try await target.run(projectBuildDir: context.buildDir(for: self.name), args: args)
     }
   }
+
+  public func buildStatements(context: borrowing Beaver) async throws -> BuildBackendBuilder {
+    var stmts = BuildBackendBuilder()
+    try await self.defaultBuildStatements(in: &stmts, context: context)
+    return stmts
+  }
+
+  func defaultBuildStatements(in stmts: inout BuildBackendBuilder, context: borrowing Beaver) async throws {
+    var commands = [String]()
+    let contextPtr = withUnsafePointer(to: context) { $0 }
+    let projectPointer = withUnsafePointer(to: self) { $0 }
+    try await self.loopTargets { target in
+      stmts.join(try await target.buildStatements(inProject: projectPointer.pointee, context: contextPtr.pointee))
+      commands.append("\(projectPointer.pointee.name)$:\(target.name)")
+    }
+    stmts.addPhonyCommand(
+      name: self.name,
+      commands: commands
+    )
+  }
+
+  //func build(context: borrowing Beaver) async throws {
+  //  try await context.ninja(self.name)
+  //}
+
+  //func build(
+  //  _ targetRef: TargetRef.Ref,
+  //  context: borrowing Beaver
+  //) async throws {
+  //  try await context.ninja("\(self.name):\(try await self.targetName(targetRef))")
+  //}
+
+  //func build(
+  //  _ targetRef: TargetRef.Ref,
+  //  artifact: ArtifactType,
+  //  context: borrowing Beaver
+  //) async throws {
+  //  try await context.ninja("\(self.name):\(try await self.targetName(targetRef)):\(artifact)")
+  //}
 }

@@ -8,20 +8,31 @@ import timespec
 /// This approach is similar to `redo` as outlined in [this article](https://apenwarr.ca/log/20181113)
 /// (see redo: mtime dependencies done right)
 struct FileChecker {
-  typealias File = (filename: String, id: Int64?, mtime: Int64?, size: Int64?, ino: UInt64?, mode: UInt64?, uid: UInt64?, gid: UInt64?)
+  typealias FileDef = (filename: String, mtime: Int64?, size: Int64?, ino: UInt64?, mode: UInt64?, uid: UInt64?, gid: UInt64?)
 
-  static func fileFromRow(_ row: Row) -> File {
-    (
-      filename: row[SQLite.Expression<String>("filename")],
-      id: row[SQLite.Expression<Int64?>("id")],
-      mtime: row[SQLite.Expression<Int64?>("mtime")],
-      size: row[SQLite.Expression<Int64?>("size")],
-      ino: row[SQLite.Expression<UInt64?>("ino")],
-      mode: row[SQLite.Expression<UInt64?>("mode")],
-      uid: row[SQLite.Expression<UInt64?>("uid")],
-      gid: row[SQLite.Expression<UInt64?>("gid")]
-    )
-  }
+//  static func fileFromFileEntry(_ file: File) -> FileDef {
+//    (
+//      filename: file.filename,
+//      mtime: file.mtime,
+//      size: file.size,
+//      ino: file.ino,
+//      mode: file.mode,
+//      uid: file.uid,
+//      gid: file.gid
+//    )
+//  }
+  //static func fileFromRow(_ row: Row) -> File {
+  //  (
+  //    filename: row[SQLite.Expression<String>("filename")],
+  //    id: row[SQLite.Expression<Int64?>("id")],
+  //    mtime: row[SQLite.Expression<Int64?>("mtime")],
+  //    size: row[SQLite.Expression<Int64?>("size")],
+  //    ino: row[SQLite.Expression<UInt64?>("ino")],
+  //    mode: row[SQLite.Expression<UInt64?>("mode")],
+  //    uid: row[SQLite.Expression<UInt64?>("uid")],
+  //    gid: row[SQLite.Expression<UInt64?>("gid")]
+  //  )
+  //}
 
   static func fileAttrs(file: URL) throws -> stat {
     let filename = file.absoluteURL.path
@@ -37,9 +48,9 @@ struct FileChecker {
     return attrs
   }
 
-  /// Returns wether the file has changed and the new `stat` of the file.
+  /// Returns whether the file has changed and the new `stat` of the file.
   /// Also returns true if the file has not been cached before (e.g. it is a new file)
-  static func fileChanged(file: Self.File) throws -> (Bool, stat) {
+  static func fileChanged(file: Self.FileDef) throws -> (Bool, stat) {
     let filename = file.filename
 
     var attrs = stat()
@@ -53,7 +64,7 @@ struct FileChecker {
     })
 
     // File hasn't been cached yet
-    if file.id == nil {
+    if file.mtime == nil {
       return (true, attrs)
     }
 

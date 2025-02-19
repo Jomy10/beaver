@@ -37,7 +37,7 @@ public struct CMakeImporter {
       try FileManager.default.createFile(at: cmakeFilesRequest)
     }
 
-    let reconfigure = try context.fileCache!.shouldReconfigureCMakeProject(baseDir)
+    let reconfigure = try context.cache!.shouldReconfigureCMakeProject(baseDir)
     let cmakeReconfigured = reconfigure || !buildDirExists || !queryDirExists || !FileManager.default.exists(at: replyDir)
     if cmakeReconfigured {
       try await Tools.exec(
@@ -45,7 +45,7 @@ public struct CMakeImporter {
         [
           baseDir.absoluteURL.path,
           "-DCMAKE_BUILD_TYPE=\(context.optimizeMode.cmakeDescription)",
-          "-G", "Unix Makefiles"
+          "-G", "Ninja"
         ] + cmakeFlags,
         baseDir: buildDir
       )
@@ -124,7 +124,7 @@ public struct CMakeImporter {
       }
 
       if let inputs = cmakeFiles.inputs {
-        try context.fileCache!.storeCMakeFiles(dir: baseDir, inputs.map { input in
+        try context.cache!.storeCMakeFiles(dir: baseDir, inputs.map { input in
           if input.path.starts(with: "/") {
             URL(filePath: input.path)
           } else {
@@ -154,7 +154,7 @@ public struct CMakeImporter {
                 at: targetFile
               )
           }
-          let flagsInclude = context.config.cmake.flagsInclude
+//          let flagsInclude = context.config.cmake.flagsInclude
           let addLibrary = { (artifactType: LibraryArtifactType, targets: inout NonCopyableArray<AnyTarget>) in
             if (target.artifacts?.count != 1) {
               if (target.artifacts == nil || target.artifacts?.count == 0) {
@@ -165,16 +165,16 @@ public struct CMakeImporter {
             }
             let cflags: [String] = target.compileGroups?.flatMap({ compileGroup in
               var cflags: [String] = []
-              if flagsInclude.compileCommandFragments {
-                if let f = compileGroup.compileCommandFragments?.flatMap({ Tools.parseArgs($0.fragment).map { String($0) } }) {
-                  cflags.append(contentsOf: f)
-                }
-              }
-              if flagsInclude.defines {
+//              if flagsInclude.compileCommandFragments {
+//                if let f = compileGroup.compileCommandFragments?.flatMap({ Tools.parseArgs($0.fragment).map { String($0) } }) {
+//                  cflags.append(contentsOf: f)
+//                }
+//              }
+//              if flagsInclude.defines {
                 if let f = (compileGroup.defines?.map { "-D\($0.define)" }) {
                   cflags.append(contentsOf: f)
                 }
-              }
+//              }
               if let f = (compileGroup.includes?.map { "-I\($0.path)" }) {
                 cflags.append(contentsOf: f)
               }
@@ -230,7 +230,7 @@ public struct CMakeImporter {
       await context.addProject(.cmake(CMakeProject(
         name: project.name,
         baseDir: baseDir,
-        buildDir: buildDir,
+//        buildDir: buildDir,
         makeFlags: makeFlags,
         targets: targets
       )))

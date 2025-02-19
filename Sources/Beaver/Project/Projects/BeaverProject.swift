@@ -1,6 +1,6 @@
 import Foundation
 import Utils
-import AsyncAlgorithms
+//import AsyncAlgorithms
 
 public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Copyable, Sendable {
   public var id: Int = -1
@@ -19,7 +19,7 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
   //}
   public let name: String
   public var baseDir: URL
-  public var buildDir: URL
+//  public var buildDir: URL
   public var targets: AsyncRWLock<NonCopyableArray<AnyTarget>>
 
   var commands: Commands
@@ -31,10 +31,10 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
     targets: consuming NonCopyableArray<AnyTarget> = NonCopyableArray(),
     context: inout Beaver
   ) throws {
-    try context.requireBuildDir()
+//    try context.requireBuildDir()
     self.name = name
     self.baseDir = baseDir
-    self.buildDir = context.buildDir(for: name)
+//    self.buildDir = context.buildDir(for: name)
     self.targets = AsyncRWLock(targets)
     self.commands = Commands()
   }
@@ -61,13 +61,13 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
     return TargetRef(target: id, project: self.id)
   }
 
-  public func clean(context: borrowing Beaver) async throws {
-    try await self.targets.read { targets in
-      try await targets.forEach { target in
-        try await target.clean(projectBuildDir: self.buildDir, context: context)
-      }
-    }
-  }
+//  public func clean(context: borrowing Beaver) async throws {
+//    try await self.targets.read { targets in
+//      try await targets.forEach { target in
+//        try await target.clean(projectBuildDir: context.buildDir(for: self.name), context: context)
+//      }
+//    }
+//  }
 
   //public func build(targetIndex: Int, context: borrowing Beaver) async throws {
   //  self.withTarget(targetIndex) { (target: borrowing any Target)
@@ -111,12 +111,14 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
     }
   }
 
-  public func loopTargets(_ cb: (borrowing AnyTarget) async throws -> Void) async rethrows {
+  public func loopTargets<Result>(_ cb: (borrowing AnyTarget) async throws -> Result) async rethrows -> [Result] {
+    var res = [Result]()
     try await self.targets.read { targets in
       try await targets.forEach { (target: borrowing AnyTarget) in
-        try await cb(target)
+        res.append(try await cb(target))
       }
     }
+    return res
   }
 
   //public func withTargetPointer<Result>(_ index: Int, _ cb: (UnsafePointer<any Target>) async throws -> Result) async rethrows -> Result {
@@ -172,57 +174,58 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
 
   // Build //
 
-  public func build(context: borrowing Beaver) async throws {
-    try await self.targets.read { targets in
-      for targetIndex in (0..<targets.count) {
-        let builder = try await TargetBuilder(
-          target: TargetRef(target: targetIndex, project: self.id),
-          artifact: nil,
-          context: context
-        )
-        if (await builder.build(context: context)) {
-          throw Beaver.BuildError.buildError
-        }
-      }
-    }
-  }
+  //public func build(context: borrowing Beaver) async throws {
+  //  try await context.ninja(self.name)
+  //  //try await Tools.exec(
+  //  //  Tools.ninja!,
+  //  //  [
+  //  //    "-f",
+  //  //    context.buildDir.appending(path: "build.\(context.optimizeMode).ninja"),
+  //  //    self.name
+  //  //  ]
+  //  //)
 
-  public func build(_ targetIndex: TargetRef.Ref, context: borrowing Beaver) async throws {
-    let builder = try await TargetBuilder(
-      target: TargetRef(target: targetIndex, project: self.id),
-      artifact: nil,
-      context: context
-    )
-    if (await builder.build(context: context)) {
-      throw Beaver.BuildError.buildError
-    }
-    //try await self.withTarget(targetIndex) { (target: borrowing AnyTarget) in
-    //  try await target.asProtocol { try await $0.build(
-    //    projectBaseDir: self.baseDir,
-    //    projectBuildDir: self.buildDir,
-    //    context: context
-    //  )}
-    //}
-  }
+  //  //try await self.targets.read { targets in
+  //  //  for targetIndex in (0..<targets.count) {
+  //  //    let builder = try await TargetBuilder(
+  //  //      target: TargetRef(target: targetIndex, project: self.id),
+  //  //      artifact: nil,
+  //  //      context: context
+  //  //    )
+  //  //    if (await builder.build(context: context)) {
+  //  //      throw Beaver.BuildError.buildError
+  //  //    }
+  //  //  }
+  //  //}
+  //}
 
-  public func build(_ targetIndex: TargetRef.Ref, artifact: ArtifactType, context: borrowing Beaver) async throws {
-    let builder = try await TargetBuilder(
-      target: TargetRef(target: targetIndex, project: self.id),
-      artifact: artifact,
-      context: context
-    )
-    if (await builder.build(context: context)) {
-      throw Beaver.BuildError.buildError
-    }
-    //try await self.withTarget(targetIndex) { (target: borrowing any Target) in
-    //  try await target.asProtocol { try await $0.build(
-    //    artifact: artifact,
-    //    projectBaseDir: self.baseDir,
-    //    projectBuildDir: self.buildDir,
-    //    context: context
-    //  )}
-    //}
-  }
+  //public func build(_ targetIndex: TargetRef.Ref, context: borrowing Beaver) async throws {
+  //  try await self.withTarget(targetIndex) { (target: borrowing AnyTarget) in
+  //    try await target.build(context: context)
+  //  }
+  //  //let builder = try await TargetBuilder(
+  //  //  target: TargetRef(target: targetIndex, project: self.id),
+  //  //  artifact: nil,
+  //  //  context: context
+  //  //)
+  //  //if (await builder.build(context: context)) {
+  //  //  throw Beaver.BuildError.buildError
+  //  //}
+  //}
+
+  //public func build(_ targetIndex: TargetRef.Ref, artifact: ArtifactType, context: borrowing Beaver) async throws {
+  //  try await self.withTarget(targetIndex) { (target: borrowing Target)
+  //    try await target.build(artifact: artifact, context: context)
+  //  }
+  //  //let builder = try await TargetBuilder(
+  //  //  target: TargetRef(target: targetIndex, project: self.id),
+  //  //  artifact: artifact,
+  //  //  context: context
+  //  //)
+  //  //if (await builder.build(context: context)) {
+  //  //  throw Beaver.BuildError.buildError
+  //  //}
+  //}
 
   public func getOnlyExecutable() async throws -> Int {
     try await self.targets.read { targets in

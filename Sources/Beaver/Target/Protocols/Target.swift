@@ -26,25 +26,34 @@ public protocol TargetBase: ~Copyable, Sendable {
 
   var type: TargetType { get }
 
-  func build(
-    projectBaseDir: borrowing URL,
-    projectBuildDir: borrowing URL,
-    context: borrowing Beaver
-  ) async throws
+  func buildStatements<P: Project & ~Copyable>(inProject project: borrowing P, context: borrowing Beaver) async throws -> BuildBackendBuilder
 
-  func build(
-    artifact: eArtifactType,
-    projectBaseDir: borrowing URL,
-    projectBuildDir: borrowing URL,
-    context: borrowing Beaver
-  ) async throws
+  func ninjaTarget<P: Project & ~Copyable>(inProject: borrowing P, artifact: eArtifactType) -> String
+  //func build(
+  //  inProject: borrowing some Project,
+  //  projectBaseDir: borrowing URL,
+  //  projectBuildDir: borrowing URL,
+  //  context: borrowing Beaver
+  //) async throws
 
-  func clean(projectBuildDir: borrowing URL, context: borrowing Beaver) async throws
+  //func build(
+  //  inProject: borrowing someProject,
+  //  artifact: eArtifactType,
+  //  projectBaseDir: borrowing URL,
+  //  projectBuildDir: borrowing URL,
+  //  context: borrowing Beaver
+  //) async throws
 
-  func debugString(_ opts: DebugTargetOptions) -> String
+  //func clean(projectBuildDir: borrowing URL, context: borrowing Beaver) async throws
+
+  //func debugString(_ opts: DebugTargetOptions) -> String
 }
 
 extension TargetBase where Self: ~Copyable {
+  public func ninjaTarget<P: Project & ~Copyable>(inProject project: borrowing P) -> String {
+    "\(project.name):\(self.name)"
+  }
+
   @inline(__always)
   func loopUniqueDependenciesRecursive(context: borrowing Beaver, _ cb: (Dependency) async throws -> Void) async throws {
     var visited = Set<Dependency>()
@@ -74,12 +83,13 @@ public protocol Target: TargetBase, ~Copyable, Sendable {
   var artifacts: [ArtifactType] { get }
 
   /// Build the specific artifact
-  func build(
-    artifact: ArtifactType,
-    projectBaseDir: borrowing URL,
-    projectBuildDir: borrowing URL,
-    context: borrowing Beaver
-  ) async throws
+  //func build(
+  //  inProject: borrowing some Project,
+  //  artifact: ArtifactType,
+  //  projectBaseDir: borrowing URL,
+  //  projectBuildDir: borrowing URL,
+  //  context: borrowing Beaver
+  //) async throws
 
   func artifactOutputDir(projectBuildDir: borrowing URL, artifact: ArtifactType) -> URL?
   func artifactURL(projectBuildDir: borrowing URL, artifact: ArtifactType) -> URL?
@@ -97,38 +107,38 @@ extension Target where Self: ~Copyable {
 
   // Build //
   /// Builds the artifact specified by the artifact type. Panics if the wrong artifact type is given. Only used internally
-  public func build(
-    artifact: eArtifactType,
-    projectBaseDir: borrowing URL,
-    projectBuildDir: borrowing URL,
-    context: borrowing Beaver
-  ) async throws {
-    try await self.build(artifact: artifact.as(Self.ArtifactType.self)!, projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, context: context)
-  }
+  //public func build(
+  //  artifact: eArtifactType,
+  //  projectBaseDir: borrowing URL,
+  //  projectBuildDir: borrowing URL,
+  //  context: borrowing Beaver
+  //) async throws {
+  //  try await self.build(artifact: artifact.as(Self.ArtifactType.self)!, projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, context: context)
+  //}
 
-  func buildArtifactsSync(baseDir: borrowing URL, buildDir: borrowing URL, context: borrowing Beaver) async throws {
-    for artifact in self.artifacts {
-      try await self.build(artifact: artifact, projectBaseDir: baseDir, projectBuildDir: buildDir, context: context)
-    }
-  }
+  //func buildArtifactsSync(baseDir: borrowing URL, buildDir: borrowing URL, context: borrowing Beaver) async throws {
+  //  for artifact in self.artifacts {
+  //    try await self.build(artifact: artifact, projectBaseDir: baseDir, projectBuildDir: buildDir, context: context)
+  //  }
+  //}
 
-  func buildArtifactsAsync(baseDir: borrowing URL, buildDir: borrowing URL, context: borrowing Beaver) async throws {
-    let contextPtr = UnsafeSendable(withUnsafePointer(to: context) { $0 })
-    let selfPtr = UnsafeSendable(withUnsafePointer(to: self) { $0 })
-    try await withThrowingTaskGroup(of: Void.self) { [baseDir = copy baseDir, buildDir = copy buildDir] group in
-      for i in 0..<self.artifacts.count {
-        group.addTask {
-          try await selfPtr.value.pointee.build(artifact: selfPtr.value.pointee.artifacts[i], projectBaseDir: baseDir, projectBuildDir: buildDir, context: contextPtr.value.pointee)
-        }
-      }
+  //func buildArtifactsAsync(baseDir: borrowing URL, buildDir: borrowing URL, context: borrowing Beaver) async throws {
+  //  let contextPtr = UnsafeSendable(withUnsafePointer(to: context) { $0 })
+  //  let selfPtr = UnsafeSendable(withUnsafePointer(to: self) { $0 })
+  //  try await withThrowingTaskGroup(of: Void.self) { [baseDir = copy baseDir, buildDir = copy buildDir] group in
+  //    for i in 0..<self.artifacts.count {
+  //      group.addTask {
+  //        try await selfPtr.value.pointee.build(artifact: selfPtr.value.pointee.artifacts[i], projectBaseDir: baseDir, projectBuildDir: buildDir, context: contextPtr.value.pointee)
+  //      }
+  //    }
 
-      try await group.waitForAll()
-    }
-  }
+  //    try await group.waitForAll()
+  //  }
+  //}
 }
 
-public struct DebugTargetOptions {
-  public var flags: Bool = false
-
-  public init() {}
+extension Target where Self: ~Copyable {
+  public func ninjaTarget<P: Project & ~Copyable>(inProject project: borrowing P, artifact: ArtifactType) -> String {
+    "\(project.name):\(self.name):\(artifact)"
+  }
 }

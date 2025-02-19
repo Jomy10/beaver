@@ -1,3 +1,5 @@
+# Old database schema
+
 ```mermaid
 erDiagram
 
@@ -109,3 +111,100 @@ Target ||--|| TargetCache: targetID
 TargetCache ||--o{ TargetDependencyCache: targetID
 TargetCache |o--|| TargetDependencyCache: dependencyTargetID
 ```
+
+# New schema (TargetCache)
+
+```mermaid
+erDiagram
+
+%% The graph %%
+
+Node {}
+Edge {}
+
+Node }|--|{ Edge: source
+Node }|--|{ Edge: target
+
+%% Information used while building/updating graph %%
+
+%% Table containing all unique files that have to be compiled. Updated every time the
+%% file is checked (when a graph is walked)
+File {
+	%% Primary Key
+	string filename
+	int mtime
+	int size
+	int ino
+	int mode
+	int uid
+	int gid
+}
+
+Node ||--|| File: filename
+
+```
+
+# New schema (ConcreteFile)
+
+```mermaid
+erDiagram
+
+Configuration {
+	int id
+	int mode
+}
+
+Target {
+	int id
+	%% ID's as used inside of Beaver
+	int project
+	int target
+}
+
+%% A file that is present in a Node, with information about the target it belongs
+%% to, the configuration, etc. to determine where it belongs to in which invocation
+%% The node's checkId is used to determine if it should be rebuilt
+ConcreteFile {
+	string globalConfigId
+	int configId
+	int targetId
+	%% filename
+	string nodeId
+	%% If this equals the checkId of the node, then this file shouldn't be rebuilt
+	string nodeCheckId
+}
+
+GlobalConfig {
+	string id
+	int buildId
+	string env
+}
+
+ConcreteFile ||--|| Configuration: configId
+ConcreteFile ||--|| Target: targetId
+ConcreteFile ||--|| Node: nodeId
+ConcreteFile ||--|| GlobalConfig: globalConfigId
+```
+
+# New schema (Variables)
+
+```mermaid
+erDiagram
+
+CustomVariable {
+	%% name is unique
+	string name
+	optString strVal
+	optInt intVal
+	optDouble doubleVal
+	optInt boolVal
+}
+
+CustomContext {
+	%% name is unique
+	string name
+	int configId
+	string globalConfigId
+}
+```
+

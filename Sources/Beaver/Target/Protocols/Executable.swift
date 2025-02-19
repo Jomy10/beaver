@@ -26,4 +26,11 @@ extension Executable where Self: ~Copyable {
   public var eArtifacts: [eArtifactType] {
     self.artifacts.map { .executable($0) }
   }
+
+  public func ninjaTarget<P: Project & ~Copyable>(inProject project: borrowing P, artifact: eArtifactType) -> String {
+    switch (artifact) {
+      case .executable(let artifact): return self.ninjaTarget(inProject: project, artifact: artifact)
+      default: fatalError("invalid artifact for executable: \(artifact)")
+    }
+  }
 }

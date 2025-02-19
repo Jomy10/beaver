@@ -1,21 +1,8 @@
 import Foundation
 import Platform
-import Utils
 
 extension URL {
-  @available(*, deprecated, message: "Use FileManager.default.isDirectory(_:) from Utils")
-  var isDirectory: Bool {
-    var oisDir: ObjCBool = false
-    if !FileManager.default.fileExists(atPath: self.path, isDirectory: &oisDir) { return false }
-    return oisDir.boolValue
-  }
-
-  @available(*, deprecated, message: "Use FileManager.default.exists(at:) from Utils")
-  var exists: Bool {
-    return FileManager.default.fileExists(atPath: self.path)
-  }
-
-  func recursiveContentsOfDirectory(skipHiddenFiles: Bool = false) -> [URL] {
+  public func recursiveContentsOfDirectory(skipHiddenFiles: Bool = false) -> [URL] {
     guard let contents = try? FileManager.default.contentsOfDirectory(at: self, includingPropertiesForKeys: nil, options: skipHiddenFiles ? .skipsHiddenFiles : []) else {
       return []
     }
@@ -28,7 +15,7 @@ extension URL {
     }
   }
 
-  func unsafeRelativePath(from base: URL) -> String? {
+  public func unsafeRelativePath(from base: URL) -> String? {
     guard self.isFileURL && base.isFileURL else {
       return nil
     }
@@ -39,7 +26,7 @@ extension URL {
     return destComponents[baseComponentCount...].joined(separator: PATH_SEPARATOR)
   }
 
-  var dirURL: URL? {
+  public var dirURL: URL? {
     guard self.isFileURL else { return nil }
 
     let components = self.pathComponents

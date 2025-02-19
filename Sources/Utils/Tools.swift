@@ -45,7 +45,7 @@ public struct Tools {
     return nil
   }
 
-  static func findTool(name: String, envName: String? = nil, aliases: [String]? = nil) -> URL? {
+  public static func findTool(name: String, envName: String? = nil, aliases: [String]? = nil) -> URL? {
     if let envName = envName {
       if let tool = ProcessInfo.processInfo.environment[envName] {
         let toolURL = URL(fileURLWithPath: tool)
@@ -87,6 +87,7 @@ public struct Tools {
   }
 
   // TODO: replace with `execWithOutput`
+  @available(*, deprecated)
   private static func _exec(_ cmdURL: URL, _ args: [String]) throws {
     let task = Process()
     let stderrPipe = Pipe()
@@ -220,14 +221,11 @@ public struct Tools {
     try task.run()
 
     await task.waitUntilExitAsync()
-    MessageHandler.info("\(contextString)task finished")
     _ = try await outputTask.value
-    MessageHandler.info("\(contextString)output done")
 
     if task.terminationStatus != 0 {
       throw ProcessError(terminationStatus: task.terminationStatus, reason: task.terminationReason)
     }
-    MessageHandler.info("\(contextString)returning")
   }
 
   /// Output immediately to stderr/stdout
@@ -243,6 +241,27 @@ public struct Tools {
     task.environment = ProcessInfo.processInfo.environment
 
     MessageHandler.print((cmdURL.path + " " + args.joined(separator: " ")).darkGray(), to: .stderr, context: .shellCommand)
+
+    try task.run()
+
+    await task.waitUntilExitAsync()
+
+    if task.terminationStatus != 0 {
+      throw ProcessError(terminationStatus: task.terminationStatus, reason: task.terminationReason)
+    }
+  }
+
+  /// Output to stderr/stdout and don't print the command
+  @inlinable
+  public static func execSilent(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) async throws {
+    let task = Process()
+
+    task.standardError = FileHandle.standardError
+    task.standardOutput = FileHandle.standardOutput
+    task.executableURL = cmdURL
+    task.arguments = args
+    task.currentDirectoryURL = baseDir
+    task.environment = ProcessInfo.processInfo.environment
 
     try task.run()
 
@@ -282,7 +301,7 @@ public struct Tools {
   #if os(macOS)
   public static let objcCflags: [String] = ["-x", "objective-c"]
   #else
-  public static let objcCflags: [String] = try! Tools._exec(Tools.gnustepConfig!, ["--objc-flags"])
+  public static let objcCflags: [String] = Tools.parseArgs(try! Tools.execWithOutput(Tools.gnustepConfig!, ["--objc-flags"]).stdout)
   #endif
 
   #if os(macOS)
@@ -292,9 +311,9 @@ public struct Tools {
   #endif
 
   #if os(macOS)
-  public static let objcLinkerFlags: [String] = ["-framework", "Foundation"]
+  public static let objcLinkerFlags: [String] = ["-lobjc"]
   #else
-  public static let objcLinkerFlags: [String] = try! Tools._exec(Tools.gnustepConfig!, ["--objc-libs", "--base-libs"])
+  public static let objcLinkerFlags: [String] = Tools.parseArgs(try! Tools.execWithOutput(Tools.gnustepConfig!, ["--objc-libs", "--base-libs"]).stdout)
   #endif
 
   public static let lipo: URL? = Tools.findTool(name: "lipo")
@@ -308,6 +327,8 @@ public struct Tools {
   public static let cmake: URL? = Tools.findTool(name: "cmake")
 
   public static let make: URL? = Tools.findTool(name: "make")
+
+  public static let ninja: URL? = Tools.findTool(name: "ninja", envName: "NINJA")
 
   /// String to argument string
   @inlinable

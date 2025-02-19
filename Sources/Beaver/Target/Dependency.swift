@@ -142,12 +142,59 @@ extension Dependency {
     }
   }
 
-  @available(*, deprecated, message: "use linkerFlagsAndArtifactURL(context:, collectingLanguageIn:)")
-  public func linkerFlags(context: borrowing Beaver) async throws -> [String] {
+//  public func cflagsAndHeaders(context: borrowing Beaver) async throws -> ([String], [URL]?)? {
+//    switch (self) {
+//      case .library(let libTarget):
+//        return try await context.withProjectAndLibrary(libTarget.target) { (project: borrowing AnyProject, library: borrowing AnyLibrary) in
+//          switch (library) {
+//            case .c(let lib):
+//              return try await lib.publicCflagsAndHeaders(projectBaseDir: project.baseDir)
+//            case .cmake(let lib):
+//              return (try await lib.publicCflags(projectBaseDir: project.baseDir), nil)
+//          }
+//        }
+//      case .pkgconfig(let dep):
+//        return try dep.cflags
+//      case .system(_):
+//        return nil
+//      case .customFlags(cflags: let cflags, linkerFlags: _):
+//        return cflags
+//      case .cmakeId(let cmakeId):
+//        return try await context.withProjectAndLibrary(cmakeId: cmakeId) { (project: borrowing CMakeProject, library: borrowing CMakeLibrary) in
+//          return (try await library.publicCflags(projectBaseDir: project.baseDir), nil)
+//        }
+//    }
+//  }
+
+//  @available(*, deprecated, message: "use linkerFlagsAndArtifactURL(context:, collectingLanguageIn:)")
+//  public func linkerFlags(context: borrowing Beaver) async throws -> [String] {
+//    switch (self) {
+//      case .library(let libTarget):
+//        return await context.withProjectAndLibrary(libTarget.target) { (project: borrowing AnyProject, library: borrowing AnyLibrary) in
+//          return library.linkAgainstLibrary(projectBuildDir: project.buildDir, artifact: libTarget.artifact)
+//        }
+//      case .pkgconfig(let dep):
+//        return try dep.linkerFlags
+//      case .system(let name):
+//        return ["-l\(name)"]
+//      case .customFlags(cflags: _, linkerFlags: let linkerFlags):
+//        return linkerFlags
+//      case .cmakeId(let cmakeId):
+//        return try await context.withProjectAndLibrary(cmakeId: cmakeId) { (project: borrowing CMakeProject, library: borrowing CMakeLibrary) in
+//          return library.linkAgainstLibrary(projectBuildDir: project.buildDir)
+//        }
+//    }
+//  }
+
+  /// Returns the linker flags (first argument) and the artifactURL being linked to (if the dependency is a target
+  /// defined in Beaver)
+  public func linkerFlags(context: borrowing Beaver, collectingLanguageIn langs: inout Set<Language>) async throws -> [String] {
     switch (self) {
       case .library(let libTarget):
+        let contextPtr = withUnsafePointer(to: context) { $0 }
         return await context.withProjectAndLibrary(libTarget.target) { (project: borrowing AnyProject, library: borrowing AnyLibrary) in
-          return library.linkAgainstLibrary(projectBuildDir: project.buildDir, artifact: libTarget.artifact)
+          langs.insert(library.language)
+          return library.linkAgainstLibrary(projectBuildDir: contextPtr.pointee.buildDir(for: project.name), artifact: libTarget.artifact)
         }
       case .pkgconfig(let dep):
         return try dep.linkerFlags
@@ -156,37 +203,10 @@ extension Dependency {
       case .customFlags(cflags: _, linkerFlags: let linkerFlags):
         return linkerFlags
       case .cmakeId(let cmakeId):
-        return try await context.withProjectAndLibrary(cmakeId: cmakeId) { (project: borrowing CMakeProject, library: borrowing CMakeLibrary) in
-          return library.linkAgainstLibrary(projectBuildDir: project.buildDir)
-        }
-    }
-  }
-
-  /// Returns the linker flags (first argument) and the artifactURL being linked to (if the dependency is a target
-  /// defined in Beaver)
-  public func linkerFlagsAndArtifactURL(context: borrowing Beaver, collectingLanguageIn langs: inout Set<Language>) async throws -> ([String], URL?) {
-    switch (self) {
-      case .library(let libTarget):
-        return await context.withProjectAndLibrary(libTarget.target) { (project: borrowing AnyProject, library: borrowing AnyLibrary) in
-          langs.insert(library.language)
-          return (
-            library.linkAgainstLibrary(projectBuildDir: project.buildDir, artifact: libTarget.artifact),
-            library.artifactURL(projectBuildDir: project.buildDir, artifact: libTarget.artifact)
-          )
-        }
-      case .pkgconfig(let dep):
-        return (try dep.linkerFlags, nil)
-      case .system(let name):
-        return (["-l\(name)"], nil)
-      case .customFlags(cflags: _, linkerFlags: let linkerFlags):
-        return (linkerFlags, nil)
-      case .cmakeId(let cmakeId):
+        let contextPtr = withUnsafePointer(to: context) { $0 }
         return try await context.withProjectAndLibrary(cmakeId: cmakeId) { (project: borrowing CMakeProject, library: borrowing CMakeLibrary) in
           langs.insert(library.language)
-          return (
-            library.linkAgainstLibrary(projectBuildDir: project.buildDir),
-            library._artifactURL
-          )
+          return library.linkAgainstLibrary(projectBuildDir: contextPtr.pointee.buildDir(for: project.name))
         }
     }
   }

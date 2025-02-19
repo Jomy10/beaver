@@ -2,6 +2,7 @@ import Foundation
 import Beaver
 import RubyGateway
 import Utils
+import AsyncAlgorithms
 
 fileprivate func cTargetParseRubyArgs<ArtifactType: RbObjectConvertible & ArtifactTypeProtocol>(
   rubyArgs: borrowing [String: RbObject],

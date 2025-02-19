@@ -1,15 +1,11 @@
-import Utils
-
 /// An array that cannot be copied and can contain non-copyable elements
 public struct NonCopyableArray<Element: ~Copyable>: ~Copyable {
-  @usableFromInline
-  var buffer: UnsafeMutableBufferPointer<Element>
-  //@usableFromInline
-  //public internal(set) var count: Int = 0
+  public var buffer: UnsafeMutableBufferPointer<Element>
+
   @usableFromInline
   internal var __count: Int = 0
   @inlinable
-  public var count: Int {
+  public private(set) var count: Int {
     get { self.__count }
     set { self.__count = newValue }
   }

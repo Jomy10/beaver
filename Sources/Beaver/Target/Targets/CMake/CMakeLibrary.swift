@@ -13,13 +13,13 @@ public struct CMakeLibrary: CMakeTarget, Library, ~Copyable, Sendable {
   public var projectId: ProjectRef
   public var cmakeId: String
 
-  public var dependencies: [Dependency]
-
   public var artifacts: [ArtifactType]
   public var _artifactURL: URL
 
+  /// Used for linking against this dependency
   public var linkerFlags: [String]
   public var cflags: [String]
+  public var dependencies: [Dependency]
 
   public typealias ArtifactType = LibraryArtifactType
 
@@ -63,6 +63,7 @@ public struct CMakeLibrary: CMakeTarget, Library, ~Copyable, Sendable {
   public func publicCflags(projectBaseDir: borrowing URL) async throws -> [String] {
     self.cflags
   }
+
   //public func clean(projectBuildDir: borrowing URL, context: borrowing Beaver) async throws {
   //  if FileManager.default.exists(at: projectBuildDir) {
   //    try FileManager.default.removeItem(at: copy projectBuildDir)
