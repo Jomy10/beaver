@@ -264,6 +264,10 @@ extension CTarget where Self: ~Copyable {
     //}
   }
 
+  var linkRule: String {
+    self.language.linkRule
+  }
+
   //lazy var ccExtraArgs: [String]? = switch (self.language) {
   //  case .c: Tools.ccExtraArgs
   //  case .cxx: Tools.cxxExtraArgs

@@ -164,14 +164,26 @@ public struct Tools {
   }}
 
   public static let pkgconfig: URL? = Tools.findTool(name: "pkgconf", envName: "PKG_CONFIG", aliases: ["pkg-config", "pkgconfig"])
+  public static var requirePkgconfig: URL { get throws {
+    try self.requireTool(Self.pkgconfig, name: "pkg-config")
+  }}
 
   public static let sh: URL? = Tools.findTool(name: "sh", aliases: ["zsh", "bash", "fish"])
+  public static var requireSh: URL { get throws {
+    try self.requireTool(Self.sh, name: "sh")
+  }}
 
   public static let cmake: URL? = Tools.findTool(name: "cmake")
+  public static var requireCMake: URL { get throws {
+    try self.requireTool(Self.cmake, name: "cmake")
+  }}
 
   public static let make: URL? = Tools.findTool(name: "make")
 
   public static let ninja: URL? = Tools.findTool(name: "ninja", envName: "NINJA")
+  public static var requireNinja: URL { get throws {
+    try self.requireTool(Self.ninja, name: "ninja")
+  }}
 
   /// String to argument string
   @inlinable

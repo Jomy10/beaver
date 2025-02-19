@@ -77,30 +77,30 @@ public struct CExecutable: CTarget, Executable, ~Copyable {
         return base.appending(path: "\(self.name).app")
     }
   }
-  
+
   public func buildStatements<P>(inProject project: borrowing P, context: borrowing Beaver) async throws -> BuildBackendBuilder where P : Project, P : ~Copyable
   {
     let sources = try await self.collectSources(projectBaseDir: project.baseDir)
     let projectBuildDir = context.buildDir(for: project.name)
     let objectBuildDir = self.objectBuildDir(projectBuildDir: projectBuildDir)
-    
+
     if sources.count == 0 {
       MessageHandler.warn("Target \(project.name):\(self.name) has no sources")
     }
     let cflags = try await self.cflags(projectBaseDir: project.baseDir, context: context)
       .map { "\"\($0)\"" }
       .joined(separator: " ")
-    
+
     var stmts = BuildBackendBuilder()
-    
+
     for artifact in self.artifacts {
       let artifactFile = self.artifactURL(projectBuildDir: projectBuildDir, artifact: artifact)!.ninjaPath
-      
+
       switch (artifact) {
         case .executable:
           stmts.add("# Build \(project.name):\(self.name) artifact \(artifact)")
           var objectFiles = [String]()
-          
+
           for source in sources {
             let objectFile = self.objectFile(
               projectBaseDir: project.baseDir,
@@ -108,10 +108,10 @@ public struct CExecutable: CTarget, Executable, ~Copyable {
               sourceFile: source,
               type: .static
             )
-            
+
             let objectFilePath = objectFile.ninjaPath
             objectFiles.append(objectFilePath)
-            
+
             stmts.addBuildCommand(
               in: [source.ninjaPath],
               out: objectFilePath,
@@ -122,23 +122,23 @@ public struct CExecutable: CTarget, Executable, ~Copyable {
           stmts.addBuildCommand(
             in: objectFiles,
             out: artifactFile,
-            rule: "link"
+            rule: self.linkRule
           )
         case .app:
           fatalError("unimplemented: app")
       }
-      
+
       stmts.addPhonyCommand(
         name: "\(project.name)$:\(self.name)$:\(artifact)",
         command: artifactFile)
     } // end for artifacts
-    
+
     stmts.addPhonyCommand(
       name: "\(project.name)$:\(self.name)",
       commands: self.artifacts.map { artifact in
         "\(project.name)$:\(self.name)$:\(artifact)"
       })
-    
+
     return stmts
   }
 
