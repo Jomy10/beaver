@@ -12,11 +12,17 @@ extension CMakeTarget where Self: ~Copyable {
 
   public func buildStatements<P: Project & ~Copyable>(inProject project: borrowing P, context: borrowing Beaver) async throws -> BuildBackendBuilder {
     var stmts = BuildBackendBuilder()
-    let artifactFile = self.artifactURL(projectBuildDir: context.buildDir(for: project.name), artifact: self.artifacts.first!)!
-    stmts.addPhonyCommand(
+    stmts.addNinjaCommand(
       name: "\(project.name)$:\(self.name)",
-      command: artifactFile.ninjaPath
+      baseDir: context.buildDir(for: project.name),
+      filename: "build.ninja",
+      targets: [self.name]
     )
+    //let artifactFile = self.artifactURL(projectBuildDir: context.buildDir(for: project.name), artifact: self.artifacts.first!)!
+    //stmts.addPhonyCommand(
+    //  name: "\(project.name)$:\(self.name)",
+    //  command: artifactFile.ninjaPath
+    //)
     return stmts
   }
   //public func build(
