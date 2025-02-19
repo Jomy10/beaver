@@ -57,28 +57,28 @@ struct BeaverConstants {
   EOF
 )
 
-if !Dir.exist?("deps/c_workqueue/target/module")
-  Dir.chdir("deps/c_workqueue") do
-    sh "sh build.sh"
-    Dir.mkdir("target/module")
-    Dir.chdir("target/module") do
-      modulemap = <<-EOF
-      module WorkQueue {
-        umbrella header "include/workqueue.h"
-        export *
-      }
-      EOF
-      File.write("module.modulemap", modulemap)
-      Dir.mkdir("include")
-      File.write("include/workqueue.h", File.read("../../include/workqueue.h"))
-    end
-  end
-  # Dir.mkdir("deps/c_workqueue/build")
-  # Dir.chdir("deps/c_workqueue/build") do
-  #   sh "cmake .."
-  #   sh "make -j 4"
-  # end
-end
+# if !Dir.exist?("deps/c_workqueue/target/module")
+#   Dir.chdir("deps/c_workqueue") do
+#     sh "sh build.sh"
+#     Dir.mkdir("target/module")
+#     Dir.chdir("target/module") do
+#       modulemap = <<-EOF
+#       module WorkQueue {
+#         umbrella header "include/workqueue.h"
+#         export *
+#       }
+#       EOF
+#       File.write("module.modulemap", modulemap)
+#       Dir.mkdir("include")
+#       File.write("include/workqueue.h", File.read("../../include/workqueue.h"))
+#     end
+#   end
+#   # Dir.mkdir("deps/c_workqueue/build")
+#   # Dir.chdir("deps/c_workqueue/build") do
+#   #   sh "cmake .."
+#   #   sh "make -j 4"
+#   # end
+# end
 
 baseMacroDir = "Sources/UtilMacros/generated"
 Dir.mkdir(baseMacroDir) unless Dir.exist?(baseMacroDir)
