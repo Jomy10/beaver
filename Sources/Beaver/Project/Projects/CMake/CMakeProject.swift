@@ -168,7 +168,7 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
     self.targets.firstIndex(where: { $0.name == name })
   }
 
-  public func targetName(_ index: Int) async -> String? {
+  public func targetName(_ index: Int) async -> String {
     self.targets.withElement(index) { $0.name }
   }
 

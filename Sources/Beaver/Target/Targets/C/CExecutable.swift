@@ -98,6 +98,9 @@ public struct CExecutable: CTarget, Executable, ~Copyable {
 
     var stmts = BuildBackendBuilder()
 
+    // Commands for building dependencies
+    let dependencyCommands = try await self.dependencyCommands(context: context)
+
     for artifact in self.artifacts {
       let artifactFile = self.artifactURL(projectBuildDir: projectBuildDir, artifact: artifact)!.ninjaPath
 
@@ -128,7 +131,8 @@ public struct CExecutable: CTarget, Executable, ~Copyable {
             in: objectFiles,
             out: artifactFile,
             rule: self.linkRule,
-            flags: ["linkerFlags": try await self.linkerFlags(context: context).map { "\"\($0)\"" }.joined(separator: " ")]
+            flags: ["linkerFlags": try await self.linkerFlags(context: context).map { "\"\($0)\"" }.joined(separator: " ")],
+            dependencies: dependencyCommands
           )
         case .app:
           fatalError("unimplemented: app")

@@ -1,5 +1,6 @@
 import Foundation
 import Utils
+import AsyncAlgorithms
 
 public struct CLibrary: CTarget, Library, ~Copyable {
   public let name: String
@@ -101,7 +102,6 @@ public struct CLibrary: CTarget, Library, ~Copyable {
       + self.extraLinkerFlags
   }
 
-
   public func buildStatements<P: Project & ~Copyable>(inProject project: borrowing P, context: borrowing Beaver) async throws -> BuildBackendBuilder {
     let sources = try await self.collectSources(projectBaseDir: project.baseDir)
     let projectBuildDir = context.buildDir(for: project.name)
@@ -115,6 +115,9 @@ public struct CLibrary: CTarget, Library, ~Copyable {
         .joined(separator: " ")
 
     var stmts = BuildBackendBuilder()
+
+    // Commands for building dependencies
+    let dependencyCommands = try await self.dependencyCommands(context: context)
 
     for artifact in self.artifacts {
       let artifactFile = self.artifactURL(projectBuildDir: projectBuildDir, artifact: artifact)!.ninjaPath
@@ -141,7 +144,8 @@ public struct CLibrary: CTarget, Library, ~Copyable {
           stmts.addBuildCommand(
             in: objectFiles,
             out: artifactFile,
-            rule: "ar"
+            rule: "ar",
+            dependencies: dependencyCommands
           )
         case .dynlib:
           stmts.add("# Build \(project.name):\(self.name) artifact \(artifact)")
@@ -167,11 +171,13 @@ public struct CLibrary: CTarget, Library, ~Copyable {
             in: objectFiles,
             out: artifactFile,
             rule: self.linkRule,
-            flags: ["linkerFlags": try await self.linkerFlags(forArtifact: artifact, context: context).map { "\"\($0)\"" }.joined(separator: " ")]
+            flags: ["linkerFlags": try await self.linkerFlags(forArtifact: artifact, context: context).map { "\"\($0)\"" }.joined(separator: " ")],
+            dependencies: dependencyCommands
           )
         default:
           fatalError("unimplemented artifact \(artifact)")
       }
+
       stmts.addPhonyCommand(
         name: "\(project.name)$:\(self.name)$:\(artifact)",
         command: artifactFile

@@ -38,7 +38,7 @@ public protocol Project: ~Copyable, Sendable {
   func loopTargets<Result>(_ cb: (borrowing AnyTarget) async throws -> Result) async rethrows -> [Result]
 
   func targetIndex(name: String) async -> Int?
-  func targetName(_ index: Int) async -> String?
+  func targetName(_ index: Int) async -> String
   func targetNames() async -> [String]
 }
 

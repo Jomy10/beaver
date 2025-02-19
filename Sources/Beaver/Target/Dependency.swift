@@ -14,8 +14,8 @@ public struct TargetRef: Hashable, Equatable, Sendable {
 }
 
 extension TargetRef {
-  public func description(context: borrowing Beaver) async -> String? {
-    guard let targetName = await context.targetName(self) else { return nil }
+  public func description(context: borrowing Beaver) async -> String {
+    let targetName = await context.targetName(self)
     let projectName = await context.projectName(self.project)
     return if context.currentProjectIndex == self.project {
       targetName
@@ -275,7 +275,7 @@ extension Beaver {
         [.dynlib, .staticlib]
       }
       guard let artifact = order.first(where: { library.artifacts.contains($0) }) else {
-        throw Dependency.ParsingError.noLinkableArtifacts(libraryName: await self.targetName(target)!)
+        throw Dependency.ParsingError.noLinkableArtifacts(libraryName: await self.targetName(target))
       }
       return artifact
     }

@@ -55,6 +55,8 @@ public struct Beaver: ~Copyable, Sendable {
 
   /// Should be called after all configuration has been set and targets have been declared
   public mutating func finalize() async throws {
+    try FileManager.default.createDirectoryIfNotExists(at: self.buildDir, withIntermediateDirectories: true)
+
     var stmts = BuildBackendBuilder()
     stmts.add("builddir = \(self.buildDir.ninjaPath)")
     var languages = Set<Language>()
