@@ -130,7 +130,43 @@ struct Cache: Sendable {
   // User-defined //
 
   func fileChanged(file: URL, context: String) throws -> Bool {
-    fatalError("TODO")
+    if let fileRow = try self.db.pluck(CustomFile.table
+      .join(.inner, FileCache.table, on: FileCache.Columns.filename.qualified == CustomFile.Columns.file.qualified)
+      .where(CustomFile.Columns.file.qualified == file
+          && CustomFile.Columns.context.qualified == context)
+    ) {
+      let file = try FileCache(row: fileRow)
+      let oldCheckId = fileRow[CustomFile.Columns.checkId.qualified]
+
+      let (changed, attrs) = try FileChecker.fileChanged(file)
+      if changed {
+        let fileCache = FileCache(file: file.filename, fromAttrs: attrs)
+        try FileCache.update(fileCache, self.db)
+        try self.db.run(FileCache.table
+          .where(CustomFile.Columns.file.qualified == file.filename
+              && CustomFile.Columns.context.qualified == context)
+          .update(FileCache.Columns.checkId.qualified <- file.checkId))
+          return true
+      }
+
+      if file.checkId != oldCheckId {
+        try self.db.run(FileCache.table
+        .where(CustomFile.Columns.file.qualified == file.filename
+              && CustomFile.Columns.context.qualified == context)
+          .update(FileCache.Columns.checkId.qualified <- file.checkId))
+          return true
+      } else {
+        return false
+      }
+    } else {
+      let fileCache = try FileCache(file: file)
+      try fileCache.insert(self.db)
+
+      let customFile = CustomFile(file: file, context: context, checkId: fileCache.checkId)
+      try customFile.insert(self.db)
+
+      return true
+    }
   }
 
   func getVar(name: String) throws -> CacheVarVal {

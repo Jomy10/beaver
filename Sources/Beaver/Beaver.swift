@@ -346,7 +346,7 @@ public struct Beaver: ~Copyable, Sendable {
     try self.cache!.getVar(name: context)
   }
 
-  public func configChanged(context: String) throws -> Bool {
-    try self.cache!.configChanged(context: context)
-  }
+  //public func configChanged(context: String) throws -> Bool {
+  //  try self.cache!.configChanged(context: context)
+  //}
 }

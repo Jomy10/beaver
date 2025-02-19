@@ -4,6 +4,9 @@ import timespec
 
 @CacheEntry(name: "File")
 struct FileCache {
+  let checkId: UUID
+
+  @PrimaryKey(true)
   let filename: URL
   /// Modified time
   let mtime: Int64
@@ -20,6 +23,7 @@ struct FileCache {
 
   init(file: URL, fromAttrs attrs: stat) {
     self.filename = file
+    self.checkId = UUID()
     self.mtime = Int64(timespec_to_ms(attrs.st_mtimespec))
     self.size = Int64(attrs.st_size)
     self.ino = UInt64(attrs.st_ino)
@@ -30,6 +34,7 @@ struct FileCache {
 
   init(file: URL) throws {
     self.filename = file
+    self.checkId = UUID()
     let attrs = try FileChecker.fileAttrs(file: file)
     self.mtime = Int64(timespec_to_ms(attrs.st_mtimespec))
     self.size = Int64(attrs.st_size)
@@ -41,6 +46,7 @@ struct FileCache {
 
   init(row: Row) throws {
     self.filename = row[Self.Columns.filename.qualified]
+    self.checkId = row[Self.Columns.checkId.qualified]
     self.mtime = row[Self.Columns.mtime.qualified]
     self.size = row[Self.Columns.size.qualified]
     self.ino = row[Self.Columns.ino.qualified]
@@ -62,8 +68,8 @@ struct FileCache {
   }
 
   static func update(_ newFile: FileCache, _ db: Connection) throws {
-      try db.run(Self.table
-        .where(Self.Columns.filename.unqualified == newFile.filename)
-        .update(newFile.setter))
-    }
+    try db.run(Self.table
+      .where(Self.Columns.filename.unqualified == newFile.filename)
+      .update(newFile.setter))
+  }
 }
