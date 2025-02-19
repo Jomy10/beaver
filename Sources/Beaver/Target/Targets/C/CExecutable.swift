@@ -78,6 +78,11 @@ public struct CExecutable: CTarget, Executable, ~Copyable {
     }
   }
 
+  func linkerFlags(context: borrowing Beaver) async throws -> [String] {
+    return (try await self.dependencyLinkerFlags(context: context))
+      + self.extraLinkerFlags
+  }
+
   public func buildStatements<P>(inProject project: borrowing P, context: borrowing Beaver) async throws -> BuildBackendBuilder where P : Project, P : ~Copyable
   {
     let sources = try await self.collectSources(projectBaseDir: project.baseDir)
@@ -122,7 +127,8 @@ public struct CExecutable: CTarget, Executable, ~Copyable {
           stmts.addBuildCommand(
             in: objectFiles,
             out: artifactFile,
-            rule: self.linkRule
+            rule: self.linkRule,
+            flags: ["linkerFlags": try await self.linkerFlags(context: context).map { "\"\($0)\"" }.joined(separator: " ")]
           )
         case .app:
           fatalError("unimplemented: app")
