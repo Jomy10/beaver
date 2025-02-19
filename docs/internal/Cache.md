@@ -1,3 +1,26 @@
+```mermaid
+erDiagram
+
+File
+Configuration
+
+CMakeProject {
+	int id
+	string path
+}
+
+CMakeFile {
+	int cmakeProjectId
+	string file
+}
+
+CMakeFile }o--|| CMakeProject: cmakeProjectId
+```
+
+
+
+# -- Old version --
+
 # Old database schema
 
 ```mermaid

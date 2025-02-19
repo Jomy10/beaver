@@ -80,7 +80,7 @@ public struct Beaver: ~Copyable, Sendable {
     }
 
     try FileManager.default.createDirectoryIfNotExists(at: self.buildDir, withIntermediateDirectories: true)
-    self.cache = Cache(self.buildDir.appending(path: "cache"))
+    self.cache = try Cache(self.buildDir.appending(path: "cache"))
     try self.cache!.selectConfiguration(mode: self.optimizeMode)
   }
 
