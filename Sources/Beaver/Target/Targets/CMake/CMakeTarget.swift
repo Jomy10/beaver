@@ -14,7 +14,7 @@ extension CMakeTarget where Self: ~Copyable {
     var stmts = BuildBackendBuilder()
     stmts.addNinjaCommand(
       name: "\(project.name)$:\(self.name)",
-      baseDir: context.buildDir(for: project.name),
+      baseDir: project.buildDir(context),
       filename: "build.ninja",
       targets: [self.name]
     )

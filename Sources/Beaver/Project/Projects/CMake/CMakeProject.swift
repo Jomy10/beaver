@@ -16,7 +16,7 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
   }
   public let name: String
   public var baseDir: URL
-//  public var buildDir: URL
+  public var buildDir: URL
   public var makeFlags: [String]
 
   private var targets: NonCopyableArray<AnyTarget>
@@ -24,15 +24,19 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
   public init(
     name: String,
     baseDir: URL,
-//    buildDir: URL? = nil,
+    buildDir: URL,
     makeFlags: [String],
     targets: consuming NonCopyableArray<AnyTarget>
   ) {
     self.name = name
     self.baseDir = baseDir
-//    self.buildDir = buildDir ?? baseDir.appending(path: ".build")
+    self.buildDir = buildDir
     self.targets = targets
     self.makeFlags = makeFlags
+  }
+
+  public func buildDir(_ context: borrowing Beaver) -> URL {
+    self.buildDir.appending(path: context.optimizeMode.description)
   }
 
   // TODO: find a better way than just calling ninja from ninja
@@ -50,7 +54,7 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
     //stmts.add("subninja \(.appending(path: "build.ninja").ninjaPath)")
     stmts.addNinjaCommand(
       name: self.name,
-      baseDir: context.buildDir(for: self.name),
+      baseDir: self.buildDir(context),
       filename: "build.ninja",
       targets: nil // all
     )
@@ -59,53 +63,9 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
 
   /// Build the specified target from the ninja file
   public func build(_ target: borrowing AnyTarget, context: borrowing Beaver) async throws {
-    let ninja = try NinjaRunner(buildFile: context.buildDir(for: self.name).appending(path: "build.ninja").path)
-    try await ninja.build(targets: target.name, dir: context.buildDir(for: self.name).path)
+    let ninja = try NinjaRunner(buildFile: self.buildDir(context).appending(path: "build.ninja").path)
+    try await ninja.build(targets: target.name, dir: self.buildDir(context).path)
   }
-
-  //public func clean(context: borrowing Beaver) async throws {
-  //  if FileManager.default.exists(at: self.buildDir) {
-  //    try FileManager.default.removeItem(at: self.buildDir)
-  //  }
-  //}
-
-
-  //public func build(context: borrowing Beaver) async throws {
-  //  try await context.ninja(self.name)
-  //  //try await Tools.exec(
-  //  //  Tools.make!,
-  //  //  ["-j", "4"] + self.makeFlags,
-  //  //  baseDir: buildDir,
-  //  //  context: self.name
-  //  //)
-  //}
-
-  //public func build(
-  //  _ targetRef: TargetRef.Ref,
-  //  artifact: ArtifactType,
-  //  context: borrowing Beaver
-  //) async throws {
-  //  let targetName = await self.targetName(targetRef)!
-  //  try await Tools.exec(
-  //    Tools.make!,
-  //    ["-j", "4", targetName] + self.makeFlags,
-  //    baseDir: buildDir,
-  //    context: self.name + ":\(targetName)"
-  //  )
-  //}
-
-  //public func build(
-  //  _ targetRef: TargetRef.Ref,
-  //  context: borrowing Beaver
-  //) async throws {
-  //  let targetName = await self.targetName(targetRef)!
-  //  try await Tools.exec(
-  //    Tools.make!,
-  //    ["-j", "4", targetName] + self.makeFlags,
-  //    baseDir: buildDir,
-  //    context: self.name + ":\(targetName)"
-  //  )
-  //}
 
   public func getOnlyExecutable() async throws -> Int {
     var index: Int? = nil

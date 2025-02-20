@@ -104,7 +104,7 @@ public struct CLibrary: CTarget, Library, ~Copyable {
 
   public func buildStatements<P: Project & ~Copyable>(inProject project: borrowing P, context: borrowing Beaver) async throws -> BuildBackendBuilder {
     let sources = try await self.collectSources(projectBaseDir: project.baseDir)
-    let projectBuildDir = context.buildDir(for: project.name)
+    let projectBuildDir = project.buildDir(context)
     let objectBuildDir = self.objectBuildDir(projectBuildDir: projectBuildDir)
 
     if sources.count == 0 {

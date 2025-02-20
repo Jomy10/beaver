@@ -86,7 +86,7 @@ public struct CExecutable: CTarget, Executable, ~Copyable {
   public func buildStatements<P>(inProject project: borrowing P, context: borrowing Beaver) async throws -> BuildBackendBuilder where P : Project, P : ~Copyable
   {
     let sources = try await self.collectSources(projectBaseDir: project.baseDir)
-    let projectBuildDir = context.buildDir(for: project.name)
+    let projectBuildDir = project.buildDir(context)
     let objectBuildDir = self.objectBuildDir(projectBuildDir: projectBuildDir)
 
     if sources.count == 0 {

@@ -54,7 +54,7 @@ public struct BuildBackendBuilder: Sendable, ~Copyable {
     targets: [String]?
   ) {
     self.storage.appendLine("build \(name): ninja")
-    self.storage.appendLine("    ninjaBaseDir = \"\(baseDir)\"")
+    self.storage.appendLine("    ninjaBaseDir = \"\(baseDir.ninjaPath)\"")
     self.storage.appendLine("    ninjaFile = \"\(filename)\"")
     if let targets {
       self.storage.appendLine("    targets = \(targets.map { $0.replacing(" ", with: "$").replacing(":", with: "$") }.joined(separator: " "))")
