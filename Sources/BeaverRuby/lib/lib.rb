@@ -20,8 +20,9 @@ def dynamic(inner)
   return DependencyResolve.new(inner, :dynlib)
 end
 
-# Returns true if the file has changed, false if not and nil if the file doesn't exist
+# Returns true if the file has changed or doesn't exist, false if not
 # Will return the or'ed result for all files if multiple files were passed
+# nil is returned if no files are passed
 def fileChanged(*filename)
   out = nil
   for file in filename
@@ -29,13 +30,6 @@ def fileChanged(*filename)
     out ||= var
   end
   return out
-end
-
-def __wait
-  sleep(0.1)
-  if $BEAVER_SHOULD_YIELD
-    $__task_yield.call()
-  end
 end
 
 def __resolveAnyPromise(promise)

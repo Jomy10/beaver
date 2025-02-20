@@ -84,22 +84,23 @@ public struct Beaver: ~Copyable, Sendable {
     let fileContents: String = stmts.finalize()
     try fileContents.write(to: self.buildBackendFile, atomically: true, encoding: .utf8)
     self.ninja = try NinjaRunner(buildFile: self.buildBackendFile.path)
+    if self.shouldClean {
+      try self.clean()
+    }
 
-    try await self.initializeCache()
+    try self.initializeCache()
   }
 
-  private mutating func initializeCache() async throws {
-    if self.cache != nil || self.ninja != nil {
+  var shouldClean = false
+
+  private mutating func initializeCache() throws {
+    if self.cache != nil {
       return
       //throw InitializationError.fileCacheAlreadyInitialized
     }
 
     try FileManager.default.createDirectoryIfNotExists(at: self.buildDir, withIntermediateDirectories: true)
-    var clean: Bool = false
-    self.cache = try Cache(self.buildDir.appending(path: "cache"), buildId: BeaverConstants.buildId, clean: &clean)
-    if clean {
-      try await self.clean()
-    }
+    self.cache = try Cache(self.buildDir.appending(path: "cache"), buildId: BeaverConstants.buildId, clean: &self.shouldClean)
     try self.cache!.selectConfiguration(mode: self.optimizeMode)
   }
 
@@ -123,9 +124,9 @@ public struct Beaver: ~Copyable, Sendable {
     //try self.initializeCache()
   }
 
-  public mutating func requireBuildDir() async throws {
+  public mutating func requireBuildDir() throws {
     if self.cache == nil {
-      try await self.initializeCache()
+      try self.initializeCache()
     }
   }
 
@@ -214,8 +215,8 @@ public struct Beaver: ~Copyable, Sendable {
     }
   }
 
-  public func clean() async throws {
-    try await self.ninja!.run(tool: "clean")
+  public func clean() throws {
+    try self.ninja!.runSync(tool: "clean")
     // TODO: clean CMake projects!
 
     //guard let projectRef = await self.projectRef(name: projectName) else {
@@ -321,32 +322,39 @@ public struct Beaver: ~Copyable, Sendable {
   }
 
   // Custom Cache //
-  public func fileChanged(_ file: URL, context: String) throws -> Bool {
-    try self.cache!.fileChanged(file: file, context: context)
+  public mutating func fileChanged(_ file: URL, context: String) throws -> Bool {
+    try self.requireBuildDir()
+    return try self.cache!.fileChanged(file: file, context: context)
   }
 
-  public func cacheSetVar(context: String, value: String) throws {
+  public mutating func cacheSetVar(context: String, value: String) throws {
+    try self.requireBuildDir()
     try self.cacheSetVar(context: context, value: .string(value))
   }
 
-  public func cacheSetVar(context: String, value: Int) throws {
+  public mutating func cacheSetVar(context: String, value: Int) throws {
+    try self.requireBuildDir()
     try self.cacheSetVar(context: context, value: .int(value))
   }
 
-  public func cacheSetVar(context: String, value: Double) throws {
+  public mutating func cacheSetVar(context: String, value: Double) throws {
+    try self.requireBuildDir()
     try self.cacheSetVar(context: context, value: .double(value))
   }
 
-  public func cacheSetVar(context: String, value: Bool) throws {
+  public mutating func cacheSetVar(context: String, value: Bool) throws {
+    try self.requireBuildDir()
     try self.cacheSetVar(context: context, value: .bool(value))
   }
 
-  public func cacheSetVar(context: String, value: CacheVarVal) throws {
+  public mutating func cacheSetVar(context: String, value: CacheVarVal) throws {
+    try self.requireBuildDir()
     try self.cache!.setVar(name: context, value: value)
   }
 
-  public func cacheGetVar(context: String) throws -> CacheVarVal {
-    try self.cache!.getVar(name: context)
+  public mutating func cacheGetVar(context: String) throws -> CacheVarVal {
+    try self.requireBuildDir()
+    return try self.cache!.getVar(name: context)
   }
 
   //public func configChanged(context: String) throws -> Bool {

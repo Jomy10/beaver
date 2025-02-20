@@ -72,4 +72,20 @@ struct FileCache {
       .where(Self.Columns.filename.unqualified == newFile.filename)
       .update(newFile.setter))
   }
+
+  static func exists(_ file: URL, _ db: Connection) throws -> Bool {
+    try db.scalar(Self.table
+      .where(Self.Columns.filename.qualified == file)
+      .exists)
+  }
+
+  static func getOrInsert(_ file: URL, _ db: Connection) throws -> FileCache {
+    if let c = try self.get(file, db) {
+      return c
+    } else {
+      let fileCache = try FileCache(file: file)
+      try fileCache.insert(db)
+      return fileCache
+    }
+  }
 }

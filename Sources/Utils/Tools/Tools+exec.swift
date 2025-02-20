@@ -130,4 +130,26 @@ extension Tools {
       throw ProcessError(terminationStatus: task.terminationStatus, reason: task.terminationReason)
     }
   }
+
+  @inlinable
+  public static func execSilentSync(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) throws {
+    let task = Process()
+
+    task.standardError = FileHandle.standardError
+    task.standardOutput = FileHandle.standardOutput
+    task.executableURL = cmdURL
+    task.arguments = args
+    task.currentDirectoryURL = baseDir
+    task.environment = ProcessInfo.processInfo.environment
+
+    try task.run()
+
+    MessageHandler.debug((cmdURL.path + " " + args.joined(separator: " ")).darkGray(), context: .shellCommand)
+
+    task.waitUntilExit()
+
+    if task.terminationStatus != 0 {
+      throw ProcessError(terminationStatus: task.terminationStatus, reason: task.terminationReason)
+    }
+  }
 }
