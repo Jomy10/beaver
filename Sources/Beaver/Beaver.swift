@@ -211,7 +211,7 @@ public struct Beaver: ~Copyable, Sendable {
     //try await self.build(targetRef, artifact: .executable(.executable))
     try await self.withProjectAndExecutable(targetRef) { (project: borrowing AnyProject, executable: borrowing AnyExecutable) in
       try await self.ninja!.build(targets: executable.ninjaTarget(inProject: project, artifact: .executable))
-      try await executable.run(projectBuildDir: self.buildDir(for: project.name), args: args)
+      try await executable.run(projectBuildDir: project.buildDir(self), args: args)
     }
   }
 

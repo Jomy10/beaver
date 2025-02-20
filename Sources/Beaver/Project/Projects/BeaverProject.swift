@@ -19,7 +19,7 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
   //}
   public let name: String
   public var baseDir: URL
-//  public var buildDir: URL
+  //public var buildDir: URL
   public var targets: AsyncRWLock<NonCopyableArray<AnyTarget>>
 
   var commands: Commands
@@ -27,14 +27,14 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
   public init(
     name: String,
     baseDir: URL = URL.currentDirectory(),
-    //buildDir: URL?,
+    //buildDir: URL,
     targets: consuming NonCopyableArray<AnyTarget> = NonCopyableArray(),
     context: inout Beaver
   ) throws {
-//    try context.requireBuildDir()
+    try context.requireBuildDir()
     self.name = name
     self.baseDir = baseDir
-//    self.buildDir = context.buildDir(for: name)
+    //self.buildDir = buildDir
     self.targets = AsyncRWLock(targets)
     self.commands = Commands()
   }

@@ -9,23 +9,6 @@ public protocol Project: ~Copyable, Sendable {
 
   func buildStatements(context: borrowing Beaver) async throws -> BuildBackendBuilder
 
-  /// Builds all targets in a project
-  //func build(context: borrowing Beaver) async throws
-
-  /// Builds the specified artifact of the specified target.
-  /// If the ArtifactType doesn't match the target type, this function panics
-  //func build(
-  //  _ targetRef: TargetRef.Ref,
-  //  artifact: ArtifactType,
-  //  context: borrowing Beaver
-  //) async throws
-
-  /// Builds all artifacts of the specified target
-  //func build(
-  //  _ targetRef: TargetRef.Ref,
-  //  context: borrowing Beaver
-  //) async throws
-
   /// Runs the default executable in this target, if any
   func getOnlyExecutable() async throws -> Int
 
@@ -40,9 +23,15 @@ public protocol Project: ~Copyable, Sendable {
   func targetIndex(name: String) async -> Int?
   func targetName(_ index: Int) async -> String
   func targetNames() async -> [String]
+
+  func buildDir(_ context: borrowing Beaver) -> URL
 }
 
 extension Project where Self: ~Copyable {
+  public func buildDir(_ context: borrowing Beaver) -> URL {
+    context.buildDir(for: self.name)
+  }
+
   public func run(args: [String], context: borrowing Beaver) async throws {
     try await self.run(try await self.getOnlyExecutable(), args: args, context: context)
   }
@@ -52,7 +41,7 @@ extension Project where Self: ~Copyable {
     try await context.build(TargetRef(target: targetIndex, project: self.id), artifact: .executable(.executable))
 
     try await self.withExecutable(targetIndex) { (target: borrowing AnyExecutable) in
-      try await target.run(projectBuildDir: context.buildDir(for: self.name), args: args)
+      try await target.run(projectBuildDir: self.buildDir(context), args: args)
     }
   }
 

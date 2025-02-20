@@ -230,7 +230,7 @@ public struct CMakeImporter {
       await context.addProject(.cmake(CMakeProject(
         name: project.name,
         baseDir: baseDir,
-//        buildDir: buildDir,
+        buildDir: buildDir,
         makeFlags: makeFlags,
         targets: targets
       )))

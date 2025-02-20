@@ -194,7 +194,7 @@ extension Dependency {
         let contextPtr = withUnsafePointer(to: context) { $0 }
         return await context.withProjectAndLibrary(libTarget.target) { (project: borrowing AnyProject, library: borrowing AnyLibrary) in
           langs.insert(library.language)
-          return library.linkAgainstLibrary(projectBuildDir: contextPtr.pointee.buildDir(for: project.name), artifact: libTarget.artifact)
+          return library.linkAgainstLibrary(projectBuildDir: project.buildDir(contextPtr.pointee), artifact: libTarget.artifact)
         }
       case .pkgconfig(let dep):
         return try dep.linkerFlags
@@ -206,7 +206,7 @@ extension Dependency {
         let contextPtr = withUnsafePointer(to: context) { $0 }
         return try await context.withProjectAndLibrary(cmakeId: cmakeId) { (project: borrowing CMakeProject, library: borrowing CMakeLibrary) in
           langs.insert(library.language)
-          return library.linkAgainstLibrary(projectBuildDir: contextPtr.pointee.buildDir(for: project.name))
+          return library.linkAgainstLibrary(projectBuildDir: project.buildDir(contextPtr.pointee))
         }
     }
   }
