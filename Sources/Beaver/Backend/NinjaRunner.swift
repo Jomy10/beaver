@@ -17,6 +17,11 @@ struct NinjaRunner {
   }
 
   @usableFromInline
+  func runSync(tool: String) throws {
+    try Tools.execSilentSync(self.ninja, ["-f", self.buildFile, "-t", tool])
+  }
+
+  @usableFromInline
   func build(targets: String...) async throws {
     var args = ["-f", self.buildFile] + targets
     if verbose { args.append("-v") }

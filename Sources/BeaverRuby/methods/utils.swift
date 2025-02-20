@@ -48,7 +48,7 @@ func loadUtilsMethods(in module: RbObject, queue: SyncTaskQueue, context: Unsafe
         return RbObject.nilObject
       }
 
-      return RbObject(try context.value.withInner { (context: borrowing Beaver) in
+      return RbObject(try context.value.withInner { (context: inout Beaver) in
         return try context.fileChanged(file, context: fileContext)
       })
     }
@@ -61,7 +61,7 @@ func loadUtilsMethods(in module: RbObject, queue: SyncTaskQueue, context: Unsafe
       optionalValues: [RbObject(RbSymbol("get"))]
     ),
     body: { boy, method in
-      try context.value.withInner { (ctx: borrowing Beaver) in
+      try context.value.withInner { (ctx: inout Beaver) in
         let contextName: String = try method.args.mandatory[0].convert(to: String.self)
         let contextString: String = if let idx = ctx.currentProjectIndex {
           ctx.unsafeProjectName(idx) + ":" + contextName

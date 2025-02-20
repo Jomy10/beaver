@@ -23,7 +23,13 @@ struct Cache: Sendable {
     ).bytes.md5()),
     clean: inout Bool
   ) throws {
+    //self.db = try Connection(.uri(cacheFile.path, parameters: [.mode(.readWriteCreate), .nolock(true)])) // causes DISK I/O Error
+    //// sqlite doesn't make the database file writable
+    //if !FileManager.default.isWritable(at: cacheFile) {
+    //  try FileManager.default.setWritable(at: cacheFile)
+    //}
     self.db = try Connection(cacheFile.path)
+    self.db.busyTimeout = 4
 
     try GlobalCache.createIfNotExists(self.db)
     if try GlobalCache.changed(buildId: buildId, env: env, self.db) {
@@ -38,6 +44,7 @@ struct Cache: Sendable {
     try CMakeProjectCache.createIfNotExists(self.db)
     try CMakeFile.createIfNotExists(self.db)
     try CacheVariable.createIfNotExists(self.db)
+    try CustomFile.createIfNotExists(self.db)
 
     self.db.trace { msg in
       MessageHandler.trace(msg, context: .sql)
@@ -120,8 +127,10 @@ struct Cache: Sendable {
         let path = file[tmpTable[TmpFile.Columns.file.unqualified]]
         let attrs = try FileChecker.fileAttrs(file: path)
         let newCMakeFile = CMakeFile(cmakeProjectId: project.id, file: path)
-        let newFile = FileCache(file: path, fromAttrs: attrs)
-        _ = try newFile.insert(self.db)
+        if try !FileCache.exists(file[tmpTable[TmpFile.Columns.file.unqualified]], self.db) {
+          let newFile = FileCache(file: path, fromAttrs: attrs)
+          _ = try newFile.insert(self.db)
+        }
         _ = try newCMakeFile.insert(self.db)
       }
     }
@@ -159,8 +168,7 @@ struct Cache: Sendable {
         return false
       }
     } else {
-      let fileCache = try FileCache(file: file)
-      try fileCache.insert(self.db)
+      let fileCache: FileCache = try FileCache.getOrInsert(file, self.db)
 
       let customFile = CustomFile(file: file, context: context, checkId: fileCache.checkId)
       try customFile.insert(self.db)

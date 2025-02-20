@@ -12,7 +12,7 @@ public struct CMakeImporter {
     makeFlags: [String],
     context: inout Beaver
   ) async throws {
-    try await context.requireBuildDir()
+    try context.requireBuildDir()
 
     //let buildDir = buildDir.appending(path: context.optimizeMode.description)
     let buildDirExists = FileManager.default.exists(at: buildDir)
