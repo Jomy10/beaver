@@ -14,7 +14,7 @@ public struct TargetRef: Hashable, Equatable, Sendable {
 }
 
 extension TargetRef {
-  public func description(context: borrowing Beaver) async -> String {
+  public func description(context: Beaver) async -> String {
     let targetName = await context.targetName(self)
     let projectName = await context.projectName(self.project)
     return if context.currentProjectIndex == self.project {
@@ -123,7 +123,7 @@ extension Dependency {
   }
 
   /// Both linker and header files
-  public func cflags(context: borrowing Beaver) async throws -> [String]? {
+  public func cflags(context: Beaver) async throws -> [String]? {
     switch (self) {
       case .library(let libTarget):
         return try await context.withProjectAndLibrary(libTarget.target) { (project: borrowing AnyProject, library: borrowing AnyLibrary) in
@@ -188,7 +188,7 @@ extension Dependency {
 
   /// Returns the linker flags (first argument) and the artifactURL being linked to (if the dependency is a target
   /// defined in Beaver)
-  public func linkerFlags(context: borrowing Beaver, collectingLanguageIn langs: inout Set<Language>) async throws -> [String] {
+  public func linkerFlags(context: Beaver, collectingLanguageIn langs: inout Set<Language>) async throws -> [String] {
     switch (self) {
       case .library(let libTarget):
         let contextPtr = withUnsafePointer(to: context) { $0 }

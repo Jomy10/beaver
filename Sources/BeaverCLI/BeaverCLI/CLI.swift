@@ -110,28 +110,29 @@ struct BeaverCLI: Sendable {
     }
   }
 
-  func runScript<C: Collection & BidirectionalCollection & Sendable>(args: C) async throws -> (UnsafeSendable<Rc<Beaver>>, SyncTaskQueue)
+  func runScript<C: Collection & BidirectionalCollection & Sendable>(args: C) async throws -> (Beaver, SyncTaskQueue, AsyncTaskQueue)
   where C.Element == String
   {
     let scriptFile = try self.getScriptFile()
 
-    let rcCtx = UnsafeSendable(Rc(try Beaver(
+    let ctx = try Beaver(
       enableColor: self.color,
       optimizeMode: self.optimizationMode
-    )))
+    )
 
-    let queue: SyncTaskQueue
+    let (queue, asyncQueue): (SyncTaskQueue, AsyncTaskQueue)
     do {
       // Ruby code has to be executed on the same thread!
       //queue = try await RubyQueue.global.submitSync {
-      queue = try await MainActor.run {
+      (queue, asyncQueue) = try await MainActor.run {
         try executeRuby(
           scriptFile: scriptFile,
           args: args,
-          context: rcCtx
+          context: ctx
         )
       }
       try await queue.wait() // Wait for method calls from ruby to finish setting up the context
+      try await asyncQueue.wait()
     } catch let error as RbError {
       //let description = try await RubyQueue.global.submitSync {
       let description = await MainActor.run {
@@ -142,7 +143,7 @@ struct BeaverCLI: Sendable {
       throw error
     }
 
-    return (rcCtx, queue)
+    return (ctx, queue, asyncQueue)
   }
 
   func getArguments() -> ([String], DiscontiguousSlice<ArraySlice<String>>.SubSequence) {
@@ -187,14 +188,14 @@ struct BeaverCLI: Sendable {
       self.rubySetup = true
     }
 
-    let (context, queue) = try await self.runScript(args: leftover)
-    try await context.value.withInner { (context: inout Beaver) in
-      try await context.finalize()
-    }
+    let (context, queue, asyncQueue) = try await self.runScript(args: leftover)
+    //try await context.value.withInner { (context: inout Beaver) in
+    //  try await context.finalize()
+    //}
     queue.resume() // allow cmd to call swift functions
     //MessageHandler.debug(await context.customDebugString(withSources: false, withDependencies: true))
 
-    try await context.value.withInner { (context: borrowing Beaver) in
+    //try await context.value.withInner { (context: Beaver) in
       if context.currentProjectIndex == nil {
         if let commandName = explicitCommand {
           try await context.call(commandName)
@@ -219,7 +220,7 @@ struct BeaverCLI: Sendable {
               try await context.call(commandName)
           }
         }
-      }
+      //}
     }
 
     //if self.rubySetup {
@@ -227,6 +228,7 @@ struct BeaverCLI: Sendable {
     //  self.rubySetup = false
     //}
     try await queue.wait()
+    try await asyncQueue.wait()
   }
 
   func printVersion() {

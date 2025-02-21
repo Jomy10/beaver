@@ -6,7 +6,7 @@ import AsyncAlgorithms
 
 fileprivate func cTargetParseRubyArgs<ArtifactType: RbObjectConvertible & ArtifactTypeProtocol>(
   rubyArgs: borrowing [String: RbObject],
-  context: UnsafeSendable<Rc<Beaver>>,
+  context: Beaver,
   artifactType: ArtifactType.Type
 ) throws -> (
   name: String,
@@ -56,13 +56,11 @@ extension CLibrary {
   static func asyncInitAdd(
     rubyArgs: borrowing [String: RbObject],
     queue: SyncTaskQueue,
-    context: UnsafeSendable<Rc<Beaver>>
+    context: Beaver
   ) throws {
     let args = try cTargetParseRubyArgs(rubyArgs: rubyArgs, context: context, artifactType: LibraryArtifactType.self)
     queue.addTask({
-      guard let project = context.value.withInner({ (ctx: borrowing Beaver) in
-        ctx.currentProjectIndex
-      }) else {
+      guard let project = context.currentProjectIndex else {
         throw ProjectAccessError.noDefaultProject
       }
 
@@ -78,15 +76,13 @@ extension CLibrary {
         cflags: args.cflags,
         linkerFlags: args.linkerFlags,
         dependencies: try await args.dependencies.async
-          .map { future in try await context.value.withInner { (ctx: borrowing Beaver) in try await future.resolve(context: ctx) } }
+          .map { future in try await future.resolve(context: context) }
           .reduce(into: [], { (arr, elem) in arr.append(elem) })
       )
 
-      try await context.value.withInner { (ctx: inout Beaver) in
-        try await ctx.withProject(project) { (proj: inout AnyProject) in
-          try await proj.asMutable { (proj: inout AnyMutableProjectRef) in
-            _ = await proj.addTarget(.library(.c(lib.take()!)))
-          }
+      try await context.withProject(project) { (proj: inout AnyProject) in
+        try await proj.asMutable { (proj: inout AnyMutableProjectRef) in
+          _ = await proj.addTarget(.library(.c(lib.take()!)))
         }
       }
     })
@@ -97,13 +93,11 @@ extension CExecutable {
   static func asyncInitAdd(
     rubyArgs: borrowing [String: RbObject],
     queue: SyncTaskQueue,
-    context: UnsafeSendable<Rc<Beaver>>
+    context: Beaver
   ) throws {
     let args = try cTargetParseRubyArgs(rubyArgs: rubyArgs, context: context, artifactType: ExecutableArtifactType.self)
     queue.addTask({
-      guard let project = context.value.withInner({ (ctx: borrowing Beaver) in
-        ctx.currentProjectIndex
-      }) else {
+      guard let project = context.currentProjectIndex else {
         throw ProjectAccessError.noDefaultProject
       }
 
@@ -120,22 +114,20 @@ extension CExecutable {
         cflags: args.cflags,
         linkerFlags: args.linkerFlags,
         dependencies: try await args.dependencies.async
-          .map { future in try await context.value.withInner { (ctx: borrowing Beaver) in try await future.resolve(context: ctx) } }
+          .map { future in try await future.resolve(context: context) }
           .reduce(into: [], { (arr, elem) in arr.append(elem) })
       )
 
-      try await context.value.withInner { (ctx: inout Beaver) in
-        try await ctx.withProject(project) { (proj: inout AnyProject) in
-          try await proj.asMutable { (proj: inout AnyMutableProjectRef) in
-            _ = await proj.addTarget(.executable(.c(exe.take()!)))
-          }
+      try await context.withProject(project) { (proj: inout AnyProject) in
+        try await proj.asMutable { (proj: inout AnyMutableProjectRef) in
+          _ = await proj.addTarget(.executable(.c(exe.take()!)))
         }
       }
     })
   }
 }
 
-func loadCMethods(in module: RbObject, queue: SyncTaskQueue, context: UnsafeSendable<Rc<Beaver>>) throws {
+func loadCMethods(in module: RbObject, queue: SyncTaskQueue, context: Beaver) throws {
   let mandatory = Set(["name", "sources"])
   let optional: [String: any RbObjectConvertible & Sendable] = [
     "description": RbObject.nilObject,

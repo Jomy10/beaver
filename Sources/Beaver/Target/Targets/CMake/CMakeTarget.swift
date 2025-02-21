@@ -10,7 +10,7 @@ extension CMakeTarget where Self: ~Copyable {
     return copy projectBuildDir
   }
 
-  public func buildStatements<P: Project & ~Copyable>(inProject project: borrowing P, context: borrowing Beaver) async throws -> BuildBackendBuilder {
+  public func buildStatements<P: Project & ~Copyable>(inProject project: borrowing P, context: Beaver) async throws -> BuildBackendBuilder {
     var stmts = BuildBackendBuilder()
     stmts.addNinjaCommand(
       name: "\(project.name)$:\(self.name)",

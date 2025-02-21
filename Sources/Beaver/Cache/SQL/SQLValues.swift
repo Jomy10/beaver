@@ -1,10 +1,10 @@
-import SQLite
+@preconcurrency import SQLite
 
 extension UInt64: SQLite.Value {
   public typealias Datatype = Int64
 
   public static var declaredDatatype: String {
-    "INTEGER"
+    Int64.declaredDatatype
   }
 
   public static func fromDatatypeValue(_ datatypeValue: Datatype) throws -> UInt64 {
@@ -20,7 +20,7 @@ extension OptimizationMode: SQLite.Value {
   public typealias Datatype = Int64
 
   public static var declaredDatatype: String {
-    "INT"
+    Int64.declaredDatatype
   }
 
   struct InvalidDatatypeValue: Error {

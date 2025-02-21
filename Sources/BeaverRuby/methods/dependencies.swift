@@ -2,7 +2,7 @@ import RubyGateway
 import Beaver
 import Utils
 
-func loadDependencyMethods(in module: RbObject, queue: SyncTaskQueue, context: UnsafeSendable<Rc<Beaver>>) throws {
+func loadDependencyMethods(in module: RbObject, queue: SyncTaskQueue, context: Beaver) throws {
   try module.defineMethod(
     "pkgconfig",
     argsSpec: RbMethodArgsSpec(

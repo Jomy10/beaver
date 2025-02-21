@@ -10,9 +10,9 @@ public struct CMakeImporter {
     buildDir: URL,
     cmakeFlags: [String],
     makeFlags: [String],
-    context: inout Beaver
+    context: Beaver
   ) async throws {
-    try context.requireBuildDir()
+    try await context.requireBuildDir()
 
     //let buildDir = buildDir.appending(path: context.optimizeMode.description)
     let buildDirExists = FileManager.default.exists(at: buildDir)

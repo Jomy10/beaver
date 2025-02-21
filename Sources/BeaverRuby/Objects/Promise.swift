@@ -1,9 +1,9 @@
 import RubyGateway
 import Atomics
 
-final class RbPromise<T: RbObjectConvertible>: RbObjectConvertible, @unchecked Sendable {
+final class RbPromise: RbObjectConvertible, @unchecked Sendable {
   var fulfilled: ManagedAtomic<Bool>
-  var storage: T?
+  var storage: RbObject?
   var error: (any Error)?
 
   init() {
@@ -12,7 +12,7 @@ final class RbPromise<T: RbObjectConvertible>: RbObjectConvertible, @unchecked S
     self.error = nil
   }
 
-  var value: T {
+  var value: RbObject {
     get throws {
       guard let storage = self.storage else {
         throw RbException(message: "\(self.error!)")
@@ -22,7 +22,7 @@ final class RbPromise<T: RbObjectConvertible>: RbObjectConvertible, @unchecked S
   }
 
   static var typeName: String {
-    "Promise\(T.self)"
+    "Promise"
   }
 
   static func load(in module: RbObject) throws {
@@ -40,7 +40,7 @@ final class RbPromise<T: RbObjectConvertible>: RbObjectConvertible, @unchecked S
       body: { object, method in
         let obj = try Self.fromRbObject(object)
         //guard let val = obj.storage else { return RbObject.nilObject }
-        return RbObject(try obj.value)
+        return try obj.value
       }
     )
     try klass.defineMethod(
@@ -84,7 +84,7 @@ final class RbPromise<T: RbObjectConvertible>: RbObjectConvertible, @unchecked S
     return instance
   }
 
-  func resolve(_ obj: consuming T) {
+  func resolve(_ obj: consuming RbObject) {
     self.storage = obj
     self.fulfilled.store(true, ordering: .relaxed)
   }

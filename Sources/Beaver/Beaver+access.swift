@@ -7,7 +7,7 @@ extension Beaver {
     }
   }
 
-  public mutating func withProject<Result>(_ index: ProjectRef, _ cb: (inout AnyProject) async throws -> Result) async rethrows -> Result {
+  public func withProject<Result>(_ index: ProjectRef, _ cb: (inout AnyProject) async throws -> Result) async rethrows -> Result {
     try await self.projects.write { projects in
       try await cb(&projects.buffer[index])
     }
@@ -20,7 +20,7 @@ extension Beaver {
     return try await self.withProject(currentProject, cb)
   }
 
-  public mutating func withCurrentProject<Result>(_ cb: (inout AnyProject) async throws -> Result) async throws -> Result {
+  public func withCurrentProject<Result>(_ cb: (inout AnyProject) async throws -> Result) async throws -> Result {
     guard let currentProject = self.currentProjectIndex else {
       throw ProjectAccessError.noDefaultProject
     }
@@ -35,7 +35,7 @@ extension Beaver {
     }
   }
 
-  public mutating func withTarget<Result>(_ target: TargetRef, _ cb: (inout AnyTarget) async throws -> Result) async rethrows -> Result {
+  public func withTarget<Result>(_ target: TargetRef, _ cb: (inout AnyTarget) async throws -> Result) async rethrows -> Result {
     try await self.withProject(target.project) { (project: inout AnyProject) async throws in
       try await project.withTarget(target.target, cb)
     }

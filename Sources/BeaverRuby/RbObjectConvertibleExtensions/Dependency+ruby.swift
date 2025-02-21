@@ -12,7 +12,7 @@ struct DependencyFuture {
     case pkgconfig(name: String, preferStatic: Bool = false)
     case system(name: String)
 
-    func resolve(_ context: borrowing Beaver) async throws -> Dependency {
+    func resolve(_ context: Beaver) async throws -> Dependency {
       switch (self) {
         case .target(target: let targetName, project: nil, artifact: let artifact):
           return try await context.dependency(targetName, artifact: artifact)
@@ -39,7 +39,7 @@ struct DependencyFuture {
     }
   }
 
-  public init(_ value: RbObject, context: UnsafeSendable<Rc<Beaver>>) throws {
+  public init(_ value: RbObject, context: Beaver) throws {
     switch (value.rubyType) {
       case .T_STRING:
         let val: String = try value.convert()
@@ -117,7 +117,7 @@ struct DependencyFuture {
     }
   }
 
-  public func resolve(context: borrowing Beaver) async throws -> Dependency {
+  public func resolve(context: Beaver) async throws -> Dependency {
     try await self.data.resolve(context)
   }
 }
@@ -142,7 +142,7 @@ fileprivate extension Collection {
 }
 
 extension Array<DependencyFuture> {
-  public init(_ value: RbObject, context: UnsafeSendable<Rc<Beaver>>) throws {
+  public init(_ value: RbObject, context: Beaver) throws {
     switch (value.rubyType) {
       case .T_ARRAY:
         self = try value.collection.map { rbObj in

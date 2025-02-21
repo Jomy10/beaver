@@ -10,7 +10,7 @@ struct ListError: Error {
 }
 
 extension BeaverCLI {
-  mutating func list(context: borrowing Beaver) async throws {
+  mutating func list(context: Beaver) async throws {
     let project = self.takeArgument()
     let (_, leftover) = self.getArguments()
     let listTargets = leftover.contains("--targets")

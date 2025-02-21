@@ -6,6 +6,7 @@ onFinish = nil
 argv = ARGV
 
 if argv[0] == "clean"
+  puts "Cleaning... Don't forget to reconfigure!!!"
   # sh "cargo clean"
   sh "swift package clean"
   exit(0)

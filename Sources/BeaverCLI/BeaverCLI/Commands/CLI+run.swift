@@ -1,7 +1,7 @@
 import Beaver
 
 extension BeaverCLI {
-  mutating func run(args: [String], context: borrowing Beaver) async throws {
+  mutating func run(args: [String], context: Beaver) async throws {
     let target = self.takeArgument()
 
     if let target = target {

@@ -4,11 +4,11 @@ import Utils
 
 struct ProjectAccessor: RbObjectConvertible, @unchecked Sendable {
   let ptr: UnsafeMutablePointer<AnyProject>
-  let context: UnsafePointer<Beaver>
+  let context: Unmanaged<Beaver>
 
-  init(to proj: inout AnyProject, context: borrowing Beaver) {
+  init(to proj: inout AnyProject, context: Beaver) {
     self.ptr = withUnsafeMutablePointer(to: &proj) { $0 }
-    self.context = withUnsafePointer(to: context) { $0 }
+    self.context = Unmanaged.passUnretained(context) //withUnsafePointer(to: context) { $0 }
   }
 
   init?(_ obj: RbObject) {
@@ -19,22 +19,20 @@ struct ProjectAccessor: RbObjectConvertible, @unchecked Sendable {
     guard let opPtr = OpaquePointer(bitPattern: ptrInt) else { return nil }
     guard let ctxPtr = OpaquePointer(bitPattern: ctxPtrInt) else { return nil }
     self.ptr = UnsafeMutableRawPointer(opPtr).assumingMemoryBound(to: AnyProject.self)
-    self.context = UnsafeRawPointer(ctxPtr).assumingMemoryBound(to: Beaver.self)
+    self.context = Unmanaged.fromOpaque(UnsafeRawPointer(ctxPtr))
   }
 
   var rubyObject: RbObject {
     let instance = RbObject(ofClass: "ProjectAccessor")!
     try! instance.setInstanceVar("@ptr", newValue: Int(bitPattern: self.ptr))
-    try! instance.setInstanceVar("@ctxPtr", newValue: Int(bitPattern: self.context))
+    try! instance.setInstanceVar("@ctxPtr", newValue: Int(bitPattern: self.context.toOpaque()))
     return instance
   }
 
   static func load(in module: RbObject, queue: SyncTaskQueue) throws {
-    try RbPromise<ProjectAccessor>.load(in: module)
-
     let klass = try Ruby.defineClass("ProjectAccessor", under: module)
     try klass.defineMethod(
-      "runAsync",
+      "_runAsyncSync",
       argsSpec: RbMethodArgsSpec(
         leadingMandatoryCount: 1,
         supportsSplat: true
@@ -45,18 +43,13 @@ struct ProjectAccessor: RbObjectConvertible, @unchecked Sendable {
         let projectAccessor: ProjectAccessor = try object.convert()
         let signal = RbSignalOneshot()
 
-        // TODO: error handling
         queue.addTask {
           do {
             guard let targetIndex = await projectAccessor.ptr.pointee.targetIndex(name: executableName) else {
               throw TargetAccessError.noTarget(named: executableName)
             }
-            try await projectAccessor.ptr.pointee.run(targetIndex, args: args, context: projectAccessor.context.pointee)
+            try await projectAccessor.ptr.pointee.run(targetIndex, args: args, context: projectAccessor.context.takeUnretainedValue())
             signal.complete()
-            //try await projectAccessor.ptr.pointee.withExecutable(targetIndex) { (exe: borrowing AnyExecutable) in
-            //  try await exe.run(projectBuildDir: projectAccessor.ptr.pointee.buildDir, args: args)
-            //  signal.complete()
-            //}
           } catch let error {
             signal.fail(error)
           }
@@ -67,7 +60,7 @@ struct ProjectAccessor: RbObjectConvertible, @unchecked Sendable {
     )
 
     try klass.defineMethod(
-      "buildAsync",
+      "_buildAsyncSync",
       argsSpec: RbMethodArgsSpec(
         leadingMandatoryCount: 1
       ),
@@ -75,7 +68,6 @@ struct ProjectAccessor: RbObjectConvertible, @unchecked Sendable {
         let targetName: String = try method.args.mandatory[0].convert()
         let projectAccessor: ProjectAccessor = try object.convert()
         let signal = RbSignalOneshot()
-        print("start building")
 
         queue.addTask {
           do {
@@ -83,20 +75,10 @@ struct ProjectAccessor: RbObjectConvertible, @unchecked Sendable {
               throw TargetAccessError.noTarget(named: targetName)
             }
 
-            try await projectAccessor.context.pointee.build(TargetRef(
+            try await projectAccessor.context.takeUnretainedValue().build(TargetRef(
               target: targetIndex,
               project: projectAccessor.ptr.pointee.id
             ))
-            //guard let targetIndex = await projectAccessor.ptr.pointee.targetIndex(name: targetName) else {
-            //  throw TargetAccessError.noTarget(named: targetName)
-            //}
-            //try await projectAccessor.ptr.pointee.withTarget(targetIndex) { (target: borrowing AnyTarget) in
-            //  try await target.build(
-            //    projectBaseDir: projectAccessor.ptr.pointee.baseDir,
-            //    projectBuildDir: projectAccessor.ptr.pointee.buildDir,
-            //    context: projectAccessor.context.pointee
-            //  )
-            //}
             signal.complete()
           } catch let error {
             signal.fail(error)

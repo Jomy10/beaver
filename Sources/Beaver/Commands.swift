@@ -1,5 +1,5 @@
 public actor Commands {
-  public typealias Command = @Sendable (borrowing Beaver) async throws -> ()
+  public typealias Command = @Sendable (Beaver) async throws -> ()
 
   var `default`: String? = nil
   var commands: [String: Command]
@@ -35,7 +35,7 @@ public actor Commands {
     }
   }
 
-  func call(_ command: String, context: borrowing Beaver) async throws {
+  func call(_ command: String, context: Beaver) async throws {
     guard let command = self.commands[command] else {
       throw Self.Error.commandDoesntExist(command)
     }
@@ -43,7 +43,7 @@ public actor Commands {
     try await command(context)
   }
 
-  func callDefault(context: borrowing Beaver) async throws {
+  func callDefault(context: Beaver) async throws {
     guard let commandName = self.default else {
       throw Self.Error.noDefaultCommand
     }

@@ -1,3 +1,6 @@
+> [WARNING] The docs are currently outdated
+
+
 # Summary
 
 [Getting started](./0-getting-started.md)
@@ -23,4 +26,3 @@
         - [C::Library]()
         - [C::Executable]()
 - [env](./4-env.md)
-

@@ -15,26 +15,34 @@ enum CacheVarError: Error {
   case invalidValueType(UnsafeSendable<RbType>)
 }
 
-func loadUtilsMethods(in module: RbObject, queue: SyncTaskQueue, context: UnsafeSendable<Rc<Beaver>>) throws {
+func loadUtilsMethods(in module: RbObject, queue: SyncTaskQueue, asyncQueue: AsyncTaskQueue, context: Beaver) throws {
+  // Async -> method should be waited on in Ruby
+  // Sync -> Runs on the sync task queue
   try module.defineMethod(
-    "buildDir",
+    "_buildDirAsyncSync",
     argsSpec: RbMethodArgsSpec(
       leadingMandatoryCount: 1
     ),
     body: { obj, method in
       let dir: String = try method.args.mandatory[0].convert()
-      try context.value.withInner { (context: inout Beaver) in
-        try context.setBuildDir(URL(filePath: dir))
+      let signal = RbSignalOneshot()
+      queue.addTask {
+        do {
+          try await context.setBuildDir(URL(filePath: dir))
+          signal.complete()
+        } catch let error {
+          signal.fail(error)
+        }
       }
 
-      return RbObject.nilObject
+      return RbObject(signal)
     }
   )
 
   // Returns true if the file with the specific context was changed, false if not and nil
   // if the file doesn't exist
   try module.defineMethod(
-    "fileChangedWithContext",
+    "_fileChangedWithContextAsyncAsync",
     argsSpec: RbMethodArgsSpec(
       leadingMandatoryCount: 2
     ),
@@ -43,71 +51,88 @@ func loadUtilsMethods(in module: RbObject, queue: SyncTaskQueue, context: Unsafe
       let fileContext: String = try method.args.mandatory[1].convert()
 
       let file = URL(filePath: filename)
+      let promise = RbPromise()
 
-      if !FileManager.default.exists(at: file) {
-        return RbObject.nilObject
+      asyncQueue.addTask {
+        do {
+          if !FileManager.default.exists(at: file) {
+            promise.resolve(RbObject.nilObject)
+          }
+
+          let obj = RbObject(try await context.fileChanged(file, context: fileContext))
+          promise.resolve(obj)
+        } catch let error {
+          promise.fail(error)
+        }
       }
 
-      return RbObject(try context.value.withInner { (context: inout Beaver) in
-        return try context.fileChanged(file, context: fileContext)
-      })
+      return RbObject(promise)
     }
   )
 
   try module.defineMethod(
-    "cache",
+    "_cacheAsyncAsync",
     argsSpec: RbMethodArgsSpec(
       leadingMandatoryCount: 1,
       optionalValues: [RbObject(RbSymbol("get"))]
     ),
     body: { boy, method in
-      try context.value.withInner { (ctx: inout Beaver) in
-        let contextName: String = try method.args.mandatory[0].convert(to: String.self)
-        let contextString: String = if let idx = ctx.currentProjectIndex {
-          ctx.unsafeProjectName(idx) + ":" + contextName
-        } else {
-          contextName
-        }
+      let contextName: String = try method.args.mandatory[0].convert(to: String.self)
+      let contextString: String = if let idx = context.currentProjectIndex {
+        context.unsafeProjectName(idx) + ":" + contextName
+      } else {
+        contextName
+      }
+      let promise = RbPromise()
 
+      asyncQueue.addTask {
         let valArg = method.args.optional[0]
-        if try valArg.call("==", args: [RbSymbol("get")]).convert(to: Bool.self) {
-          switch (try ctx.cacheGetVar(context: contextString)) {
-            case .string(let s): return RbObject(s)
-            case .int(let i): return RbObject(i)
-            case .double(let d): return RbObject(d)
-            case .bool(let b): return RbObject(b)
-            case .none: return RbObject.nilObject
+        let obj: RbObject
+        do {
+          if try valArg.call("==", args: [RbSymbol("get")]).convert(to: Bool.self) {
+            switch (try await context.cacheGetVar(context: contextString)) {
+              case .string(let s): obj = RbObject(s)
+              case .int(let i): obj = RbObject(i)
+              case .double(let d): obj = RbObject(d)
+              case .bool(let b): obj = RbObject(b)
+              case .none: obj = RbObject.nilObject
+            }
+          } else {
+            switch (valArg.rubyType) {
+              case .T_STRING: fallthrough
+              case .T_SYMBOL:
+                let val = try valArg.convert(to: String.self)
+                try await context.cacheSetVar(context: contextString, value: val)
+              case .T_BIGNUM: fallthrough
+              case .T_FIXNUM:
+                let val = try valArg.convert(to: Int.self)
+                try await context.cacheSetVar(context: contextString, value: val)
+              case .T_FLOAT:
+                let val = try valArg.convert(to: Double.self)
+                try await context.cacheSetVar(context: contextString, value: val)
+              case .T_TRUE: fallthrough
+              case .T_FALSE:
+                let val = try valArg.convert(to: Bool.self)
+                try await context.cacheSetVar(context: contextString, value: val)
+              case .T_NIL:
+                try await context.cacheSetVar(context: contextString, value: .none)
+              default:
+                throw CacheVarError.invalidValueType(UnsafeSendable(valArg.rubyType))
+            }
+            obj = RbObject.nilObject
           }
-        } else {
-          switch (valArg.rubyType) {
-            case .T_STRING: fallthrough
-            case .T_SYMBOL:
-              let val = try valArg.convert(to: String.self)
-              try ctx.cacheSetVar(context: contextString, value: val)
-            case .T_BIGNUM: fallthrough
-            case .T_FIXNUM:
-              let val = try valArg.convert(to: Int.self)
-              try ctx.cacheSetVar(context: contextString, value: val)
-            case .T_FLOAT:
-              let val = try valArg.convert(to: Double.self)
-              try ctx.cacheSetVar(context: contextString, value: val)
-            case .T_TRUE: fallthrough
-            case .T_FALSE:
-              let val = try valArg.convert(to: Bool.self)
-              try ctx.cacheSetVar(context: contextString, value: val)
-            case .T_NIL:
-              try ctx.cacheSetVar(context: contextString, value: .none)
-            default:
-              throw CacheVarError.invalidValueType(UnsafeSendable(valArg.rubyType))
-          }
-          return RbObject.nilObject
+          promise.resolve(obj)
+        } catch let error {
+          promise.fail(error)
         }
       }
+
+      return RbObject(promise)
     }
   )
 
   try module.defineMethod(
-    "shAsync",
+    "_shAsyncSync",
     argsSpec: RbMethodArgsSpec(
       supportsSplat: true
     ),
