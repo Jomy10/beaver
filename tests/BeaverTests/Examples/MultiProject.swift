@@ -6,11 +6,12 @@ import Utils
 
 @Test func exampleMultiProject() async throws {
   let baseURL = URL(filePath: "Examples/MultiProject", relativeTo: URL.currentDirectory())
+  print(baseURL)
 
+  try await Tools.exec(beaverExeURL, ["clean"], baseDir: baseURL)
   try await Tools.exec(beaverExeURL, ["build", "Main", "-o", optMode], baseDir: baseURL)
-  defer { _ = try! Tools.execWithOutput(beaverExeURL, ["clean"], baseDir: baseURL) }
-  let outputExeURL = baseURL.appending(path: ".build/\(optMode)/artifacts/Main")
-  #expect(outputExeURL.exists)
+  let outputExeURL = baseURL.appending(path: "build/MainProject/\(optMode)/artifacts/Main")
+  #expect(FileManager.default.exists(at: outputExeURL))
 
   let (stdout, _) = try Tools.execWithOutput(outputExeURL, [], baseDir: baseURL)
   let lines = stdout.split(whereSeparator: \.isNewline)

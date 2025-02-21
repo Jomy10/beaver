@@ -32,6 +32,7 @@ extension Tools {
     task.environment = ProcessInfo.processInfo.environment
 
     try task.run()
+    MessageHandler.print(((cmdURL.path + " " + args.joined(separator: " "))).darkGray(), to: .stderr, context: .shellCommand)
     task.waitUntilExit()
 
     if task.terminationStatus != 0 {
@@ -102,6 +103,29 @@ extension Tools {
     try task.run()
 
     await task.waitUntilExitAsync()
+
+    if task.terminationStatus != 0 {
+      throw ProcessError(terminationStatus: task.terminationStatus, reason: task.terminationReason)
+    }
+  }
+
+  /// Output immediately to stderr/stdout
+  @inlinable
+  public static func execSync(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) throws {
+    let task = Process()
+
+    task.standardError = FileHandle.standardError
+    task.standardOutput = FileHandle.standardOutput
+    task.executableURL = cmdURL
+    task.arguments = args
+    task.currentDirectoryURL = baseDir
+    task.environment = ProcessInfo.processInfo.environment
+
+    MessageHandler.print((cmdURL.path + " " + args.joined(separator: " ")).darkGray(), to: .stderr, context: .shellCommand)
+
+    try task.run()
+
+    task.waitUntilExit()
 
     if task.terminationStatus != 0 {
       throw ProcessError(terminationStatus: task.terminationStatus, reason: task.terminationReason)

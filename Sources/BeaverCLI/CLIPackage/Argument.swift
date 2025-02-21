@@ -1,3 +1,4 @@
+// Should actually be called Option
 public struct ArgumentDecl: Sendable, ArgumentProtocol {
   public var fullName: String
   public var shortName: String?

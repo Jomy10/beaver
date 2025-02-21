@@ -31,24 +31,25 @@ struct Cache: Sendable {
     self.db = try Connection(cacheFile.path)
     self.db.busyTimeout = 4
 
-    print("Checking global cache...")
+    var globalCacheChangeReason: String? = nil
     try GlobalCache.createIfNotExists(self.db)
-    if try GlobalCache.changed(buildId: buildId, env: env, self.db) {
+    if try GlobalCache.changed(buildId: buildId, env: env, self.db, reason: &globalCacheChangeReason) {
       Self.reset(self.db)
       try GlobalCache.createIfNotExists(self.db)
       try GlobalCache.insert(buildId: buildId, env: env, self.db)
       clean = true
+      // TODO: only output on build command
+      if let reason = globalCacheChangeReason {
+        MessageHandler.info("\(reason); rebuilding artifacts")
+      }
     }
 
-    print("Creating tables...")
     try ConfigurationCache.createIfNotExists(self.db)
     try FileCache.createIfNotExists(self.db)
     try CMakeProjectCache.createIfNotExists(self.db)
     try CMakeFile.createIfNotExists(self.db)
     try CacheVariable.createIfNotExists(self.db)
     try CustomFile.createIfNotExists(self.db)
-    assert(ConfigurationCache.tableName == "Configuration")
-    print(ConfigurationCache.table.expression)
 
     self.db.trace { msg in
       MessageHandler.trace(msg, context: .sql)
@@ -101,11 +102,6 @@ struct Cache: Sendable {
         anyChanged = true
       }
     }
-    //let project: CMakeProjectCache = if let project = try CMakeProject.get(path: cmakeBaseDir, db: self.db) {
-    //  project
-    //} else {
-    //  CMakeProjectCache(id: try self.db.run(CMakeProject(cmakeBaseDir).setter), path: cmakeBaseDir)
-    //}
     return anyChanged
   }
 

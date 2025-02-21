@@ -10,6 +10,7 @@ importCMake "flatbuffers"
 flatbuffers = project("FlatBuffers")
 # Run an executable defined in the FlatBuffers CMake project.
 # This will build and run the executable
+# TODO: pre "clean" do -> remove .fbs file OR: cleanup(file)
 flatbuffers.run("flatc", "--cpp", "MyFileFormat.fbs")
 
 Project(name: "MyFileFormat")

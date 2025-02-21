@@ -36,11 +36,15 @@ struct BeaverCLI: Sendable {
   )
   var file: URL? = nil
 
-  @Argument(name: "opt", shortName: "c", help: "Optimization mode (`debug` or `release`) (default: `debug`)")
-  var _optimizationMode: OptimizationMode = .debug
+  //@Argument(name: "opt", shortName: "c", help: "Optimization mode (`debug` or `release`) (default: `debug`)")
+  //var _optimizationMode: OptimizationMode = .debug
 
-  @Flag(name: "optimize", shortName: "o", help: "Shorthand for `-c release`")
-  var optimize: Bool? = nil
+  //@Flag(name: "optimize", shortName: "o", help: "Shorthand for `-c release`")
+  //var optimize: Bool? = nil
+
+  // TODO: when no arguemnts passed --> release
+  @Argument(name: "opt", shortName: "o", help: "Optimization mode (`debug` or `release`) (default: `debug`)")
+  var optimizationMode: OptimizationMode = .debug
 
   @Flag(name: "color", help: "Enable color output (default: automatic)")
   var color: Bool? = nil
@@ -51,16 +55,16 @@ struct BeaverCLI: Sendable {
   @Flag(name: "help", shortName: "h", negatable: false, help: "Show this help message")
   var help: Bool = false
 
-  var optimizationMode: OptimizationMode {
-    switch (self.optimize) {
-      case nil:
-        return self._optimizationMode
-      case .some(true):
-        return .release
-      case .some(false):
-        return .debug
-    }
-  }
+  //var optimizationMode: OptimizationMode {
+  //  switch (self.optimize) {
+  //    case nil:
+  //      return self._optimizationMode
+  //    case .some(true):
+  //      return .release
+  //    case .some(false):
+  //      return .debug
+  //  }
+  //}
 
   var rubySetup = false
 

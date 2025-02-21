@@ -1,6 +1,7 @@
 import Foundation
 import Platform
 import Utils
+import AsyncAlgorithms
 
 public protocol CTarget: Target, ~Copyable {
   var sources: Files { get }

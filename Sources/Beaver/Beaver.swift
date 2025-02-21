@@ -38,7 +38,7 @@ public struct Beaver: ~Copyable, Sendable {
   ) throws {
     self.projects = AsyncRWLock(NonCopyableArray(withCapacity: 3))
     self.optimizeMode = optimizeMode
-    self.buildDir = URL.currentDirectory().absoluteURL.appending(path: "build")
+    self.buildDir = URL.currentDirectory().appending(path: "build")
 //    self.cacheFile = self.buildDir.appending(path: "cache")
 //    self.cache = nil
     self.commands = Commands()
@@ -85,7 +85,7 @@ public struct Beaver: ~Copyable, Sendable {
     try fileContents.write(to: self.buildBackendFile, atomically: true, encoding: .utf8)
     self.ninja = try NinjaRunner(buildFile: self.buildBackendFile.path)
     if self.shouldCleanArtifacts {
-      try self.cleanArtifacts()
+      try self.cleanArtifacts(keepingCurrentConfiguration: true)
     }
 
     try self.initializeCache()
@@ -216,32 +216,48 @@ public struct Beaver: ~Copyable, Sendable {
   }
 
   public func clean() throws {
-    try self.cleanArtifacts()
+    //try self.cleanArtifacts()
+    let debugBuildFile = self.buildDir.appending(path: "build.debug.ninja")
+        let releaseBuildFile = self.buildDir.appending(path: "build.release.ninja")
+
+        if FileManager.default.exists(at: debugBuildFile) {
+          try NinjaRunner(buildFile: debugBuildFile.path(percentEncoded: false)).runSync(tool: "clean")
+          //if (!keepingCurrentConfiguration || (keepingCurrentConfiguration && self.optimizeMode != .debug)) {
+            try FileManager.default.removeItem(at: debugBuildFile)
+          //}
+        }
+
+        if FileManager.default.exists(at: releaseBuildFile) {
+          try NinjaRunner(buildFile: releaseBuildFile.path(percentEncoded: false)).runSync(tool: "clean")
+          //if (!keepingCurrentConfiguration || (keepingCurrentConfiguration && self.optimizeMode != .release)) {
+            try FileManager.default.removeItem(at: releaseBuildFile)
+          //}
+        }
   }
 
-  public func cleanArtifacts() throws {
-    try self.ninja!.runSync(tool: "clean")
-    // TODO: clean CMake projects!
+  public func cleanArtifacts(keepingCurrentConfiguration: Bool = false) throws {
+    print("Project should be automatically cleaned, but this is currently not supported. Consider doing a manual clean")
+    //try self.ninja!.runSync(tool: "clean")
 
-    //guard let projectRef = await self.projectRef(name: projectName) else {
-    //  throw ProjectAccessError.noProject(named: projectName)
+    //let debugBuildFile = self.buildDir.appending(path: "build.debug.ninja")
+    //let releaseBuildFile = self.buildDir.appending(path: "build.release.ninja")
+
+    //if FileManager.default.exists(at: debugBuildFile) {
+    //  try NinjaRunner(buildFile: debugBuildFile.path(percentEncoded: false)).runSync(tool: "clean")
+    //  if (!keepingCurrentConfiguration || (keepingCurrentConfiguration && self.optimizeMode != .debug)) {
+    //    try FileManager.default.removeItem(at: debugBuildFile)
+    //  }
     //}
-    //try await self.clean(projectRef)
-  }
 
-  //public func clean(_ projectRef: ProjectRef? = nil) async throws {
-  //  if let projectRef = projectRef {
-  //    try await self.withProject(projectRef) { (project: borrowing AnyProject) in
-  //      MessageHandler.print("Cleaning \(project.name)...")
-  //      try await project.clean(context: self)
-  //    }
-  //  } else {
-  //    try await self.withCurrentProject { (project: borrowing AnyProject) in
-  //      MessageHandler.print("Cleaning all targets of \(project.name)...")
-  //      try await project.clean(context: self)
-  //    }
-  //  }
-  //}
+    //if FileManager.default.exists(at: releaseBuildFile) {
+    //  try NinjaRunner(buildFile: releaseBuildFile.path(percentEncoded: false)).runSync(tool: "clean")
+    //  if (!keepingCurrentConfiguration || (keepingCurrentConfiguration && self.optimizeMode != .release)) {
+    //    try FileManager.default.removeItem(at: releaseBuildFile)
+    //  }
+    //}
+
+    // TODO: clean CMake projects!
+  }
 
   public mutating func addCommand(
     _ name: String,

@@ -29,7 +29,7 @@ func loadCommandLineMethods<Args: Collection & BidirectionalCollection & Sendabl
   where Args.Element == String
 {
   try module.defineMethod(
-    "arg",
+    "opt",
     argsSpec: RbMethodArgsSpec(
       supportsSplat: true,
       optionalKeywordValues: ["default": RbObject.nilObject]
@@ -52,7 +52,7 @@ func loadCommandLineMethods<Args: Collection & BidirectionalCollection & Sendabl
   )
 
   try module.defineMethod(
-    "opt",
+    "flag",
     argsSpec: RbMethodArgsSpec(
       supportsSplat: true,
       optionalKeywordValues: ["default": RbObject(false)]
