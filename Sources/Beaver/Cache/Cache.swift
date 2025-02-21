@@ -31,6 +31,7 @@ struct Cache: Sendable {
     self.db = try Connection(cacheFile.path)
     self.db.busyTimeout = 4
 
+    print("Checking global cache...")
     try GlobalCache.createIfNotExists(self.db)
     if try GlobalCache.changed(buildId: buildId, env: env, self.db) {
       Self.reset(self.db)
@@ -39,12 +40,15 @@ struct Cache: Sendable {
       clean = true
     }
 
+    print("Creating tables...")
     try ConfigurationCache.createIfNotExists(self.db)
     try FileCache.createIfNotExists(self.db)
     try CMakeProjectCache.createIfNotExists(self.db)
     try CMakeFile.createIfNotExists(self.db)
     try CacheVariable.createIfNotExists(self.db)
     try CustomFile.createIfNotExists(self.db)
+    assert(ConfigurationCache.tableName == "Configuration")
+    print(ConfigurationCache.table.expression)
 
     self.db.trace { msg in
       MessageHandler.trace(msg, context: .sql)
@@ -78,13 +82,14 @@ struct Cache: Sendable {
     var anyChanged = false
     for file in try self.db.prepare(CMakeFile.table
       .select(
-        FileCache.Columns.filename.qualifiedOptional,
-        FileCache.Columns.mtime.qualifiedOptional,
-        FileCache.Columns.size.qualifiedOptional,
-        FileCache.Columns.ino.qualifiedOptional,
-        FileCache.Columns.mode.qualifiedOptional,
-        FileCache.Columns.uid.qualifiedOptional,
-        FileCache.Columns.gid.qualifiedOptional
+        FileCache.Columns.filename.qualified,
+        FileCache.Columns.checkId.qualified,
+        FileCache.Columns.mtime.qualified,
+        FileCache.Columns.size.qualified,
+        FileCache.Columns.ino.qualified,
+        FileCache.Columns.mode.qualified,
+        FileCache.Columns.uid.qualified,
+        FileCache.Columns.gid.qualified
       )
       .join(.inner, FileCache.table, on: FileCache.Columns.filename.qualified == CMakeFile.Columns.file.qualified)
       .where(CMakeFile.Columns.cmakeProjectId.qualified == project.id)

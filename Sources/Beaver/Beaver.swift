@@ -84,14 +84,14 @@ public struct Beaver: ~Copyable, Sendable {
     let fileContents: String = stmts.finalize()
     try fileContents.write(to: self.buildBackendFile, atomically: true, encoding: .utf8)
     self.ninja = try NinjaRunner(buildFile: self.buildBackendFile.path)
-    if self.shouldClean {
-      try self.clean()
+    if self.shouldCleanArtifacts {
+      try self.cleanArtifacts()
     }
 
     try self.initializeCache()
   }
 
-  var shouldClean = false
+  var shouldCleanArtifacts = false
 
   private mutating func initializeCache() throws {
     if self.cache != nil {
@@ -100,7 +100,7 @@ public struct Beaver: ~Copyable, Sendable {
     }
 
     try FileManager.default.createDirectoryIfNotExists(at: self.buildDir, withIntermediateDirectories: true)
-    self.cache = try Cache(self.buildDir.appending(path: "cache"), buildId: BeaverConstants.buildId, clean: &self.shouldClean)
+    self.cache = try Cache(self.buildDir.appending(path: "cache"), buildId: BeaverConstants.buildId, clean: &self.shouldCleanArtifacts)
     try self.cache!.selectConfiguration(mode: self.optimizeMode)
   }
 
@@ -216,6 +216,10 @@ public struct Beaver: ~Copyable, Sendable {
   }
 
   public func clean() throws {
+    try self.cleanArtifacts()
+  }
+
+  public func cleanArtifacts() throws {
     try self.ninja!.runSync(tool: "clean")
     // TODO: clean CMake projects!
 
