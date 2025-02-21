@@ -36,12 +36,12 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
     self.makeFlags = makeFlags
   }
 
-  public func buildDir(_ context: borrowing Beaver) -> URL {
+  public func buildDir(_ context: Beaver) -> URL {
     self.buildDir
   }
 
   // TODO: find a better way than just calling ninja from ninja
-  public func buildStatements(context: borrowing Beaver) async throws -> BuildBackendBuilder {
+  public func buildStatements(context: Beaver) async throws -> BuildBackendBuilder {
     var stmts = BuildBackendBuilder()
 
     var commands = [String]()
@@ -63,7 +63,7 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
   }
 
   /// Build the specified target from the ninja file
-  public func build(_ target: borrowing AnyTarget, context: borrowing Beaver) async throws {
+  public func build(_ target: borrowing AnyTarget, context: Beaver) async throws {
     let ninja = try NinjaRunner(buildFile: self.buildDir(context).appending(path: "build.ninja").path)
     try await ninja.build(targets: target.name, dir: self.buildDir(context).path)
   }

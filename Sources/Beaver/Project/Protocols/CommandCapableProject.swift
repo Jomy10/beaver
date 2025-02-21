@@ -6,9 +6,9 @@ public protocol CommandCapableProject: ~Copyable, Project, Sendable {
     _ execute: @escaping Commands.Command
   ) async throws
 
-  func call(_ commandName: String, context: borrowing Beaver) async throws
+  func call(_ commandName: String, context: Beaver) async throws
 
-  func callDefault(context: borrowing Beaver) async throws
+  func callDefault(context: Beaver) async throws
 
   func isOverwritten(_ commandName: String) async -> Bool
 

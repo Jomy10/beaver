@@ -21,7 +21,7 @@ extension CTarget where Self: ~Copyable {
 
 extension CTarget where Self: ~Copyable {
   /// Returns dependency linker flags and updates the cache for the artifact
-  func dependencyLinkerFlags(context: borrowing Beaver) async throws -> [String] {
+  func dependencyLinkerFlags(context: Beaver) async throws -> [String] {
     // Collect linker flags to link against dependencies
     var depLinkerFlags: [String] = []
     var depLanguages: Set<Language> = Set()
@@ -84,7 +84,7 @@ extension CTarget where Self: ~Copyable {
   }
 
   /// Only used when compiling objects of this target
-  public func privateCflags(projectBaseDir: borrowing URL, context: borrowing Beaver) async throws -> [String] {
+  public func privateCflags(projectBaseDir: borrowing URL, context: Beaver) async throws -> [String] {
     var dependencyCflags: [String] = []
     for dependency in self.dependencies {
       guard let cflags = try await dependency.cflags(context: context) else { continue }
@@ -105,7 +105,7 @@ extension CTarget where Self: ~Copyable {
   }
 
   /// All cflags for this target. Includes dependency's cflags. Includes header include paths. Used when compiling
-  public func cflags(projectBaseDir: borrowing URL, context: borrowing Beaver) async throws -> [String] {
+  public func cflags(projectBaseDir: borrowing URL, context: Beaver) async throws -> [String] {
     var flags = try await self.publicCflags(projectBaseDir: projectBaseDir)
       + self.privateCflags(projectBaseDir: projectBaseDir, context: context)
       + context.optimizeMode.cflags
@@ -116,7 +116,7 @@ extension CTarget where Self: ~Copyable {
   }
 
   /// Commands for building dependencies used in ninja build script
-  func dependencyCommands(context: borrowing Beaver) async throws -> [String] {
+  func dependencyCommands(context: Beaver) async throws -> [String] {
     let contextPtr = UnsafeSendable(withUnsafePointer(to: context) { $0 })
     return try await self.dependencies.async.compactMap { dep in
       switch (dep) {

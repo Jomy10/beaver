@@ -26,7 +26,7 @@ public protocol TargetBase: ~Copyable, Sendable {
 
   var type: TargetType { get }
 
-  func buildStatements<P: Project & ~Copyable>(inProject project: borrowing P, context: borrowing Beaver) async throws -> BuildBackendBuilder
+  func buildStatements<P: Project & ~Copyable>(inProject project: borrowing P, context: Beaver) async throws -> BuildBackendBuilder
 
   func ninjaTarget<P: Project & ~Copyable>(inProject: borrowing P, artifact: eArtifactType) -> String
   //func build(
@@ -55,13 +55,13 @@ extension TargetBase where Self: ~Copyable {
   }
 
   @inline(__always)
-  func loopUniqueDependenciesRecursive(context: borrowing Beaver, _ cb: (Dependency) async throws -> Void) async throws {
+  func loopUniqueDependenciesRecursive(context: Beaver, _ cb: (Dependency) async throws -> Void) async throws {
     var visited = Set<Dependency>()
     try await self.__loopUniqueDependenciesRecursive(context: context, visited: &visited, cb)
   }
 
   @inline(__always)
-  func __loopUniqueDependenciesRecursive(context: borrowing Beaver, visited: inout Set<Dependency>,  _ cb: (Dependency) async throws -> Void) async throws {
+  func __loopUniqueDependenciesRecursive(context: Beaver, visited: inout Set<Dependency>,  _ cb: (Dependency) async throws -> Void) async throws {
     for dependency in self.dependencies {
       if !visited.contains(dependency) {
         visited.insert(dependency)

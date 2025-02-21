@@ -78,12 +78,12 @@ public struct CExecutable: CTarget, Executable, ~Copyable {
     }
   }
 
-  func linkerFlags(context: borrowing Beaver) async throws -> [String] {
+  func linkerFlags(context: Beaver) async throws -> [String] {
     return (try await self.dependencyLinkerFlags(context: context))
       + self.extraLinkerFlags
   }
 
-  public func buildStatements<P>(inProject project: borrowing P, context: borrowing Beaver) async throws -> BuildBackendBuilder where P : Project, P : ~Copyable
+  public func buildStatements<P>(inProject project: borrowing P, context: Beaver) async throws -> BuildBackendBuilder where P : Project, P : ~Copyable
   {
     let sources = try await self.collectSources(projectBaseDir: project.baseDir)
     let projectBuildDir = project.buildDir(context)

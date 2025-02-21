@@ -16,8 +16,8 @@ enum CommandLineError: Error {
 public func executeRuby<Args: Collection & BidirectionalCollection & Sendable>(
   scriptFile: URL,
   args: Args,
-  context: UnsafeSendable<Rc<Beaver>>
-) throws -> SyncTaskQueue
+  context: Beaver
+) throws -> (SyncTaskQueue, AsyncTaskQueue)
   where Args.Element == String
 {
   let scriptContents = try String(contentsOf: scriptFile, encoding: .utf8)
@@ -26,11 +26,15 @@ public func executeRuby<Args: Collection & BidirectionalCollection & Sendable>(
   let queue: SyncTaskQueue = SyncTaskQueue(onError: { _ in
     queueError.value.store(true, ordering: .relaxed)
   })
+  let asyncQueue: AsyncTaskQueue = AsyncTaskQueue() // has no onError, this means errors will cause an infinite wait!
 
   // Lock is probably not needed
   let slice = try RWLock(MutableDiscontiguousSlice(args))
 
   let beaverModule = try Ruby.defineModule("Beaver")
+
+  try RbSignalOneshot.load(in: beaverModule)
+  try RbPromise.load(in: beaverModule)
 
   try Ruby.defineGlobalVar(
     "$BEAVER_ERROR",
@@ -49,7 +53,7 @@ public func executeRuby<Args: Collection & BidirectionalCollection & Sendable>(
   try loadProjectMethod(in: beaverModule, queue: queue, context: context)
   try loadCMethods(in: beaverModule, queue: queue, context: context)
   try loadDependencyMethods(in: beaverModule, queue: queue, context: context)
-  try loadUtilsMethods(in: beaverModule, queue: queue, context: context)
+  try loadUtilsMethods(in: beaverModule, queue: queue, asyncQueue: asyncQueue, context: context)
   try loadAccessorMethods(in: beaverModule, queue: queue, context: context)
 
   //let libFilePath = Bundle.module.path(forResource: "lib", ofType: "rb", inDirectory: "lib")!
@@ -76,7 +80,7 @@ public func executeRuby<Args: Collection & BidirectionalCollection & Sendable>(
     throw error
   }
 
-  return queue
+  return (queue, asyncQueue)
 }
 
 public func deallocateRubyObjects() {

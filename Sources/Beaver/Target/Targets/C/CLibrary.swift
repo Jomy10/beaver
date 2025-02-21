@@ -86,7 +86,7 @@ public struct CLibrary: CTarget, Library, ~Copyable {
   }
 
   /// All linker flags, including dependency linker flags
-  func linkerFlags(forArtifact artifactType: ArtifactType, context: borrowing Beaver) async throws -> [String] {
+  func linkerFlags(forArtifact artifactType: ArtifactType, context: Beaver) async throws -> [String] {
     var flags = [String]()
     if artifactType == .dynlib {
       #if os(macOS)
@@ -102,7 +102,7 @@ public struct CLibrary: CTarget, Library, ~Copyable {
       + self.extraLinkerFlags
   }
 
-  public func buildStatements<P: Project & ~Copyable>(inProject project: borrowing P, context: borrowing Beaver) async throws -> BuildBackendBuilder {
+  public func buildStatements<P: Project & ~Copyable>(inProject project: borrowing P, context: Beaver) async throws -> BuildBackendBuilder {
     let sources = try await self.collectSources(projectBaseDir: project.baseDir)
     let projectBuildDir = project.buildDir(context)
     let objectBuildDir = self.objectBuildDir(projectBuildDir: projectBuildDir)
@@ -252,7 +252,7 @@ public struct CLibrary: CTarget, Library, ~Copyable {
     outputFile: URL,
     projectBaseDir: borrowing URL,
     projectBuildDir: borrowing URL,
-    context: borrowing Beaver
+    context: Beaver
   ) async throws {
     let buildBaseDir = self.artifactOutputDir(projectBuildDir: projectBuildDir, artifact: .dynlib)!
     try FileManager.default.createDirectoryIfNotExists(at: buildBaseDir, withIntermediateDirectories: true)
@@ -287,7 +287,7 @@ public struct CLibrary: CTarget, Library, ~Copyable {
   }
 
   @available(*, deprecated)
-  func buildStaticLibrary(objects: borrowing [URL], projectBaseDir: borrowing URL, projectBuildDir: borrowing URL, context: borrowing Beaver) async throws {
+  func buildStaticLibrary(objects: borrowing [URL], projectBaseDir: borrowing URL, projectBuildDir: borrowing URL, context: Beaver) async throws {
     let buildBaseDir = self.artifactOutputDir(projectBuildDir: projectBuildDir, artifact: .staticlib)!
     try FileManager.default.createDirectoryIfNotExists(at: buildBaseDir, withIntermediateDirectories: true)
 

@@ -2,10 +2,10 @@ import Foundation
 import Utils
 import Atomics
 
-public struct Beaver: ~Copyable, Sendable {
-  var projects: AsyncRWLock<NonCopyableArray<AnyProject>>
+public final class Beaver: Sendable {
+  let projects: AsyncRWLock<NonCopyableArray<AnyProject>>
 
-  private var __currentProjectIndex: ManagedAtomic<ProjectRef> = ManagedAtomic(-1)
+  private let __currentProjectIndex: ManagedAtomic<ProjectRef> = ManagedAtomic(-1)
   public var currentProjectIndex: ProjectRef? {
     get {
       let idx = self.__currentProjectIndex.load(ordering: .sequentiallyConsistent)
@@ -14,14 +14,14 @@ public struct Beaver: ~Copyable, Sendable {
     }
   }
 
-  public var optimizeMode: OptimizationMode
+  public nonisolated(unsafe) var optimizeMode: OptimizationMode
 
-  var buildDir: URL
-  var buildBackendFile: URL
-  var ninja: NinjaRunner?
-  var cache: Cache?
+  nonisolated(unsafe) var buildDir: URL
+  nonisolated(unsafe) var buildBackendFile: URL
+  nonisolated(unsafe) var ninja: NinjaRunner?
+  nonisolated(unsafe) var cache: Cache?
 
-  var commands: Commands
+  let commands: Commands
 
   private func setCurrentProjectIndex(_ idx: ProjectRef) async {
     while true {
@@ -39,8 +39,6 @@ public struct Beaver: ~Copyable, Sendable {
     self.projects = AsyncRWLock(NonCopyableArray(withCapacity: 3))
     self.optimizeMode = optimizeMode
     self.buildDir = URL.currentDirectory().appending(path: "build")
-//    self.cacheFile = self.buildDir.appending(path: "cache")
-//    self.cache = nil
     self.commands = Commands()
     self.buildBackendFile = self.buildDir.appending(path: "build.\(optimizeMode).ninja")
 
@@ -49,13 +47,35 @@ public struct Beaver: ~Copyable, Sendable {
     }
   }
 
-  public enum InitializationError: Error {
-    case fileCacheAlreadyInitialized
+  // TODO: atomic
+  let buildDirFixed = OnceLock()
+  func requireBuildDir() async throws {
+    if await self.buildDirFixed.startAcquire() == .alreadyAcquired {
+      return
+    }
+    defer { self.buildDirFixed.acquireFinish() }
+
+    //self.buildDirFixed = true
+    try FileManager.default.createDirectoryIfNotExists(at: self.buildDir, withIntermediateDirectories: true)
+    var shouldClean = false
+    self.cache = try Cache(self.buildDir.appending(path: "cache"), buildId: BeaverConstants.buildId, clean: &shouldClean)
+    if shouldClean {
+      let ninjaLog = self.buildDir.appending(path: ".ninja_log")
+      if FileManager.default.exists(at: ninjaLog) {
+        try FileManager.default.removeItem(at: ninjaLog) // force ninja to rebuild
+      }
+    }
+    try self.cache!.selectConfiguration(mode: self.optimizeMode)
+
+    self.buildBackendFile = self.buildDir.appending(path: "build.\(optimizeMode).ninja")
   }
 
-  /// Should be called after all configuration has been set and targets have been declared
-  public mutating func finalize() async throws {
-    try FileManager.default.createDirectoryIfNotExists(at: self.buildDir, withIntermediateDirectories: true)
+  // TODO: atomic
+  let finalized = OnceLock()
+  func finalize() async throws {
+    if await finalized.startAcquire() == .alreadyAcquired { return }
+    defer { finalized.acquireFinish() }
+    try await self.requireBuildDir()
 
     var stmts = BuildBackendBuilder()
     stmts.add("builddir = \(self.buildDir.ninjaPath)")
@@ -84,25 +104,50 @@ public struct Beaver: ~Copyable, Sendable {
     let fileContents: String = stmts.finalize()
     try fileContents.write(to: self.buildBackendFile, atomically: true, encoding: .utf8)
     self.ninja = try NinjaRunner(buildFile: self.buildBackendFile.path)
-    if self.shouldCleanArtifacts {
-      try self.cleanArtifacts(keepingCurrentConfiguration: true)
-    }
+    //if self.shouldCleanArtifacts {
+    //  try self.cleanArtifacts(keepingCurrentConfiguration: true)
+    //}
 
-    try self.initializeCache()
+    //try self.initializeCache()
   }
 
-  var shouldCleanArtifacts = false
+  /// Should be called after all configuration has been set and targets have been declared
+  //public mutating func finalize() async throws {
+  //  try FileManager.default.createDirectoryIfNotExists(at: self.buildDir, withIntermediateDirectories: true)
 
-  private mutating func initializeCache() throws {
-    if self.cache != nil {
-      return
-      //throw InitializationError.fileCacheAlreadyInitialized
-    }
+  //  var stmts = BuildBackendBuilder()
+  //  stmts.add("builddir = \(self.buildDir.ninjaPath)")
+  //  var languages = Set<Language>()
+  //  var hasCMake = false
 
-    try FileManager.default.createDirectoryIfNotExists(at: self.buildDir, withIntermediateDirectories: true)
-    self.cache = try Cache(self.buildDir.appending(path: "cache"), buildId: BeaverConstants.buildId, clean: &self.shouldCleanArtifacts)
-    try self.cache!.selectConfiguration(mode: self.optimizeMode)
-  }
+  //  _ = await self.loopProjects { (project: borrowing AnyProject) in
+  //    switch (project) {
+  //      case .cmake(_):
+  //        hasCMake = true
+  //      case .beaver(let proj):
+  //        _ = await proj.loopTargets { (target: borrowing AnyTarget) in
+  //          languages.insert(target.language)
+  //        }
+  //    }
+  //  }
+
+  //  try stmts.addRules(forLanguages: languages)
+  //  if hasCMake {
+  //    stmts.addNinjaRule()
+  //  }
+
+  //  try await self.loopProjects { project in
+  //    stmts.join(try await project.buildStatements(context: self))
+  //  }
+  //  let fileContents: String = stmts.finalize()
+  //  try fileContents.write(to: self.buildBackendFile, atomically: true, encoding: .utf8)
+  //  self.ninja = try NinjaRunner(buildFile: self.buildBackendFile.path)
+  //  if self.shouldCleanArtifacts {
+  //    try self.cleanArtifacts(keepingCurrentConfiguration: true)
+  //  }
+
+  //  try self.initializeCache()
+  //}
 
   //private mutating func initializeCache() throws {
   //  if self.cache != nil {
@@ -114,20 +159,28 @@ public struct Beaver: ~Copyable, Sendable {
   //  try self.cache!.selectConfiguration(mode: self.optimizeMode)
   //}
 
-  public mutating func setBuildDir(_ dir: URL) throws {
+  enum SetError: Error, CustomStringConvertible {
+    /// Already initialized (fixed)
+    case buildDir
+
+    var description: String {
+      switch (self) {
+        case .buildDir: "Cannot set build directory, because a different operation was called which requires the build directory"
+      }
+    }
+  }
+
+  public func setBuildDir(_ dir: URL) async throws {
+    // TODO: what to do here? --> only allow buildDir call from top-level file?
+    if await self.buildDirFixed.isAcquired() {
+      throw SetError.buildDir
+    }
     //if self.fileCache != nil {
     //  throw InitializationError.fileCacheAlreadyInitialized
     //}
     self.buildDir = dir
     //self.cacheFile = dir.appending(path: "cache")
-    self.buildBackendFile = self.buildDir.appending(path: "build.\(optimizeMode).ninja")
     //try self.initializeCache()
-  }
-
-  public mutating func requireBuildDir() throws {
-    if self.cache == nil {
-      try self.initializeCache()
-    }
   }
 
   public func buildDir(for name: String) -> URL {
@@ -135,7 +188,7 @@ public struct Beaver: ~Copyable, Sendable {
   }
 
   @discardableResult
-  public mutating func addProject(_ project: consuming AnyProject) async -> ProjectRef {
+  public func addProject(_ project: consuming AnyProject) async -> ProjectRef {
     var project: AnyProject? = project
     return await self.projects.write { (projects: inout NonCopyableArray<AnyProject>) in
       let id = projects.count
@@ -170,6 +223,7 @@ public struct Beaver: ~Copyable, Sendable {
 
   /// Returns true if any occured during build
   public func build(_ targetRef: TargetRef, artifact: ArtifactType? = nil) async throws {
+    try await self.finalize()
     try await self.withProjectAndTarget(targetRef) { (project: borrowing AnyProject, target: borrowing AnyTarget) in
       switch (project) {
         case .cmake(let project):
@@ -197,6 +251,7 @@ public struct Beaver: ~Copyable, Sendable {
   }
 
   public func run(args: [String] = []) async throws {
+    try await self.finalize()
     try await self.withCurrentProject { (project: borrowing AnyProject) in
       try await project.run(args: args, context: self)
     }
@@ -208,6 +263,7 @@ public struct Beaver: ~Copyable, Sendable {
   }
 
   public func run(_ targetRef: TargetRef, args: [String] = []) async throws {
+    try await self.finalize()
     //try await self.build(targetRef, artifact: .executable(.executable))
     try await self.withProjectAndExecutable(targetRef) { (project: borrowing AnyProject, executable: borrowing AnyExecutable) in
       try await self.ninja!.build(targets: executable.ninjaTarget(inProject: project, artifact: .executable))
@@ -215,28 +271,30 @@ public struct Beaver: ~Copyable, Sendable {
     }
   }
 
-  public func clean() throws {
+  public func clean() async throws {
+    try await self.finalize()
     //try self.cleanArtifacts()
     let debugBuildFile = self.buildDir.appending(path: "build.debug.ninja")
-        let releaseBuildFile = self.buildDir.appending(path: "build.release.ninja")
+    let releaseBuildFile = self.buildDir.appending(path: "build.release.ninja")
 
-        if FileManager.default.exists(at: debugBuildFile) {
-          try NinjaRunner(buildFile: debugBuildFile.path(percentEncoded: false)).runSync(tool: "clean")
-          //if (!keepingCurrentConfiguration || (keepingCurrentConfiguration && self.optimizeMode != .debug)) {
-            try FileManager.default.removeItem(at: debugBuildFile)
-          //}
-        }
+    if FileManager.default.exists(at: debugBuildFile) {
+      try NinjaRunner(buildFile: debugBuildFile.path(percentEncoded: false)).runSync(tool: "clean")
+      //if (!keepingCurrentConfiguration || (keepingCurrentConfiguration && self.optimizeMode != .debug)) {
+        try FileManager.default.removeItem(at: debugBuildFile)
+      //}
+    }
 
-        if FileManager.default.exists(at: releaseBuildFile) {
-          try NinjaRunner(buildFile: releaseBuildFile.path(percentEncoded: false)).runSync(tool: "clean")
-          //if (!keepingCurrentConfiguration || (keepingCurrentConfiguration && self.optimizeMode != .release)) {
-            try FileManager.default.removeItem(at: releaseBuildFile)
-          //}
-        }
+    if FileManager.default.exists(at: releaseBuildFile) {
+      try NinjaRunner(buildFile: releaseBuildFile.path(percentEncoded: false)).runSync(tool: "clean")
+      //if (!keepingCurrentConfiguration || (keepingCurrentConfiguration && self.optimizeMode != .release)) {
+        try FileManager.default.removeItem(at: releaseBuildFile)
+      //}
+    }
   }
 
-  public func cleanArtifacts(keepingCurrentConfiguration: Bool = false) throws {
-    print("Project should be automatically cleaned, but this is currently not supported. Consider doing a manual clean")
+  // TODO: how to approach this problem?
+  //public func cleanArtifacts(keepingCurrentConfiguration: Bool = false) throws {
+    //print("Project should be automatically cleaned, but this is currently not supported. Consider doing a manual clean")
     //try self.ninja!.runSync(tool: "clean")
 
     //let debugBuildFile = self.buildDir.appending(path: "build.debug.ninja")
@@ -257,9 +315,9 @@ public struct Beaver: ~Copyable, Sendable {
     //}
 
     // TODO: clean CMake projects!
-  }
+  //}
 
-  public mutating func addCommand(
+  public func addCommand(
     _ name: String,
     overwrite: Bool = false,
     _ execute: @escaping Commands.Command
@@ -276,6 +334,7 @@ public struct Beaver: ~Copyable, Sendable {
   }
 
   public func call(_ commandName: String) async throws {
+    try await self.finalize()
     if self.currentProjectIndex != nil {
       if commandName.contains(":") {
         let commandParts = commandName.split(separator: ":", maxSplits: 1)
@@ -310,6 +369,7 @@ public struct Beaver: ~Copyable, Sendable {
   }
 
   public func callDefault() async throws {
+    try await self.finalize()
     if self.currentProjectIndex != nil {
       try await self.withCurrentProject { (project: borrowing AnyProject) in
         try await project.asCommandCapable { (proj: borrowing AnyCommandCapableProjectRef) in
@@ -326,7 +386,8 @@ public struct Beaver: ~Copyable, Sendable {
   }
 
   public func isOverwritten(_ commandName: String) async throws -> Bool {
-    if self.currentProjectIndex != nil {
+    try await self.finalize()
+    return if self.currentProjectIndex != nil {
       try await self.withCurrentProject { (project: borrowing AnyProject) in
         try await project.asCommandCapable { (proj: borrowing AnyCommandCapableProjectRef) in
           if await project.hasCommand(commandName) {
@@ -342,38 +403,38 @@ public struct Beaver: ~Copyable, Sendable {
   }
 
   // Custom Cache //
-  public mutating func fileChanged(_ file: URL, context: String) throws -> Bool {
-    try self.requireBuildDir()
+  public func fileChanged(_ file: URL, context: String) async throws -> Bool {
+    try await self.requireBuildDir()
     return try self.cache!.fileChanged(file: file, context: context)
   }
 
-  public mutating func cacheSetVar(context: String, value: String) throws {
-    try self.requireBuildDir()
-    try self.cacheSetVar(context: context, value: .string(value))
+  public func cacheSetVar(context: String, value: String) async throws {
+    try await self.requireBuildDir()
+    try await self.cacheSetVar(context: context, value: .string(value))
   }
 
-  public mutating func cacheSetVar(context: String, value: Int) throws {
-    try self.requireBuildDir()
-    try self.cacheSetVar(context: context, value: .int(value))
+  public func cacheSetVar(context: String, value: Int) async throws {
+    try await self.requireBuildDir()
+    try await self.cacheSetVar(context: context, value: .int(value))
   }
 
-  public mutating func cacheSetVar(context: String, value: Double) throws {
-    try self.requireBuildDir()
-    try self.cacheSetVar(context: context, value: .double(value))
+  public func cacheSetVar(context: String, value: Double) async throws {
+    try await self.requireBuildDir()
+    try await self.cacheSetVar(context: context, value: .double(value))
   }
 
-  public mutating func cacheSetVar(context: String, value: Bool) throws {
-    try self.requireBuildDir()
-    try self.cacheSetVar(context: context, value: .bool(value))
+  public func cacheSetVar(context: String, value: Bool) async throws {
+    try await self.requireBuildDir()
+    try await self.cacheSetVar(context: context, value: .bool(value))
   }
 
-  public mutating func cacheSetVar(context: String, value: CacheVarVal) throws {
-    try self.requireBuildDir()
+  public func cacheSetVar(context: String, value: CacheVarVal) async throws {
+    try await self.requireBuildDir()
     try self.cache!.setVar(name: context, value: value)
   }
 
-  public mutating func cacheGetVar(context: String) throws -> CacheVarVal {
-    try self.requireBuildDir()
+  public func cacheGetVar(context: String) async throws -> CacheVarVal {
+    try await self.requireBuildDir()
     return try self.cache!.getVar(name: context)
   }
 

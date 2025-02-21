@@ -4,11 +4,12 @@ import Utils
 struct NinjaRunner {
   let buildFile: String
   let ninja: URL
-  let verbose: Bool = true // TODO
+  let verbose: Bool
 
-  init(buildFile: String) throws {
+  init(buildFile: String, verbose: Bool = false) throws {
     self.buildFile = buildFile
     self.ninja = try Tools.requireNinja
+    self.verbose = verbose
   }
 
   @usableFromInline

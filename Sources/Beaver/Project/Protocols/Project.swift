@@ -7,7 +7,7 @@ public protocol Project: ~Copyable, Sendable {
   var name: String { get }
   var baseDir: URL { get }
 
-  func buildStatements(context: borrowing Beaver) async throws -> BuildBackendBuilder
+  func buildStatements(context: Beaver) async throws -> BuildBackendBuilder
 
   /// Runs the default executable in this target, if any
   func getOnlyExecutable() async throws -> Int
@@ -24,19 +24,19 @@ public protocol Project: ~Copyable, Sendable {
   func targetName(_ index: Int) async -> String
   func targetNames() async -> [String]
 
-  func buildDir(_ context: borrowing Beaver) -> URL
+  func buildDir(_ context: Beaver) -> URL
 }
 
 extension Project where Self: ~Copyable {
-  public func buildDir(_ context: borrowing Beaver) -> URL {
+  public func buildDir(_ context: Beaver) -> URL {
     context.buildDir(for: self.name)
   }
 
-  public func run(args: [String], context: borrowing Beaver) async throws {
+  public func run(args: [String], context: Beaver) async throws {
     try await self.run(try await self.getOnlyExecutable(), args: args, context: context)
   }
 
-  public func run(_ targetIndex: Int, args: [String], context: borrowing Beaver) async throws {
+  public func run(_ targetIndex: Int, args: [String], context: Beaver) async throws {
     //try await self.build(targetIndex, artifact: .executable(.executable), context: context)
     try await context.build(TargetRef(target: targetIndex, project: self.id), artifact: .executable(.executable))
 
@@ -45,13 +45,13 @@ extension Project where Self: ~Copyable {
     }
   }
 
-  public func buildStatements(context: borrowing Beaver) async throws -> BuildBackendBuilder {
+  public func buildStatements(context: Beaver) async throws -> BuildBackendBuilder {
     var stmts = BuildBackendBuilder()
     try await self.defaultBuildStatements(in: &stmts, context: context)
     return stmts
   }
 
-  func defaultBuildStatements(in stmts: inout BuildBackendBuilder, context: borrowing Beaver) async throws {
+  func defaultBuildStatements(in stmts: inout BuildBackendBuilder, context: Beaver) async throws {
     var commands = [String]()
     let contextPtr = withUnsafePointer(to: context) { $0 }
     let projectPointer = withUnsafePointer(to: self) { $0 }

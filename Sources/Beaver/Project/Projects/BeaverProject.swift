@@ -29,9 +29,9 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
     baseDir: URL = URL.currentDirectory(),
     //buildDir: URL,
     targets: consuming NonCopyableArray<AnyTarget> = NonCopyableArray(),
-    context: inout Beaver
+    context: Beaver
   ) throws {
-    try context.requireBuildDir()
+    //try context.requireBuildDir()
     self.name = name
     self.baseDir = baseDir
     //self.buildDir = buildDir
@@ -152,11 +152,11 @@ public struct BeaverProject: Project, CommandCapableProject, MutableProject, ~Co
     try await self.commands.addCommand(name: name, overwrite: overwrite, execute: execute)
   }
 
-  public func call(_ commandName: String, context: borrowing Beaver) async throws {
+  public func call(_ commandName: String, context: Beaver) async throws {
     try await self.commands.call(commandName, context: context)
   }
 
-  public func callDefault(context: borrowing Beaver) async throws {
+  public func callDefault(context: Beaver) async throws {
     try await self.commands.callDefault(context: context)
   }
 

@@ -5,9 +5,9 @@ import CryptoSwift
 import csqlite3_glue
 
 // TODO: implement
-struct Cache: Sendable {
+final class Cache: Sendable {
   let db: Connection
-  var configId: Int64? = nil
+  nonisolated(unsafe) var configId: Int64? = nil
 
   // TODO: global configuration
   init(
@@ -29,7 +29,9 @@ struct Cache: Sendable {
     //  try FileManager.default.setWritable(at: cacheFile)
     //}
     self.db = try Connection(cacheFile.path)
+    _ = Unmanaged.passUnretained(self.db).retain() // ?
     self.db.busyTimeout = 4
+    print("Initialized connection", self.db)
 
     var globalCacheChangeReason: String? = nil
     try GlobalCache.createIfNotExists(self.db)
@@ -56,12 +58,14 @@ struct Cache: Sendable {
     }
   }
 
-  mutating func selectConfiguration(mode: OptimizationMode) throws {
-    if let config = try self.db.pluck(ConfigurationCache.table
-      .select(ConfigurationCache.Columns.id.qualified)
-      .where(ConfigurationCache.Columns.mode.qualified == mode)
-    ) {
-      self.configId = config[ConfigurationCache.Columns.id.qualified]
+  func selectConfiguration(mode: OptimizationMode) throws {
+    //if let config = try self.db.pluck(ConfigurationCache.table
+    //  .select(ConfigurationCache.Columns.id.qualified)
+    //  .where(ConfigurationCache.Columns.mode.qualified == mode)
+    //) {
+    //  self.configId = config[ConfigurationCache.Columns.id.qualified]
+    if let config = try ConfigurationCache.get(mode: mode, self.db) {
+      self.configId = config.id
     } else {
       self.configId = try self.db.run(ConfigurationCache.table
         .insert([
@@ -184,6 +188,10 @@ struct Cache: Sendable {
 
   func setVar(name: String, value: CacheVarVal) throws {
     try CacheVariable.updateOrInsert(CacheVariable(name: name, val: value), self.db)
+  }
+
+  deinit {
+    Unmanaged.passUnretained(self.db).release()
   }
 }
 
