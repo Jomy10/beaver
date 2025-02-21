@@ -90,9 +90,10 @@ let package = Package(
         .product(name: "Semver", package: "Semver"),
         .product(name: "SQLite", package: "SQLite.swift"),
         .product(name: "CryptoSwift", package: "CryptoSwift"),
+        .product(name: "AsyncAlgorithms", package: "swift-async-algorithms"),
       ]
     ),
-    // Utils //
+    //=== Utils ===//
     .macro(
       name: "CacheMacros",
       dependencies: [
@@ -144,6 +145,22 @@ let package = Package(
         //"UtilMacros",
         .product(name: "ColorizeSwift", package: "ColorizeSwift"),
         .product(name: "Atomics", package: "swift-atomics"),
+      ]
+    ),
+
+    //=== Tests ===//
+    .testTarget(
+      name: "BeaverTests",
+      dependencies: [
+        "Beaver",
+        "Utils",
+        .product(name: "ColorizeSwift", package: "ColorizeSwift")
+      ]
+    ),
+    .testTarget(
+      name: "UtilTests",
+      dependencies: [
+        "Utils"
       ]
     )
   ]

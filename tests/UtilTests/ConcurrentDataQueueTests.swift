@@ -3,7 +3,7 @@ import Testing
 
 @Test
 func write() throws {
-  var queue = ConcurrentDataQueue<UInt8>()
+  var queue = ConcurrentDataQueue<UInt8>(zero: 0)
 
   let w: [UInt8] = [1, 2, 3]
   queue.write(w)
@@ -16,7 +16,7 @@ func write() throws {
 
 @Test
 func writeMoreThanCap() throws {
-  var queue = ConcurrentDataQueue<UInt8>(initialCapacity: 3)
+  var queue = ConcurrentDataQueue<UInt8>(zero: 0, initialCapacity: 3)
 
   let w: [UInt8] = [1, 2, 3]
   queue.write(w)
@@ -39,7 +39,7 @@ func writeMoreThanCap() throws {
 
 @Test
 func readWrite() throws {
-  var queue = ConcurrentDataQueue<UInt8>(initialCapacity: 4)
+  var queue = ConcurrentDataQueue<UInt8>(zero: 0, initialCapacity: 4)
 
   let w: [UInt8] = [1, 2, 3]
   queue.write(w)
@@ -72,7 +72,7 @@ func readWrite() throws {
 
 @Test
 func readUntil() throws {
-  var queue = ConcurrentDataQueue<UInt8>(initialCapacity: 4)
+  var queue = ConcurrentDataQueue<UInt8>(zero: 0, initialCapacity: 4)
 
   let w: [UInt8] = [1, 2, 3]
   queue.write(w)
@@ -90,7 +90,7 @@ func readUntil() throws {
 
 @Test
 func readUntilEarly() throws {
-  var queue = ConcurrentDataQueue<UInt8>(initialCapacity: 4)
+  var queue = ConcurrentDataQueue<UInt8>(zero: 0, initialCapacity: 4)
 
   let w: [UInt8] = [1, 2, 3]
   queue.write(w)
@@ -109,7 +109,7 @@ func readUntilEarly() throws {
 
 @Test
 func readUntilNever() throws {
-  var queue = ConcurrentDataQueue<UInt8>(initialCapacity: 4)
+  var queue = ConcurrentDataQueue<UInt8>(zero: 0, initialCapacity: 4)
 
   let w: [UInt8] = [1, 2, 3]
   queue.write(w)
