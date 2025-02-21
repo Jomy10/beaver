@@ -16,6 +16,7 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
   }
   public let name: String
   public var baseDir: URL
+  /// includes /debug or /release
   public var buildDir: URL
   public var makeFlags: [String]
 
@@ -36,7 +37,7 @@ public struct CMakeProject: Project, ~Copyable, @unchecked Sendable {
   }
 
   public func buildDir(_ context: borrowing Beaver) -> URL {
-    self.buildDir.appending(path: context.optimizeMode.description)
+    self.buildDir
   }
 
   // TODO: find a better way than just calling ninja from ninja
