@@ -1,5 +1,5 @@
 {
-  "originHash" : "e949f20529d57f682870c75596c203b7bd3af30226b7d5a1e5276367892340d0",
+  "originHash" : "a8c1f9c4412abc9286fe2275f8a51d1f23669259e6884ca88d36314412d73108",
   "pins" : [
     {
       "identity" : "colorizeswift",
@@ -8,15 +8,6 @@
       "state" : {
         "revision" : "4e7daa138510b77a3cce9f6a31a116f8536347dd",
         "version" : "1.7.0"
-      }
-    },
-    {
-      "identity" : "cruby",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/johnfairh/CRuby",
-      "state" : {
-        "revision" : "07ee7e6c164d7d234785319e81a83c8e4d321d3f",
-        "version" : "2.1.0"
       }
     },
     {
@@ -76,7 +67,7 @@
     {
       "identity" : "swift-collections",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-collections",
+      "location" : "https://github.com/apple/swift-collections.git",
       "state" : {
         "revision" : "671108c96644956dddcd89dd59c203dcdb36cec7",
         "version" : "1.1.4"

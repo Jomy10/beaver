@@ -1,16 +1,7 @@
 import Foundation
 import Utils
 
-public protocol Executable: ~Copyable, Target where ArtifactType == ExecutableArtifactType {
-  //struct RunError: Error {
-  //  let target: TargetRef
-  //  let reason: Reason
-
-  //  enum Reason {
-  //    case noExecutable
-  //  }
-  //}
-}
+public protocol Executable: ~Copyable, Target where ArtifactType == ExecutableArtifactType {}
 
 extension Executable where Self: ~Copyable {
   public var type: TargetType { .executable }

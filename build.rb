@@ -120,7 +120,7 @@ File.write(
   "\n\"\"\"#"
 )
 
-sh "swift #{command} #{mode_flag}#{argv.size == 0 ? "" : argv.join(" ") + " " }-Xlinker -Ltarget/#{mode} -Xswiftc -DSQLITE_SWIFT_STANDALONE",
+sh "swift #{command} #{mode_flag}#{argv.size == 0 ? "" : argv.join(" ") + " " }-Xswiftc -DSQLITE_SWIFT_STANDALONE",
     envPrepend: { "PKG_CONFIG_PATH" => File.join(Dir.pwd, "Packages/CRuby") }
 
 case onFinish
@@ -158,6 +158,7 @@ when "install"
     end
 
     sh "#{install_dir == "/opt" ? "sudo" : ""} cp #{exe_path} #{install_path}"
+    sh "beaver --version"
   else
     puts "No automatic installation has been configured for your system"
     puts "Copy #{exe_path} to the executable location for your system"

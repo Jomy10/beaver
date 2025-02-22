@@ -80,7 +80,7 @@ struct BeaverCLI: Sendable {
       //  await RubyQueue.global.join()
       //}
     } catch {
-      await Tools.terminateProcesses()
+      await Tools.terminateProcessesAndWait()
       print("error: \(error)", to: .stderr)
       if cli?.rubySetup == true {
       //await RubyQueue.global.join()

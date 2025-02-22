@@ -47,6 +47,7 @@ extension CTarget where Self: ~Copyable {
     return URL(filePath: objectBuildDir.path + PATH_SEPARATOR + relativePathToSource + ext)
   }
 
+  @available(*, deprecated)
   func executeCC(_ args: [String]) async throws {
     switch (self.language) {
       case .objc: fallthrough
