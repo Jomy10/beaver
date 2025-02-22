@@ -278,14 +278,14 @@ public final class Beaver: Sendable {
     let releaseBuildFile = self.buildDir.appending(path: "build.release.ninja")
 
     if FileManager.default.exists(at: debugBuildFile) {
-      try NinjaRunner(buildFile: debugBuildFile.path(percentEncoded: false)).runSync(tool: "clean")
+      try await NinjaRunner(buildFile: debugBuildFile.path(percentEncoded: false)).run(tool: "clean")
       //if (!keepingCurrentConfiguration || (keepingCurrentConfiguration && self.optimizeMode != .debug)) {
         try FileManager.default.removeItem(at: debugBuildFile)
       //}
     }
 
     if FileManager.default.exists(at: releaseBuildFile) {
-      try NinjaRunner(buildFile: releaseBuildFile.path(percentEncoded: false)).runSync(tool: "clean")
+      try await NinjaRunner(buildFile: releaseBuildFile.path(percentEncoded: false)).run(tool: "clean")
       //if (!keepingCurrentConfiguration || (keepingCurrentConfiguration && self.optimizeMode != .release)) {
         try FileManager.default.removeItem(at: releaseBuildFile)
       //}

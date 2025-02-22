@@ -15,7 +15,11 @@ final class RbPromise: RbObjectConvertible, @unchecked Sendable {
   var value: RbObject {
     get throws {
       guard let storage = self.storage else {
-        throw RbException(message: "\(self.error!)")
+        if let error = self.error {
+          throw RbException(message: "\(error)")
+        } else {
+          throw RbException(message: "method `value` of `Promise` called too early")
+        }
       }
       return storage
     }

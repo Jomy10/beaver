@@ -47,7 +47,7 @@ public struct PkgConfigDependency: Hashable, Equatable, Sendable {
     self.name = name
     self.preferStatic = preferStatic
 
-    if try Tools.execWithExitCode(Tools.pkgconfig!, [name, "--exists"]) == 1 {
+    if try Tools.execWithExitCodeSync(Tools.pkgconfig!, [name, "--exists"]) == 1 {
       throw ValidationError.notExists
     }
   }
@@ -55,7 +55,7 @@ public struct PkgConfigDependency: Hashable, Equatable, Sendable {
   var cflags: [String] {
     get throws {
       return Tools.parseArgs(
-        try Tools.execWithOutput(Tools.pkgconfig!, [self.name, "--cflags", "--keep-system-cflags"]).stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+        try Tools.execWithOutputSync(Tools.pkgconfig!, [self.name, "--cflags", "--keep-system-cflags"]).stderr.trimmingCharacters(in: .whitespacesAndNewlines)
       ).map { String($0) }
     }
   }
@@ -65,7 +65,7 @@ public struct PkgConfigDependency: Hashable, Equatable, Sendable {
       var args = [self.name, "--libs", "--keep-system-libs"]
       if self.preferStatic { args.append("--static") }
       return Tools.parseArgs(
-        try Tools.execWithOutput(Tools.pkgconfig!, args).stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+        try Tools.execWithOutputSync(Tools.pkgconfig!, args).stderr.trimmingCharacters(in: .whitespacesAndNewlines)
       ).map { String($0) }
     }
   }

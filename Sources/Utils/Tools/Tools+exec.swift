@@ -20,7 +20,36 @@ extension Tools {
 
   /// Execute a command and return the output to stderr/stdout as a string
   @inlinable
-  public static func execWithOutput(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) throws -> (stderr: String, stdout: String) {
+  public static func execWithOutput(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) async throws -> (stderr: String, stdout: String) {
+    let task = Process()
+    let stderrPipe = Pipe()
+    let stdoutPipe = Pipe()
+    task.standardError = stderrPipe
+    task.standardOutput = stdoutPipe
+    task.executableURL = cmdURL
+    task.arguments = args
+    task.currentDirectoryURL = baseDir
+    task.environment = ProcessInfo.processInfo.environment
+
+    let idx = await Self.processes.pushEnd(task)
+    try task.run()
+    MessageHandler.print(((cmdURL.path + " " + args.joined(separator: " "))).darkGray(), to: .stderr, context: .shellCommand)
+    await task.waitUntilExitAsync()
+    await Self.processes.remove(at: idx)
+
+    if task.terminationStatus != 0 {
+      throw ProcessError(terminationStatus: task.terminationStatus, reason: task.terminationReason)
+    }
+
+    let stdout = if let data = try stdoutPipe.fileHandleForReading.readToEnd() { String(data: data, encoding: .utf8)! } else { String() }
+    let stderr = if let data = try stderrPipe.fileHandleForReading.readToEnd() { String(data: data, encoding: .utf8)! } else { String() }
+
+    return (stdout, stderr)
+  }
+
+  /// Reduce usage of this function because processes are not interrupted on signal
+  @inlinable
+  public static func execWithOutputSync(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) throws -> (stderr: String, stdout: String) {
     let task = Process()
     let stderrPipe = Pipe()
     let stdoutPipe = Pipe()
@@ -47,7 +76,24 @@ extension Tools {
 
   /// Execute a command without output and return the exit code
   @inlinable
-  public static func execWithExitCode(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) throws -> Int {
+  public static func execWithExitCode(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) async throws -> Int {
+    let task = Process()
+    task.executableURL = cmdURL
+    task.arguments = args
+    task.currentDirectoryURL = baseDir
+    task.environment = ProcessInfo.processInfo.environment
+
+    let idx = await Self.processes.pushEnd(task)
+    try task.run()
+    await task.waitUntilExitAsync()
+    await Self.processes.remove(at: idx)
+
+    return Int(task.terminationStatus)
+  }
+
+  /// Reduce usage of this function to a minimum
+  @inlinable
+  public static func execWithExitCodeSync(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) throws -> Int {
     let task = Process()
     task.executableURL = cmdURL
     task.arguments = args
@@ -76,9 +122,13 @@ extension Tools {
     task.environment = ProcessInfo.processInfo.environment
     MessageHandler.print(((cmdURL.path + " " + args.joined(separator: " ")).prependingIfNeeded(contextString)).darkGray(), to: .stderr, context: .shellCommand)
     let outputTask = outputter.spawn()
-    try task.run()
 
+
+    let idx = await Self.processes.pushEnd(task)
+    try task.run()
     await task.waitUntilExitAsync()
+    await Self.processes.remove(at: idx)
+
     _ = try await outputTask.value
 
     if task.terminationStatus != 0 {
@@ -100,9 +150,10 @@ extension Tools {
 
     MessageHandler.print((cmdURL.path + " " + args.joined(separator: " ")).darkGray(), to: .stderr, context: .shellCommand)
 
+    let idx = await Self.processes.pushEnd(task)
     try task.run()
-
     await task.waitUntilExitAsync()
+    await Self.processes.remove(at: idx)
 
     if task.terminationStatus != 0 {
       throw ProcessError(terminationStatus: task.terminationStatus, reason: task.terminationReason)
@@ -110,6 +161,7 @@ extension Tools {
   }
 
   /// Output immediately to stderr/stdout
+  @available(*, deprecated, message: "use async versions")
   @inlinable
   public static func execSync(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) throws {
     let task = Process()
@@ -144,17 +196,18 @@ extension Tools {
     task.currentDirectoryURL = baseDir
     task.environment = ProcessInfo.processInfo.environment
 
+    let idx = await Self.processes.pushEnd(task)
     try task.run()
-
     MessageHandler.debug((cmdURL.path + " " + args.joined(separator: " ")).darkGray(), context: .shellCommand)
-
     await task.waitUntilExitAsync()
+    await Self.processes.remove(at: idx)
 
     if task.terminationStatus != 0 {
       throw ProcessError(terminationStatus: task.terminationStatus, reason: task.terminationReason)
     }
   }
 
+  @available(*, deprecated, message: "use async versions")
   @inlinable
   public static func execSilentSync(_ cmdURL: URL, _ args: [String], baseDir: URL = URL.currentDirectory()) throws {
     let task = Process()
