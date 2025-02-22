@@ -22,9 +22,6 @@ public struct CExecutable: CTarget, Executable, ~Copyable {
 
   public static let defaultArtifacts: [ExecutableArtifactType] = [.executable]
 
-  // TODO: necessary?
-  //public var storage: AsyncRWLock<Storage> = AsyncRWLock(Storage())
-
   public init(
     name: String,
     description: String? = nil,
@@ -81,6 +78,7 @@ public struct CExecutable: CTarget, Executable, ~Copyable {
   func linkerFlags(context: Beaver) async throws -> [String] {
     return (try await self.dependencyLinkerFlags(context: context))
       + self.extraLinkerFlags
+      + context.optimizeMode.linkerFlags
   }
 
   public func buildStatements<P>(inProject project: borrowing P, context: Beaver) async throws -> BuildBackendBuilder where P : Project, P : ~Copyable
@@ -151,64 +149,4 @@ public struct CExecutable: CTarget, Executable, ~Copyable {
 
     return stmts
   }
-
-  //public func build(
-  //  artifact: ExecutableArtifactType,
-  //  projectBaseDir: borrowing URL,
-  //  projectBuildDir: borrowing URL,
-  //  context: borrowing Beaver
-  //) async throws {
-  //  let artifactURL = self.artifactURL(projectBuildDir: projectBuildDir, artifact: artifact)!
-  //  let artifactExists = FileManager.default.exists(at: artifactURL)
-
-  //  let (objects, objectRebuilt) = try await self.buildObjects(projectBaseDir: projectBaseDir, projectBuildDir: projectBuildDir, artifact: artifact, context: context)
-  //  if artifact == .app {
-  //    fatalError("unimplemented")
-  //  }
-  //  let outputFile = self.artifactURL(projectBuildDir: projectBuildDir, artifact: .executable)!
-  //  let depLinkerFlags = try await self.dependencyLinkerFlags(context: context, forBuildingArtifact: outputFile, ofType: artifact.asArtifactType())
-  //  //let forceRelink = try context.fileCache!.shouldRelinkArtifact(target: self.ref, artifact: artifact.asArtifactType(), artifactFile: artifactURL)
-  //  let relinkArtifact = try context.fileCache!.shouldRebuild(target: self.ref, artifact: artifact.asArtifactType(), file: artifactURL)
-
-  //  // TODO: did linkerFlags change
-  //  //let relinkArtifact = try context.fileCache!.shouldRebuild(target: self.ref, artifact: artifact.asArtifactType(), file: artifactURL)
-
-  //  if objectRebuilt || !artifactExists || relinkArtifact {
-  //    try await self.buildExecutable(
-  //      objects: objects,
-  //      dependencyLinkerFlags: depLinkerFlags,
-  //      outputfile: outputFile,
-  //      projectBaseDir: projectBaseDir,
-  //      projectBuildDir: projectBuildDir,
-  //      context: context
-  //    )
-  //  }
-  //}
-
-  /// Link all objects and dependencies
-  //func buildExecutable(
-  //  objects: borrowing [URL],
-  //  dependencyLinkerFlags depLinkerFlags: [String],
-  //  outputFile: borrowing URL,
-  //  projectBaseDir: borrowing URL,
-  //  projectBuildDir: borrowing URL,
-  //  context: borrowing Beaver
-  //) async throws {
-  //  let buildBaseDir = self.artifactOutputDir(projectBuildDir: projectBuildDir, artifact: .executable)!
-  //  try FileManager.default.createDirectoryIfNotExists(at: buildBaseDir)
-
-  //  //var depLinkerFlags: [String] = []
-  //  //var depLanguages: Set<Language> = []
-  //  //let contextPtr = withUnsafePointer(to: context) { $0 }
-  //  //try await self.loopUniqueDependenciesRecursive(context: context) { (dependency: Dependency) in
-  //  //  depLinkerFlags.append(contentsOf: try await dependency.linkerFlags(context: contextPtr.pointee, collectingLanguageIn: &depLanguages))
-  //  //}
-
-  //  let args: [String] = objects.map { $0.path }
-  //    + depLinkerFlags
-  //    + self.extraLinkerFlags
-  //    //+ depLanguages.compactFlatMap { $0.linkerFlags(targetLanguage: self.language) }
-  //    + ["-o", outputFile.path]
-  //  try await self.executeCC(args)
-  //}
 }

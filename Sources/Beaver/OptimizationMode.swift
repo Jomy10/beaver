@@ -24,7 +24,14 @@ extension OptimizationMode {
   var cflags: [String] {
     switch (self) {
       case .debug: ["-g", "-O0"]
-      case .release: ["-O3"]
+      case .release: ["-O3", "-flto"]
+    }
+  }
+
+  var linkerFlags: [String] {
+    switch(self) {
+      case .debug: []
+      case .release: ["-O3", "-flto"]
     }
   }
 }

@@ -23,9 +23,6 @@ public struct CLibrary: CTarget, Library, ~Copyable {
 
   public static let defaultArtifacts: [LibraryArtifactType] = [.dynlib, .staticlib, .pkgconfig]
 
-  // TODO: necessary?
-  //public var storage: AsyncRWLock<Storage> = AsyncRWLock(Storage())
-
   public init(
     name: String,
     description: String? = nil,
@@ -86,7 +83,7 @@ public struct CLibrary: CTarget, Library, ~Copyable {
   }
 
   /// All linker flags, including dependency linker flags
-  func linkerFlags(forArtifact artifactType: ArtifactType, context: Beaver) async throws -> [String] {
+  private func linkerFlags(forArtifact artifactType: ArtifactType, context: Beaver) async throws -> [String] {
     var flags = [String]()
     if artifactType == .dynlib {
       #if os(macOS)
@@ -100,6 +97,7 @@ public struct CLibrary: CTarget, Library, ~Copyable {
     return flags
       + (try await self.dependencyLinkerFlags(context: context))
       + self.extraLinkerFlags
+      + context.optimizeMode.linkerFlags
   }
 
   public func buildStatements<P: Project & ~Copyable>(inProject project: borrowing P, context: Beaver) async throws -> BuildBackendBuilder {
