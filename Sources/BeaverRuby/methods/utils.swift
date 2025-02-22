@@ -84,12 +84,13 @@ func loadUtilsMethods(in module: RbObject, queue: SyncTaskQueue, asyncQueue: Asy
         contextName
       }
       let promise = RbPromise()
+      let valArg = method.args.optional[0]
+      let get = try valArg.call("==", args: [RbSymbol("get")]).convert(to: Bool.self)
 
       asyncQueue.addTask {
-        let valArg = method.args.optional[0]
         let obj: RbObject
         do {
-          if try valArg.call("==", args: [RbSymbol("get")]).convert(to: Bool.self) {
+          if get {
             switch (try await context.cacheGetVar(context: contextString)) {
               case .string(let s): obj = RbObject(s)
               case .int(let i): obj = RbObject(i)
