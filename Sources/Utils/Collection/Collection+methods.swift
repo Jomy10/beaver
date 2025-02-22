@@ -11,3 +11,11 @@ extension RangeReplaceableCollection {
     return new
   }
 }
+
+extension MutableCollection {
+  public mutating func exchange(at index: Self.Index, _ element: Self.Element) -> Self.Element {
+    var el = element
+    swap(&self[index], &el)
+    return el
+  }
+}

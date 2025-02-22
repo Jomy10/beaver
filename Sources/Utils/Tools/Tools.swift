@@ -34,6 +34,9 @@ public struct Tools {
     }
   }
 
+  @usableFromInline
+  static let processes = SharedDoublyLinkedList<Process>()
+
   @inlinable
   public static func which(_ cmdName: String) -> URL? {
     let env = ProcessInfo.processInfo.environment

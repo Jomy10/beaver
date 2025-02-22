@@ -17,6 +17,7 @@ struct NinjaRunner {
     try await Tools.execSilent(self.ninja, ["-f", self.buildFile, "-t", tool])
   }
 
+  @available(*, deprecated)
   @usableFromInline
   func runSync(tool: String) throws {
     try Tools.execSilentSync(self.ninja, ["-f", self.buildFile, "-t", tool])

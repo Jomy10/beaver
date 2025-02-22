@@ -69,6 +69,8 @@ struct BeaverCLI: Sendable {
   var rubySetup = false
 
   static func main() async {
+    Tools.handleSignals()
+
     var cli: BeaverCLI? = nil
     do {
       let args = ProcessInfo.processInfo.arguments.dropFirst()
@@ -78,6 +80,7 @@ struct BeaverCLI: Sendable {
       //  await RubyQueue.global.join()
       //}
     } catch {
+      await Tools.terminateProcesses()
       print("error: \(error)", to: .stderr)
       if cli?.rubySetup == true {
       //await RubyQueue.global.join()
@@ -164,11 +167,8 @@ struct BeaverCLI: Sendable {
   mutating func runCLI() async throws {
     let explicitCommand = self.takeArgument()
     let commandName = explicitCommand ?? "build"
-    if commandName == "init" {
-      try self.initializeBeaver()
-      return
-    }
 
+    // First execute commands if needed that don't require Beaver
     if self.version {
       self.printVersion()
       return
@@ -179,54 +179,47 @@ struct BeaverCLI: Sendable {
       return
     }
 
+    if commandName == "init" {
+      try self.initializeBeaver()
+      return
+    }
+
     let (args, leftover) = self.getArguments()
 
-    //let __selfPtr = withUnsafeMutablePointer(to: &self) { $0 }
-    //try await RubyQueue.global.submitSync {
     await MainActor.run {
       setupRuby()
       self.rubySetup = true
     }
 
     let (context, queue, asyncQueue) = try await self.runScript(args: leftover)
-    //try await context.value.withInner { (context: inout Beaver) in
-    //  try await context.finalize()
-    //}
     queue.resume() // allow cmd to call swift functions
-    //MessageHandler.debug(await context.customDebugString(withSources: false, withDependencies: true))
 
-    //try await context.value.withInner { (context: Beaver) in
-      if context.currentProjectIndex == nil {
-        if let commandName = explicitCommand {
-          try await context.call(commandName)
-        } else {
-          try await context.callDefault()
-          // No project and no command specified (warn)
-        }
+    if context.currentProjectIndex == nil {
+      if let commandName = explicitCommand {
+        try await context.call(commandName)
       } else {
-        if try await context.isOverwritten(commandName) {
-          try await context.call(commandName)
-        } else {
-          switch (commandName) {
-            case "build":
-              try await self.build(context: context)
-            case "clean":
-              try await self.clean(context: context)
-            case "run":
-              try await self.run(args: args, context: context)
-            case "list":
-              try await self.list(context: context)
-            default:
-              try await context.call(commandName)
-          }
+        try await context.callDefault()
+        // No project and no command specified (warn)
+      }
+    } else {
+      if try await context.isOverwritten(commandName) {
+        try await context.call(commandName)
+      } else {
+        switch (commandName) {
+          case "build":
+            try await self.build(context: context)
+          case "clean":
+            try await self.clean(context: context)
+          case "run":
+            try await self.run(args: args, context: context)
+          case "list":
+            try await self.list(context: context)
+          default:
+            try await context.call(commandName)
         }
-      //}
+      }
     }
 
-    //if self.rubySetup {
-    //  await RubyQueue.global.join()
-    //  self.rubySetup = false
-    //}
     try await queue.wait()
     try await asyncQueue.wait()
   }
