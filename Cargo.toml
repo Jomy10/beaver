@@ -1,8 +1,23 @@
 [workspace]
 resolver = "2"
 members = [
-  "Sources/ProgressIndicators"
+  "beaver",
+  "glob",
+  "utils"
 ]
 
 [workspace.package]
+edition = "2021"
 authors = ["Jonas Everaert"]
+
+[workspace.dependencies]
+colog = "1.3"
+console = "0.15"
+globset = "0.4"
+log = "0.4"
+semver = "1.0"
+target-lexicon = "0.13"
+thiserror = "2.0"
+url = "2.5"
+unicode-segmentation = "1.12"
+regex = "1.11"

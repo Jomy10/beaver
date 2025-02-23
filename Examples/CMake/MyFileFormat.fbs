@@ -1,7 +1,0 @@
-table Person {
-  fname:string;
-  lname:string;
-  birthdate:int;
-}
-
-root_type Person;
