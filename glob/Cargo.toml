@@ -1,0 +1,11 @@
+[package]
+name = "glob"
+version = "1.0.0"
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+utils = { path = "../utils" }
+unicode-segmentation = { workspace = true }
+regex = { workspace = true }
+thiserror = { workspace = true }
