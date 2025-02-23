@@ -144,4 +144,34 @@ mod test {
 
         assert_eq!(files, expected);
     }
+
+    #[test]
+    fn subdir() {
+        let mut globset = GlobSet::new();
+        globset.add_glob(Glob::new("**/*.rs").unwrap());
+        let mut files = globset.files(&std::env::current_dir().unwrap()).unwrap()
+            .into_iter()
+            .map(|f| f.file_name().unwrap().to_str().unwrap().to_string())
+            .collect::<Vec<String>>();
+        files.sort();
+        let mut expected = vec!["error.rs", "glob.rs", "glob_set.rs", "lib.rs"];
+        expected.sort();
+
+        assert_eq!(files, expected);
+    }
+
+    #[test]
+    fn subdir_nosubdir() {
+        let mut globset = GlobSet::new();
+        globset.add_glob(Glob::new("src/**/*.rs").unwrap());
+        let mut files = globset.files(&std::env::current_dir().unwrap()).unwrap()
+            .into_iter()
+            .map(|f| f.file_name().unwrap().to_str().unwrap().to_string())
+            .collect::<Vec<String>>();
+        files.sort();
+        let mut expected = vec!["error.rs", "glob.rs", "glob_set.rs", "lib.rs"];
+        expected.sort();
+
+        assert_eq!(files, expected);
+    }
 }
