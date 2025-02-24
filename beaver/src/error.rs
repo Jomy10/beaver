@@ -4,13 +4,15 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum BeaverError {
     // Project access //
-    #[error("Couldn't lock projects for writing")]
+    #[error("Couldn't lock projects for writing: {0}")]
     ProjectsWriteError(String),
+    #[error("Couldn't lock projects for reading: {0}")]
+    ProjectsReadError(String),
 
     // Target Access //
-    #[error("Couldn't lock targets for writing")]
+    #[error("Couldn't lock targets for writing: {0}")]
     TargetsWriteError(String),
-    #[error("Couldn't lock targets for reading")]
+    #[error("Couldn't lock targets for reading: {0}")]
     TargetsReadError(String),
 
     // Target Triple //

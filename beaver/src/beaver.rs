@@ -1,4 +1,4 @@
-use std::{path::{Path, PathBuf}, sync::{atomic::{AtomicIsize, AtomicUsize, Ordering}, RwLock}};
+use std::{path::PathBuf, sync::{atomic::{AtomicIsize, Ordering}, RwLock, RwLockReadGuard, RwLockWriteGuard}};
 
 use console::style;
 
@@ -40,14 +40,23 @@ impl Beaver {
         self.build_dir = dir;
     }
 
-    #[allow(unused_results)]
+    pub fn projects(&self) -> Result<RwLockReadGuard<'_, Vec<Box<dyn Project>>>, BeaverError> {
+        self.projects.read().map_err(|err| {
+            BeaverError::ProjectsReadError(err.to_string())
+        })
+    }
+
+    pub fn projects_mut(&self) -> Result<RwLockWriteGuard<'_, Vec<Box<dyn Project>>>, BeaverError> {
+        self.projects.write().map_err(|err| {
+            BeaverError::ProjectsWriteError(err.to_string())
+        })
+    }
+
     pub fn add_project(&self, project: Box<dyn Project>) -> Result<usize, BeaverError> {
         let mut project = project;
-        let mut projects = self.projects.write().map_err(|err| {
-            BeaverError::ProjectsWriteError(err.to_string())
-        })?;
+        let mut projects = self.projects_mut()?;
         let idx = projects.len();
-        project.set_id(idx);
+        project.set_id(idx)?;
         projects.push(project);
         return Ok(idx);
     }
@@ -62,9 +71,11 @@ impl std::fmt::Display for Beaver {
             } else {
                 f.write_str(project.name())?;
             }
+            f.write_str("\n")?;
 
             for target in project.targets().unwrap().iter() {
-                f.write_fmt(format_args!("  {}", target.name()))?;
+                f.write_fmt(format_args!("  {}", target.name()));
+                f.write_str("\n")?;
             }
         }
 

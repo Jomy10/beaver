@@ -1,11 +1,12 @@
 use std::{path::PathBuf, sync::RwLock};
+use crate::target::traits::Target;
 use crate::{error::BeaverError, project, target};
 
 pub struct Project {
     id: Option<usize>,
     name: String,
     base_dir: PathBuf,
-    targets: RwLock<Vec<Box<dyn target::traits::Target>>>
+    targets: RwLock<Vec<Box<dyn Target>>>
 }
 
 impl Project {
@@ -33,8 +34,12 @@ impl project::traits::Project for Project {
         self.id
     }
 
-    fn set_id(&mut self, new_id: usize) {
+    fn set_id(&mut self, new_id: usize) -> crate::Result<()> {
         self.id = Some(new_id);
+        for target in self.targets_mut()?.iter_mut() {
+            target.set_project_id(new_id);
+        }
+        return Ok(());
     }
 
     fn name(&self) -> &str {
@@ -54,7 +59,13 @@ impl project::traits::Project for Project {
 
 impl project::traits::MutableProject for Project {
     fn add_target(&self, target: Box<dyn target::traits::Target>) -> crate::Result<()> {
-        self.targets_mut()?.push(target);
+        let mut target = target;
+        let mut targets = self.targets_mut()?;
+        target.set_id(targets.len());
+        if let Some(project_id) = self.id {
+            target.set_project_id(project_id);
+        }
+        targets.push(target);
         return Ok(());
     }
 }

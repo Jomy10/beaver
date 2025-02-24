@@ -4,7 +4,7 @@ use crate::target::traits::Target;
 
 pub trait Project {
     fn id(&self) -> Option<usize>;
-    fn set_id(&mut self, new_id: usize);
+    fn set_id(&mut self, new_id: usize) -> crate::Result<()>;
     fn name(&self) -> &str;
     fn base_dir(&self) -> &Path;
     fn targets<'a>(&'a self) -> crate::Result<RwLockReadGuard<'a, Vec<Box<dyn Target>>>>;
