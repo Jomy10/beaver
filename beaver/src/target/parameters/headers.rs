@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+#[derive(Debug)]
 pub struct Headers {
     public: Vec<PathBuf>,
     private: Vec<PathBuf>,

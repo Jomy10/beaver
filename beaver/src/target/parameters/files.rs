@@ -3,6 +3,7 @@ use glob::*;
 
 use crate::BeaverError;
 
+#[derive(Debug)]
 pub struct Files {
     globset: GlobSet,
 }

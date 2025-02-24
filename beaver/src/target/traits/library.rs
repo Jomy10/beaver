@@ -21,5 +21,9 @@ pub trait Library: Target {
         }
     }
 
+    fn additional_linker_flags(&self) -> Option<&Vec<String>> {
+        None
+    }
+
     fn public_cflags(&self, project_base_dir: &Path) -> Vec<String>;
 }
