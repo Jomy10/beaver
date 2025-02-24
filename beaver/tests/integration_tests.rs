@@ -1,17 +1,19 @@
 use std::{path::PathBuf, str::FromStr};
 
-use beaver::preface::traits::MutableProject;
 use beaver::target::parameters::{Files, Flags, Headers};
 use beaver::target::{Dependency, Language, LibraryArtifactType};
-use beaver::{Beaver, OptimizationMode, preface::c};
+use beaver::project::beaver::Project as BeaverProject;
+use beaver::traits::{AnyTarget, MutableProject, Target};
+use beaver::{Beaver, OptimizationMode, target::c};
 
 /// Test adding a project and a target
 #[test]
 fn adding() {
     let beaver = Beaver::new(true, OptimizationMode::Debug);
-    let project = c::Project::new(
+    let project = BeaverProject::new(
         String::from("MyProject"),
-        PathBuf::from_str("./my_project").unwrap()
+        PathBuf::from("./my_project"),
+        &PathBuf::from("build")
     );
     let target = c::Library::new_desc(c::LibraryDescriptor {
         name: "HelloWorld".to_string(),
@@ -23,11 +25,11 @@ fn adding() {
         sources: Files::from_pat("src/**/*.rs").unwrap(),
         cflags: Flags::new(vec![String::from("-DDEBUG")], Vec::new()),
         headers: Headers::new(vec![PathBuf::from_str("include").unwrap()], Vec::new()),
-        linker_flags: Flags::new(Vec::new(), Vec::new()),
+        linker_flags: Vec::new(),
         artifacts: Vec::<LibraryArtifactType>::from([LibraryArtifactType::Staticlib]),
         dependencies: Vec::<Dependency>::new()
     });
-    project.add_target(Box::new(target)).unwrap();
+    project.add_target(AnyTarget::Library(Box::new(target))).unwrap();
     beaver.add_project(Box::new(project)).unwrap();
 
     println!("{beaver}");
@@ -39,6 +41,7 @@ fn adding() {
 
     assert_eq!(bproject.name(), "MyProject".to_string());
     assert_eq!(bproject.id(), Some(0));
+    assert_eq!(beaver.current_project_index(), bproject.id());
 
     let targets = bproject.targets().unwrap();
     assert_eq!(targets.len(), 1);

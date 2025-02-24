@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use crate::{Glob, GlobIterationError, PathSegment};
 
+#[derive(Debug)]
 pub struct GlobSet {
     globs: Vec<Glob>,
     include_dirs: bool

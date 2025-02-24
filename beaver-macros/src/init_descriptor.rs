@@ -31,7 +31,7 @@ pub fn macro_impl(item: TokenStream) -> TokenStream {
     let vis = input.vis;
 
     let fields: Vec<(Option<AttrType>, &syn::Field)> = input.fields.iter().map(|field| {
-        if let Some((i, attr)) = field.attrs.iter().enumerate().find(|(i, attr)| attr.path().is_ident("descriptor_value")) {
+        if let Some((i, attr)) = field.attrs.iter().enumerate().find(|(_, attr)| attr.path().is_ident("descriptor_value")) {
             if let syn::Meta::List(list) = &attr.meta {
                 let args = list.parse_args_with(Punctuated::<Attr, Token![,]>::parse_terminated).expect("Error parsing descriptor_value values");
                 assert_eq!(args.len(), 1); // TODO: proper error

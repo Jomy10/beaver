@@ -1,18 +1,20 @@
 use std::{path::PathBuf, str::FromStr};
 
-use beaver::preface::traits::MutableProject;
 use beaver::target::parameters::{Files, Flags, Headers};
 use beaver::target::{Dependency, Language, LibraryArtifactType};
-use beaver::{Beaver, OptimizationMode, preface::c};
+use beaver::traits::{AnyTarget, MutableProject};
+use beaver::{Beaver, OptimizationMode, target::c};
+use beaver::project::beaver::Project as BeaverProject;
 
 fn main() {
     colog::init();
 
     let beaver = Beaver::new(true, OptimizationMode::Debug);
-    let project = c::Project::new(
+    let project = BeaverProject::new(
         String::from("MyProject"),
-        PathBuf::from_str("./my_project").unwrap()
-    );
+        PathBuf::from("."),
+        &PathBuf::from("build")
+    ).unwrap();
     let target = c::Library::new_desc(c::LibraryDescriptor {
         name: "HelloWorld".to_string(),
         description: Some("A description of this package".to_string()),
@@ -23,12 +25,17 @@ fn main() {
         sources: Files::from_pat("src/**/*.rs").unwrap(),
         cflags: Flags::new(vec![String::from("-DDEBUG")], Vec::new()),
         headers: Headers::new(vec![PathBuf::from_str("include").unwrap()], Vec::new()),
-        linker_flags: Flags::new(Vec::new(), Vec::new()),
+        linker_flags: Vec::new(),
         artifacts: Vec::<LibraryArtifactType>::from([LibraryArtifactType::Staticlib]),
         dependencies: Vec::<Dependency>::new()
     });
-    project.add_target(Box::new(target)).unwrap();
+    project.add_target(AnyTarget::Library(Box::new(target))).unwrap();
     beaver.add_project(Box::new(project)).unwrap();
 
     println!("{beaver}");
+
+    beaver.create_build_file().unwrap();
+
+    // let builder = Arc::new(RwLock::new(Box::new(NinjaBuilder::new())));
+    // beaver.
 }

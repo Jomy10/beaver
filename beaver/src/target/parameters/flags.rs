@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct Flags {
     pub(crate) public: Vec<String>,
     pub(crate) private: Vec<String>,
