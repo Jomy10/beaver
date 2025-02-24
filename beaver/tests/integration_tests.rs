@@ -5,9 +5,9 @@ use beaver::target::parameters::{Files, Flags, Headers};
 use beaver::target::{Dependency, Language, LibraryArtifactType};
 use beaver::{Beaver, OptimizationMode, preface::c};
 
-fn main() {
-    colog::init();
-
+/// Test adding a project and a target
+#[test]
+fn adding() {
     let beaver = Beaver::new(true, OptimizationMode::Debug);
     let project = c::Project::new(
         String::from("MyProject"),
@@ -31,4 +31,20 @@ fn main() {
     beaver.add_project(Box::new(project)).unwrap();
 
     println!("{beaver}");
+
+    let projects = beaver.projects().unwrap();
+    assert_eq!(projects.len(), 1);
+
+    let bproject = projects.first().unwrap();
+
+    assert_eq!(bproject.name(), "MyProject".to_string());
+    assert_eq!(bproject.id(), Some(0));
+
+    let targets = bproject.targets().unwrap();
+    assert_eq!(targets.len(), 1);
+
+    let btarget = targets.first().unwrap();
+    assert_eq!(btarget.name(), "HelloWorld".to_string());
+    assert_eq!(btarget.id(), Some(0));
+    assert_eq!(btarget.project_id(), Some(0));
 }

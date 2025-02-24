@@ -7,8 +7,8 @@ pub enum Dependency {
 
 #[derive(Eq, PartialEq, Hash)]
 pub struct TargetRef {
-    target: usize,
-    project: usize,
+    pub target: usize,
+    pub project: usize,
 }
 
 #[derive(Eq, PartialEq, Hash)]

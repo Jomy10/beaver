@@ -1,3 +1,4 @@
+use beaver_macros::init_descriptor;
 use target_lexicon::Triple;
 
 use crate::platform::{dynlib_extension_for_os, staticlib_extension_for_os};
@@ -6,8 +7,11 @@ use crate::target::traits::TargetType;
 use crate::target::{traits, ArtifactType, Dependency, Language, LibraryArtifactType, Version};
 use crate::BeaverError;
 
+#[init_descriptor]
 pub struct Library {
+    #[descriptor_value(None)]
     id: Option<usize>,
+    #[descriptor_value(None)]
     project_id: Option<usize>,
     name: String,
     description: Option<String>,
