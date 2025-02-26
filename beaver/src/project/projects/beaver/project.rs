@@ -9,6 +9,7 @@ use crate::traits::AnyTarget;
 use crate::Beaver;
 use crate::{error::BeaverError, project};
 
+#[derive(Debug)]
 pub struct Project {
     id: Option<usize>,
     name: String,

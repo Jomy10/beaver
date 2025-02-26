@@ -46,7 +46,15 @@ pub enum BeaverError {
 
     // Project Validation //
     #[error("Base path {path} of project {project} doesn't exist")]
-    ProjectPathDoesntExist { project: String, path: PathBuf }
+    ProjectPathDoesntExist { project: String, path: PathBuf },
+
+    // Command Line //
+    #[error("Invalid {name} `{got}` (valid values are {})", expected_values.iter().map(|v| format!("`{}`", v)).collect::<Vec<String>>().join(", "))]
+    TryFromStringError {
+        name: String,
+        got: String,
+        expected_values: Vec<String>,
+    },
 }
 
 pub type Result<Success> = std::result::Result<Success, BeaverError>;

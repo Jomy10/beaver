@@ -6,7 +6,6 @@ use std::sync::atomic::{AtomicIsize, Ordering};
 
 use console::style;
 use target_lexicon::Triple;
-use utils::any::AsAny;
 
 use crate::backend::ninja::NinjaBuilder;
 use crate::backend::BackendBuilder;
@@ -16,6 +15,7 @@ use crate::project::traits::Project;
 use crate::target::traits::{AnyTarget, Target};
 use crate::target::TargetRef;
 
+#[derive(Debug)]
 pub struct Beaver {
     projects: RwLock<Vec<Box<dyn Project>>>,
     project_index: AtomicIsize,
@@ -26,13 +26,13 @@ pub struct Beaver {
 }
 
 impl Beaver {
-    pub fn new(enable_color: bool, optimize_mode: OptimizationMode) -> Beaver {
+    pub fn new(enable_color: Option<bool>, optimize_mode: OptimizationMode) -> Beaver {
         Beaver {
             projects: RwLock::new(Vec::new()),
             project_index: AtomicIsize::new(-1),
             optimize_mode,
             build_dir: std::env::current_dir().unwrap().join("build"),
-            enable_color,
+            enable_color: enable_color.unwrap_or(true), // TODO: derive from isatty or set instance var to optional
             target_triple: Triple::host()
         }
     }

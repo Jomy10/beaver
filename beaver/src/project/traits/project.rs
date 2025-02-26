@@ -6,7 +6,7 @@ use crate::backend::BackendBuilder;
 use crate::target::traits::AnyTarget;
 use crate::Beaver;
 
-pub trait Project: Send + Sync {
+pub trait Project: Send + Sync + std::fmt::Debug {
     fn id(&self) -> Option<usize>;
     fn set_id(&mut self, new_id: usize) -> crate::Result<()>;
     fn name(&self) -> &str;
