@@ -1,8 +1,10 @@
 use std::path::Path;
+use enum_dispatch::enum_dispatch;
 use target_lexicon::Triple;
 
 use crate::target::{traits::Target, ArtifactType, LibraryArtifactType};
 
+#[enum_dispatch]
 pub trait Library: Target {
     fn link_against_library(&self, project_build_dir: &Path, artifact: LibraryArtifactType, target_triple: &Triple) -> crate::Result<Vec<String>> {
         use LibraryArtifactType::*;
@@ -26,4 +28,13 @@ pub trait Library: Target {
     }
 
     fn public_cflags(&self, project_base_dir: &Path) -> Vec<String>;
+}
+
+use crate::target::c::Library as CLibrary;
+
+#[enum_dispatch(Target)]
+#[enum_dispatch(Library)]
+#[derive(Debug)]
+pub enum AnyLibrary {
+    CLibrary,
 }

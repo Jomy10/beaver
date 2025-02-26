@@ -9,7 +9,7 @@ use beaver::{Beaver, OptimizationMode, target::c};
 /// Test adding a project and a target
 #[test]
 fn adding() {
-    let beaver = Beaver::new(true, OptimizationMode::Debug);
+    let beaver = Beaver::new(Some(true), OptimizationMode::Debug);
     let project = BeaverProject::new(
         String::from("MyProject"),
         PathBuf::from("."),

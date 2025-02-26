@@ -14,6 +14,7 @@ thiserror = { workspace = true }
 url = { workspace = true }
 lazy_static = { workspace = true }
 rayon = { workspace = true }
+enum_dispatch = { workspace = true }
 utils = { path = "../utils" }
 glob = { path = "../glob" }
 beaver-macros = { path = "../beaver-macros" }

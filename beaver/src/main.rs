@@ -6,10 +6,11 @@ use beaver::traits::{AnyTarget, MutableProject};
 use beaver::{Beaver, OptimizationMode, target::c};
 use beaver::project::beaver::Project as BeaverProject;
 
+// example
 fn main() {
     colog::init();
 
-    let beaver = Beaver::new(true, OptimizationMode::Debug);
+    let beaver = Beaver::new(Some(true), OptimizationMode::Debug);
     let project = BeaverProject::new(
         String::from("MyProject"),
         PathBuf::from("."),
@@ -29,8 +30,8 @@ fn main() {
         artifacts: Vec::<LibraryArtifactType>::from([LibraryArtifactType::Staticlib]),
         dependencies: Vec::<Dependency>::new()
     });
-    project.add_target(AnyTarget::Library(Box::new(target))).unwrap();
-    beaver.add_project(Box::new(project)).unwrap();
+    project.add_target(AnyTarget::Library(target.into())).unwrap();
+    beaver.add_project(project.into()).unwrap();
 
     println!("{beaver}");
 

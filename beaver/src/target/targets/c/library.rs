@@ -159,12 +159,12 @@ impl traits::Target for Library {
         };
     }
 
-    fn register(&self,
+    fn register<Builder: BackendBuilder<'static>>(&self,
         project_name: &str,
         project_base_dir: &Path,
         project_build_dir: &Path,
         target_triple: &Triple,
-        builder: Arc<RwLock<Box<dyn BackendBuilder>>>,
+        builder: Arc<RwLock<Builder>>,
         context: &Beaver
     ) -> crate::Result<()> {
         let mut guard = builder.write()
