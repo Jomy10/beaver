@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::Write;
 
-use utils::any::AsAny;
-
 use crate::backend::{BackendBuilder, BackendBuilderScope, BuildStep, Rule};
 use crate::BeaverError;
 

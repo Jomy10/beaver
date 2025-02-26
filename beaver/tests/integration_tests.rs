@@ -12,9 +12,9 @@ fn adding() {
     let beaver = Beaver::new(true, OptimizationMode::Debug);
     let project = BeaverProject::new(
         String::from("MyProject"),
-        PathBuf::from("./my_project"),
+        PathBuf::from("."),
         &PathBuf::from("build")
-    );
+    ).unwrap();
     let target = c::Library::new_desc(c::LibraryDescriptor {
         name: "HelloWorld".to_string(),
         description: Some("A description of this package".to_string()),
