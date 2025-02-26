@@ -1,8 +1,9 @@
 use target_lexicon::Triple;
 
 use crate::Beaver;
-use crate::traits::Target;
+use crate::traits::{Project, Target};
 
+use super::traits::Library;
 use super::LibraryArtifactType;
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]

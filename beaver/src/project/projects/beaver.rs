@@ -24,13 +24,13 @@ impl Project {
     pub fn new(
         name: String,
         base_dir: PathBuf,
-        build_dir: &Path
+        global_build_dir: &Path
     ) -> crate::Result<Project> {
         if !base_dir.exists() {
             return Err(BeaverError::ProjectPathDoesntExist { project: name, path: base_dir });
         }
 
-        let build_dir = build_dir.join(&name);
+        let build_dir = global_build_dir.join(&name);
 
         Ok(Project {
             id: None,
@@ -83,10 +83,10 @@ impl project::traits::Project for Project {
         })
     }
 
-    fn register(&self,
+    fn register<Builder: BackendBuilder<'static>>(&self,
         scope: &rayon::Scope,
         triple: &Triple,
-        builder: Arc<RwLock<Box<dyn BackendBuilder>>>,
+        builder: Arc<RwLock<Builder>>,
         context: &Beaver
     ) -> crate::Result<()> {
         _ = scope; // TODO

@@ -2,9 +2,8 @@ use std::io;
 use std::path::PathBuf;
 
 use target_lexicon::OperatingSystem;
-use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 pub enum BeaverError {
     // Set Build Dir //
     #[error("Can't set the build directory when a project is alreadt defined")]

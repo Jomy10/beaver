@@ -4,19 +4,21 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
+use enum_dispatch::enum_dispatch;
 use target_lexicon::Triple;
 use url::Url;
 use crate::backend::BackendBuilder;
 use crate::target::{Version, Language, ArtifactType, Dependency};
 use crate::Beaver;
 
-use super::{Executable, Library};
+use super::{AnyExecutable, AnyLibrary, Executable, Library};
 
 pub enum TargetType {
     Library,
     Executable,
 }
 
+#[enum_dispatch]
 pub trait Target: Send + Sync + std::fmt::Debug {
     // General Info //
     fn name(&self) -> &str;
@@ -40,12 +42,12 @@ pub trait Target: Send + Sync + std::fmt::Debug {
     fn artifact_output_dir(&self, project_build_dir: &Path, triple: &Triple) -> PathBuf;
     fn artifact_file(&self, project_build_dir: &Path, artifact: ArtifactType, triple: &Triple) -> crate::Result<PathBuf>;
 
-    fn register(&self,
+    fn register<Builder: BackendBuilder<'static>>(&self,
         project_name: &str,
         project_base_dir: &Path,
         project_build_dir: &Path,
         triple: &Triple,
-        builder: Arc<RwLock<Box<dyn BackendBuilder>>>,
+        builder: Arc<RwLock<Builder>>,
         context: &Beaver
     ) -> crate::Result<()>;
 
@@ -81,80 +83,46 @@ pub trait Target: Send + Sync + std::fmt::Debug {
     }
 }
 
-macro_rules! target_fn_impl {
-    ($self: expr, $fn: ident) => {
-        match $self {
-            Self::Library(lib) => lib.$fn(),
-            Self::Executable(exe) => exe.$fn()
-        }
-    };
-    ($self: expr, $fn: ident, $($arg: expr),+) => {
-        match $self {
-            Self::Library(lib) => lib.$fn($($arg,)*),
-            Self::Executable(exe) => exe.$fn($($arg,)*)
-        }
-    };
-}
+// macro_rules! target_fn_impl {
+//     ($self: expr, $fn: ident) => {
+//         match $self {
+//             Self::Library(lib) => lib.$fn(),
+//             Self::Executable(exe) => exe.$fn()
+//         }
+//     };
+//     ($self: expr, $fn: ident, $($arg: expr),+) => {
+//         match $self {
+//             Self::Library(lib) => lib.$fn($($arg,)*),
+//             Self::Executable(exe) => exe.$fn($($arg,)*)
+//         }
+//     };
+// }
 
-macro_rules! target_fn {
-    ($fn: ident -> $ret: ty) => {
-        fn $fn(&self) -> $ret {
-            target_fn_impl!(self, $fn)
-        }
-    };
-}
+// macro_rules! target_fn {
+//     ($fn: ident -> $ret: ty) => {
+//         fn $fn(&self) -> $ret {
+//             target_fn_impl!(self, $fn)
+//         }
+//     };
+// }
 
-macro_rules! target_fn_mut {
-    ($fn: ident, $($arg: ident: $arg_ty: ty),+) => {
-        fn $fn(&mut self, $($arg: $arg_ty)*) {
-            target_fn_impl!(self, $fn, $($arg)*)
-        }
-    }
-}
+// macro_rules! target_fn_mut {
+//     ($fn: ident, $($arg: ident: $arg_ty: ty),+) => {
+//         fn $fn(&mut self, $($arg: $arg_ty)*) {
+//             target_fn_impl!(self, $fn, $($arg)*)
+//         }
+//     }
+// }
 
+#[enum_dispatch(Target)]
 #[derive(Debug)]
 pub enum AnyTarget {
-    Library(Box<dyn Library>),
-    Executable(Box<dyn Executable>),
-}
-
-impl Target for AnyTarget {
-    target_fn!(name -> &str);
-    target_fn!(description ->Option<&str>);
-    target_fn!(homepage -> Option<&Url>);
-    target_fn!(version -> Option<&Version>);
-    target_fn!(license -> Option<&str>);
-    target_fn!(language -> Language);
-    target_fn!(id -> Option<usize>);
-    target_fn_mut!(set_id, new_id: usize);
-    target_fn!(project_id -> Option<usize>);
-    target_fn_mut!(set_project_id, new_id: usize);
-    target_fn!(artifacts -> Vec<ArtifactType>);
-    target_fn!(dependencies -> &Vec<Dependency>);
-    target_fn!(r#type -> TargetType);
-
-    fn artifact_output_dir(&self, project_build_dir: &Path, triple: &Triple) -> PathBuf {
-        target_fn_impl!(self, artifact_output_dir, project_build_dir, triple)
-    }
-
-    fn artifact_file(&self, project_build_dir: &Path, artifact: ArtifactType, triple: &Triple) -> crate::Result<PathBuf> {
-        target_fn_impl!(self, artifact_file, project_build_dir, artifact, triple)
-    }
-
-    fn register(&self,
-        project_name: &str,
-        project_base_dir: &Path,
-        project_build_dir: &Path,
-        triple: &Triple,
-        builder: Arc<RwLock<Box<dyn BackendBuilder>>>,
-        context: &Beaver
-    ) -> crate::Result<()> {
-        target_fn_impl!(self, register, project_name, project_base_dir, project_build_dir, triple, builder, context)
-    }
+    Library(AnyLibrary),
+    Executable(AnyExecutable),
 }
 
 impl AnyTarget {
-    pub(crate) fn as_library(&self) -> Option<&Box<dyn Library>> {
+    pub(crate) fn as_library(&self) -> Option<&AnyLibrary> {
         match self {
             Self::Library(lib) => Some(lib),
             _ => None
@@ -162,7 +130,7 @@ impl AnyTarget {
     }
 
     #[allow(unused)]
-    pub(crate) fn as_executable(&self) -> Option<&Box<dyn Executable>> {
+    pub(crate) fn as_executable(&self) -> Option<&AnyExecutable> {
         match self {
             Self::Executable(exe) => Some(exe),
             _ => None
@@ -170,5 +138,57 @@ impl AnyTarget {
     }
 }
 
-unsafe impl Send for AnyTarget {}
-unsafe impl Sync for AnyTarget {}
+// impl Target for AnyTarget {
+//     target_fn!(name -> &str);
+//     target_fn!(description ->Option<&str>);
+//     target_fn!(homepage -> Option<&Url>);
+//     target_fn!(version -> Option<&Version>);
+//     target_fn!(license -> Option<&str>);
+//     target_fn!(language -> Language);
+//     target_fn!(id -> Option<usize>);
+//     target_fn_mut!(set_id, new_id: usize);
+//     target_fn!(project_id -> Option<usize>);
+//     target_fn_mut!(set_project_id, new_id: usize);
+//     target_fn!(artifacts -> Vec<ArtifactType>);
+//     target_fn!(dependencies -> &Vec<Dependency>);
+//     target_fn!(r#type -> TargetType);
+
+//     fn artifact_output_dir(&self, project_build_dir: &Path, triple: &Triple) -> PathBuf {
+//         target_fn_impl!(self, artifact_output_dir, project_build_dir, triple)
+//     }
+
+//     fn artifact_file(&self, project_build_dir: &Path, artifact: ArtifactType, triple: &Triple) -> crate::Result<PathBuf> {
+//         target_fn_impl!(self, artifact_file, project_build_dir, artifact, triple)
+//     }
+
+//     fn register(&self,
+//         project_name: &str,
+//         project_base_dir: &Path,
+//         project_build_dir: &Path,
+//         triple: &Triple,
+//         builder: Arc<RwLock<Box<dyn BackendBuilder>>>,
+//         context: &Beaver
+//     ) -> crate::Result<()> {
+//         target_fn_impl!(self, register, project_name, project_base_dir, project_build_dir, triple, builder, context)
+//     }
+// }
+
+// impl AnyTarget {
+//     pub(crate) fn as_library(&self) -> Option<&Box<dyn Library>> {
+//         match self {
+//             Self::Library(lib) => Some(lib),
+//             _ => None
+//         }
+//     }
+
+//     #[allow(unused)]
+//     pub(crate) fn as_executable(&self) -> Option<&Box<dyn Executable>> {
+//         match self {
+//             Self::Executable(exe) => Some(exe),
+//             _ => None
+//         }
+//     }
+// }
+
+// unsafe impl Send for AnyTarget {}
+// unsafe impl Sync for AnyTarget {}

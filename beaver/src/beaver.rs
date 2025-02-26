@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::sync::atomic::{AtomicIsize, Ordering};
 
@@ -9,6 +9,7 @@ use target_lexicon::Triple;
 
 use crate::backend::ninja::NinjaBuilder;
 use crate::backend::BackendBuilder;
+use crate::traits::AnyProject;
 use crate::OptimizationMode;
 use crate::error::BeaverError;
 use crate::project::traits::Project;
@@ -17,7 +18,7 @@ use crate::target::TargetRef;
 
 #[derive(Debug)]
 pub struct Beaver {
-    projects: RwLock<Vec<Box<dyn Project>>>,
+    projects: RwLock<Vec<AnyProject>>,
     project_index: AtomicIsize,
     pub(crate) optimize_mode: OptimizationMode,
     build_dir: PathBuf,
@@ -63,19 +64,24 @@ impl Beaver {
         return Ok(());
     }
 
-    pub fn projects(&self) -> crate::Result<RwLockReadGuard<'_, Vec<Box<dyn Project>>>> {
+    pub fn get_build_dir(&self) -> &Path {
+        // TODO: freeze build dir
+        &self.build_dir
+    }
+
+    pub fn projects(&self) -> crate::Result<RwLockReadGuard<'_, Vec<AnyProject>>> {
         self.projects.read().map_err(|err| {
             BeaverError::ProjectsReadError(err.to_string())
         })
     }
 
-    pub fn projects_mut(&self) -> crate::Result<RwLockWriteGuard<'_, Vec<Box<dyn Project>>>> {
+    fn projects_mut(&self) -> crate::Result<RwLockWriteGuard<'_, Vec<AnyProject>>> {
         self.projects.write().map_err(|err| {
             BeaverError::ProjectsWriteError(err.to_string())
         })
     }
 
-    pub fn add_project(&self, project: Box<dyn Project>) -> crate::Result<usize> {
+    pub fn add_project(&self, project: AnyProject) -> crate::Result<usize> {
         let mut project = project;
         let mut projects = self.projects_mut()?;
         let idx = projects.len();
@@ -88,7 +94,7 @@ impl Beaver {
     pub fn with_project_and_target<S>(
         &self,
         target: &TargetRef,
-        cb: impl FnOnce(&Box<dyn Project>, &AnyTarget) -> crate::Result<S>
+        cb: impl FnOnce(&AnyProject, &AnyTarget) -> crate::Result<S>
     ) -> crate::Result<S> {
         let projects = self.projects()?;
         let project = projects.get(target.project).expect("Invalid TargetRef"); // We assume a TargetRef is always acquired for a target that exists
@@ -102,7 +108,7 @@ impl Beaver {
     }
 
     pub fn create_build_file(&self) -> crate::Result<()> {
-        let ninja_builder: Arc<RwLock<Box<dyn BackendBuilder>>> = Arc::new(RwLock::new(Box::new(NinjaBuilder::new())));
+        let ninja_builder: Arc<RwLock<NinjaBuilder>> = Arc::new(RwLock::new(NinjaBuilder::new()));
         let error: RwLock<Option<BeaverError>> = RwLock::new(None);
         let projects = self.projects()?;
         rayon::scope(|s| {
@@ -123,8 +129,6 @@ impl Beaver {
 
         let builder = Arc::try_unwrap(ninja_builder).unwrap_or_else(|_| panic!("Arc shouldn't be referenced anymore"));
         let builder = builder.into_inner().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
-        let builder = Box::into_raw(builder);
-        let builder = unsafe { Box::from_raw(builder as *mut NinjaBuilder) };
         let output = builder.build();
         let output_file = self.build_file();
 
