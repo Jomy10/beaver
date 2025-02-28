@@ -5,14 +5,13 @@ use beaver::target::{c, Dependency, Language, LibraryArtifactType, LibraryTarget
 use beaver::traits::{AnyLibrary, AnyTarget, Project, Target};
 use beaver::{Beaver, BeaverError};
 use log::trace;
-use rutie::{class, methods, AnyException, AnyObject, Class, Exception, Fixnum, Module, Object, RString, Symbol};
+use rutie::{class, methods, AnyException, Class, Fixnum, Module, Object, RString, Symbol};
 
 use crate::{get_context, raise};
 use crate::rutie_ext::{RbValue, RutieArrayExt, RutieExceptionExt, RutieObjExt};
 
 class!(TargetAccessor);
 
-// TODO: return Vec
 fn c_target_parse_cflags_string_or_array(val: RbValue) -> Result<Option<Vec<String>>, AnyException> {
     match val {
         RbValue::RString(str) => Ok(Some(vec![str.to_string()])),

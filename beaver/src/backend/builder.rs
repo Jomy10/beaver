@@ -4,6 +4,11 @@ pub trait BackendBuilder<'a>: Send + Sync + std::fmt::Debug {
     fn add_rule(&mut self, rule: &'a Rule);
     fn get_rule(&self, name: &str) -> Option<&Rule>;
     fn has_rule(&self, name: &str) -> bool;
+    fn add_rule_if_not_exists(&mut self, rule: &'a Rule) {
+        if !self.has_rule(&rule.name) {
+            self.add_rule(rule);
+        }
+    }
 
     // could be &self maybe
     fn new_scope(&mut self) -> Box<dyn BackendBuilderScope>;

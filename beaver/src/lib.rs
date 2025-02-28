@@ -4,6 +4,7 @@ pub mod backend;
 pub(crate) mod platform;
 pub mod project;
 pub mod target;
+pub mod tools;
 moduse!(beaver);
 moduse!(error);
 moduse!(optimization_mode);

@@ -8,7 +8,7 @@ use enum_dispatch::enum_dispatch;
 use target_lexicon::Triple;
 use url::Url;
 use crate::backend::BackendBuilder;
-use crate::target::{Version, Language, ArtifactType, Dependency};
+use crate::target::{ArtifactType, Dependency, Language, TargetRef, Version};
 use crate::Beaver;
 
 use super::{AnyExecutable, AnyLibrary};
@@ -33,6 +33,17 @@ pub trait Target: Send + Sync + std::fmt::Debug {
     fn set_id(&mut self, new_id: usize);
     fn project_id(&self) -> Option<usize>;
     fn set_project_id(&mut self, new_id: usize);
+    fn tref(&self) -> Option<TargetRef> {
+        match (self.project_id(), self.id()) {
+            (Some(project_id), Some(target_id)) => {
+                Some(TargetRef {
+                    project: project_id,
+                    target: target_id
+                })
+            },
+            _ => None
+        }
+    }
 
     fn artifacts(&self) -> Vec<ArtifactType>;
     fn dependencies(&self) -> &Vec<Dependency>;

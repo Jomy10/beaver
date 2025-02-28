@@ -69,6 +69,7 @@ pub fn execute(context: beaver::Beaver, script_file: &Path) -> crate::Result<Box
 
     ruby_lib::project::load(&mut c_class)?;
     ruby_lib::target::load(&mut c_class)?;
+    ruby_lib::global::load(&mut c_class)?;
 
     // Read & execute file
     let mut script_file_p = fs::File::open(script_file).map_err(|err| BeaverRubyError::ScriptFileOpenError(err))?;
@@ -77,6 +78,12 @@ pub fn execute(context: beaver::Beaver, script_file: &Path) -> crate::Result<Box
     trace!("{}", script_contents);
 
     rutie::VM::eval(&script_contents).map_err(|err| BeaverRubyError::RubyException(err))?;
+    // segfaults when an exception occurs!
+    // let script_file_abs = std::path::absolute(script_file)?;
+    // let cstr = Pin::new(osstr_to_cstr(script_file_abs.as_os_str())?);
+    // dbg!(&cstr);
+    // unsafe { rutie::rubysys::vm::rb_require(cstr.as_ptr()); }
+    // rutie::VM::require(script_file_abs.to_str().unwrap());
 
     return Ok(context);
 }

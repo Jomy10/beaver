@@ -2,7 +2,7 @@ use std::ffi::OsString;
 use std::path::Path;
 
 use beaver::{Beaver, OptimizationMode};
-use clap::{arg, Arg, ArgAction, Command, ValueHint};
+use clap::{arg, Arg, ArgAction, ArgMatches, Command, ValueHint};
 use lazy_static::lazy_static;
 use log::warn;
 
@@ -24,7 +24,6 @@ fn main() {
         .long_version(LONG_VERSION)
         .propagate_version(true)
         .about("Reliable, powerful build system")
-        .arg(arg!([command] "The command to call (default: build)")) // TODO: as subcommand
         .arg(Arg::new("script-file")
             .short('f')
             .value_name("FILE")
@@ -34,13 +33,25 @@ fn main() {
         .arg(arg!(-o --opt [OPT] "Optimization mode")
             .default_value(default_opt_mode.as_os_str())
             .default_missing_value(release_opt_mode.as_os_str())
+            .value_hint(ValueHint::Other)
             .long_help("Optimization mode
 When the argument is provided, but without a value, then the optimization mode is set to release")
             .value_parser(["debug", "release"])
             .ignore_case(true))
         .arg(arg!(--color "Enable color output (default: automatic)"))
         .arg(Arg::new("no-color").long("no-color").action(ArgAction::SetTrue).hide(true))
-        .arg(arg!([args] ... "arguments passed to the build script").trailing_var_arg(true))
+        .arg(arg!([targets]... "Target(s) to build")
+            .long_help("Target(s) to build\nWhen no targets are passed, all targets in the current project are built."))
+        .arg(arg!([args]... "Arguments passed to the build script")
+            .required(false)
+            .last(true))
+        .subcommand(Command::new("list")
+            .about("List projects and targets from the script file"))
+        .subcommand(Command::new("clean")
+            .about("Clean the project"))
+        .subcommand(Command::new("run")
+            .about("Build and run an executable target")
+            .arg(arg!(<target> "The target to run. Format: [project:]target")))
         .get_matches();
 
     let flag_color = matches.get_flag("color");
@@ -65,12 +76,46 @@ When the argument is provided, but without a value, then the optimization mode i
         }
     };
 
-    let beaver = Beaver::new(color, opt);
-    let rb_context = match beaver_ruby::execute(beaver, script_file) {
-        Err(err) => panic!("{}", err),
-        Ok(ctx) => ctx,
-    };
+    match matches.subcommand() {
+        None => {
+            let beaver = Beaver::new(color, opt);
+            let ctx = match beaver_ruby::execute(beaver, script_file) {
+                Err(err) => panic!("{}", err),
+                Ok(ctx) => ctx,
+            };
 
-    dbg!(&rb_context.context);
-    drop(rb_context); // needs to live as long as beaver
+            ctx.context.create_build_file().unwrap();
+
+            match ArgMatches::get_many::<String>(&matches, "targets") {
+                Some(targets) => {
+                    assert!(targets.len() > 0);
+                    for target in targets {
+                        ctx.context.build(ctx.context.parse_target_ref(target).unwrap()).unwrap();
+                    }
+                },
+                None => {
+                    ctx.context.build_current_project().unwrap();
+                }
+            }
+        },
+        Some(("list", _)) => {
+            let beaver = Beaver::new(color, opt);
+            let rb_context = match beaver_ruby::execute(beaver, script_file) {
+                Err(err) => panic!("{}", err),
+                Ok(ctx) => ctx,
+            };
+            println!("{}", rb_context.context);
+        },
+        Some(("clean", _)) => {
+            unimplemented!("clean")
+        },
+        Some(("run", matches)) => {
+            let target_name: &String = matches.get_one("target").unwrap();
+            unimplemented!("run {target_name}")
+        }
+        Some((subcommand_name, _)) => {
+            unreachable!("Invalid subcommand {subcommand_name}")
+        }
+    }
+
 }
