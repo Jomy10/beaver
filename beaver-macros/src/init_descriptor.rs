@@ -21,13 +21,17 @@ enum AttrType {
     DescriptorDefault(usize, syn::Expr),
 }
 
-pub fn macro_impl(item: TokenStream) -> TokenStream {
+pub fn macro_impl(item: TokenStream, name: Option<&syn::Path>, create_desc_script: bool) -> TokenStream {
     let input = parse_macro_input!(item as syn::ItemStruct);
     let mut input2 = input.clone();
     let struct_ident = input.ident.clone();
-    let mut descriptor_name = struct_ident.to_string();
-    descriptor_name.push_str("Descriptor");
-    let descriptor_ident = syn::Ident::new(&descriptor_name, proc_macro2::Span::call_site());
+    let descriptor_ident = if let Some(name) = name {
+        name.segments.last().unwrap().ident.clone()
+    } else {
+        let mut descriptor_name = struct_ident.to_string();
+        descriptor_name.push_str("Descriptor");
+        syn::Ident::new(&descriptor_name, proc_macro2::Span::call_site())
+    };
     let vis = input.vis;
 
     let fields: Vec<(Option<AttrType>, &syn::Field)> = input.fields.iter().map(|field| {
@@ -101,12 +105,23 @@ pub fn macro_impl(item: TokenStream) -> TokenStream {
     // TODO: generate a default function
     // --> If all fields have a default impl, then implement Default, else implement a function that takes the fields without defaults as arguments
 
+    let desc_struct: proc_macro2::TokenStream = if create_desc_script {
+        quote!(
+            #vis struct #descriptor_ident {
+                #(#desc_fields),*
+            }
+        )
+    } else {
+        let name = name.unwrap();
+        quote! {
+            use #name;
+        }
+    };
+
     return quote!(
         #input2
 
-        #vis struct #descriptor_ident {
-            #(#desc_fields),*
-        }
+        #desc_struct
 
         impl #struct_ident {
             #vis fn new_desc(desc: #descriptor_ident) -> #struct_ident {

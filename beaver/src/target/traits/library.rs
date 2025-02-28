@@ -28,6 +28,14 @@ pub trait Library: Target {
     }
 
     fn public_cflags(&self, project_base_dir: &Path) -> Vec<String>;
+
+    fn default_library_artifact(&self) -> Option<LibraryArtifactType> {
+        match self.default_artifact() {
+            Some(ArtifactType::Library(lib)) => Some(lib),
+            None => None,
+            _ => unreachable!()
+        }
+    }
 }
 
 use crate::target::c::Library as CLibrary;

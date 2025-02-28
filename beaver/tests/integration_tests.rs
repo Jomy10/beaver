@@ -1,9 +1,9 @@
 use std::{path::PathBuf, str::FromStr};
 
-use beaver::target::parameters::{Files, Flags, Headers};
+use beaver::target::parameters::{DefaultArgument, Files, Flags, Headers};
 use beaver::target::{Dependency, Language, LibraryArtifactType};
 use beaver::project::beaver::Project as BeaverProject;
-use beaver::traits::{AnyTarget, MutableProject, Target};
+use beaver::traits::{AnyTarget, MutableProject, Project, Target};
 use beaver::{Beaver, OptimizationMode, target::c};
 
 /// Test adding a project and a target
@@ -15,7 +15,7 @@ fn adding() {
         PathBuf::from("."),
         &PathBuf::from("build")
     ).unwrap();
-    let target = c::Library::new_desc(c::LibraryDescriptor {
+    let target = c::Library::new_desc(c::TargetDescriptor {
         name: "HelloWorld".to_string(),
         description: Some("A description of this package".to_string()),
         homepage: None,
@@ -26,11 +26,11 @@ fn adding() {
         cflags: Flags::new(vec![String::from("-DDEBUG")], Vec::new()),
         headers: Headers::new(vec![PathBuf::from_str("include").unwrap()], Vec::new()),
         linker_flags: Vec::new(),
-        artifacts: Vec::<LibraryArtifactType>::from([LibraryArtifactType::Staticlib]),
+        artifacts: DefaultArgument::Some(Vec::<LibraryArtifactType>::from([LibraryArtifactType::Staticlib])),
         dependencies: Vec::<Dependency>::new()
     });
-    project.add_target(AnyTarget::Library(Box::new(target))).unwrap();
-    beaver.add_project(Box::new(project)).unwrap();
+    project.add_target(AnyTarget::Library(target.into())).unwrap();
+    beaver.add_project(project).unwrap();
 
     println!("{beaver}");
 

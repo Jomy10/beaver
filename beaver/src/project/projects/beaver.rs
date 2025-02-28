@@ -5,7 +5,7 @@ use target_lexicon::Triple;
 
 use crate::backend::BackendBuilder;
 use crate::target::traits::Target;
-use crate::traits::AnyTarget;
+use crate::traits::{AnyTarget, MutableProject};
 use crate::Beaver;
 use crate::{error::BeaverError, project};
 
@@ -83,6 +83,16 @@ impl project::traits::Project for Project {
         })
     }
 
+    fn find_target(&self, name: &str) -> crate::Result<Option<usize>> {
+        self.targets().map(|targets| {
+            targets.iter().enumerate()
+                .find(|target| {
+                    target.1.name() == name
+                })
+                .map(|(id, _)| id)
+        })
+    }
+
     fn register<Builder: BackendBuilder<'static>>(&self,
         scope: &rayon::Scope,
         triple: &Triple,
@@ -95,17 +105,22 @@ impl project::traits::Project for Project {
         }
         return Ok(());
     }
+
+    fn as_mutable(&self) -> Option<&dyn MutableProject> {
+        Some(self)
+    }
 }
 
 impl project::traits::MutableProject for Project {
-    fn add_target(&self, target: AnyTarget) -> crate::Result<()> {
+    fn add_target(&self, target: AnyTarget) -> crate::Result<usize> {
         let mut target = target;
         let mut targets = self.targets_mut()?;
-        target.set_id(targets.len());
+        let target_id = targets.len();
+        target.set_id(target_id);
         if let Some(project_id) = self.id {
             target.set_project_id(project_id);
         }
         targets.push(target);
-        return Ok(());
+        return Ok(target_id);
     }
 }

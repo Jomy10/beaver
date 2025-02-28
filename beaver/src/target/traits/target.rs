@@ -11,7 +11,7 @@ use crate::backend::BackendBuilder;
 use crate::target::{Version, Language, ArtifactType, Dependency};
 use crate::Beaver;
 
-use super::{AnyExecutable, AnyLibrary, Executable, Library};
+use super::{AnyExecutable, AnyLibrary};
 
 pub enum TargetType {
     Library,
@@ -39,6 +39,8 @@ pub trait Target: Send + Sync + std::fmt::Debug {
 
     fn r#type(&self) -> TargetType;
 
+    /// Default artifact to link against
+    fn default_artifact(&self) -> Option<ArtifactType>;
     fn artifact_output_dir(&self, project_build_dir: &Path, triple: &Triple) -> PathBuf;
     fn artifact_file(&self, project_build_dir: &Path, artifact: ArtifactType, triple: &Triple) -> crate::Result<PathBuf>;
 

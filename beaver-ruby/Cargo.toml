@@ -1,0 +1,16 @@
+[package]
+name = "beaver-ruby"
+version = "5.0.0"
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+beaver = { path = "../beaver" }
+utils = { path = "../utils" }
+rutie = { workspace = true, features = ["no-link"] }
+thiserror = { workspace = true }
+log = { workspace = true }
+url = { workspace = true }
+
+[build-dependencies]
+pkg-config = "0.3.31"

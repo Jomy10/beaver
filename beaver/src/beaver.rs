@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::sync::atomic::{AtomicIsize, Ordering};
 
@@ -16,12 +16,14 @@ use crate::project::traits::Project;
 use crate::target::traits::{AnyTarget, Target};
 use crate::target::TargetRef;
 
+/// All methods of this struct are immutable because this struct ensures all calls to its
+/// methods are thread safe
 #[derive(Debug)]
 pub struct Beaver {
     projects: RwLock<Vec<AnyProject>>,
     project_index: AtomicIsize,
     pub(crate) optimize_mode: OptimizationMode,
-    build_dir: PathBuf,
+    build_dir: RwLock<PathBuf>,
     enable_color: bool,
     target_triple: Triple,
 }
@@ -32,7 +34,7 @@ impl Beaver {
             projects: RwLock::new(Vec::new()),
             project_index: AtomicIsize::new(-1),
             optimize_mode,
-            build_dir: std::env::current_dir().unwrap().join("build"),
+            build_dir: RwLock::new(std::env::current_dir().unwrap().join("build")),
             enable_color: enable_color.unwrap_or(true), // TODO: derive from isatty or set instance var to optional
             target_triple: Triple::host()
         }
@@ -51,12 +53,12 @@ impl Beaver {
         }
     }
 
-    pub fn set_build_dir(&mut self, dir: PathBuf) -> crate::Result<()> {
+    pub fn set_build_dir(&self, dir: PathBuf) -> crate::Result<()> {
         if self.current_project_index() != None {
             return Err(BeaverError::SetBuildDirAfterAddProject);
         }
 
-        self.build_dir = dir;
+        *self.build_dir.write().map_err(|err| BeaverError::LockError(err.to_string()))? = dir;
         // Not needed because of check
         // for project in self.projects_mut()?.iter_mut() {
         //     project.update_build_dir(&self.build_dir);
@@ -64,9 +66,9 @@ impl Beaver {
         return Ok(());
     }
 
-    pub fn get_build_dir(&self) -> &Path {
+    pub fn get_build_dir(&self) -> crate::Result<RwLockReadGuard<'_, PathBuf>> {
         // TODO: freeze build dir
-        &self.build_dir
+        self.build_dir.read().map_err(|err| BeaverError::LockError(err.to_string()))
     }
 
     pub fn projects(&self) -> crate::Result<RwLockReadGuard<'_, Vec<AnyProject>>> {
@@ -81,8 +83,8 @@ impl Beaver {
         })
     }
 
-    pub fn add_project(&self, project: AnyProject) -> crate::Result<usize> {
-        let mut project = project;
+    pub fn add_project(&self, project: impl Into<AnyProject>) -> crate::Result<usize> {
+        let mut project: AnyProject = project.into();
         let mut projects = self.projects_mut()?;
         let idx = projects.len();
         project.set_id(idx)?;
@@ -103,11 +105,80 @@ impl Beaver {
         return cb(project, target).map_err(|err| err.into());
     }
 
-    fn build_file(&self) -> PathBuf {
-        self.build_dir.join(format!("build.{}.{}.ninja", self.optimize_mode, self.target_triple))
+    pub fn with_project_named<S>(
+        &self,
+        project_name: &str,
+        cb: impl FnOnce(&AnyProject) -> crate::Result<S>
+    ) -> crate::Result<S> {
+        let projects = self.projects()?;
+        let Some(project) = projects.iter().find(|project| project.name() == project_name) else {
+            return Err(BeaverError::NoProjectNamed(project_name.to_string()));
+        };
+        return cb(project);
+    }
+
+    pub fn with_project_mut<S>(
+        &self,
+        project_id: usize,
+        cb: impl FnOnce(&mut AnyProject) -> crate::Result<S>
+    ) -> crate::Result<S> {
+        let mut projects = self.projects_mut()?;
+        return cb(&mut projects[project_id]);
+    }
+
+    pub fn with_current_project_mut<S>(
+        &self,
+        cb: impl FnOnce(&mut AnyProject) -> crate::Result<S>
+    ) -> crate::Result<S> {
+        let Some(idx) = self.current_project_index() else {
+            return Err(BeaverError::NoProjects);
+        };
+        let mut projects = self.projects_mut()?;
+        return cb(&mut projects[idx]);
+    }
+
+    pub fn parse_target_ref(&self, dep: &str) -> crate::Result<TargetRef> {
+        if dep.contains(":") {
+            let mut components = dep.splitn(1, ":");
+            let project_name = components.next().unwrap();
+            let target_name = components.next().unwrap();
+
+            self.with_project_named(project_name, |project| {
+                match project.find_target(target_name) {
+                    Err(err) => Err(err),
+                    Ok(target_idx) => Ok(TargetRef { project: project.id().unwrap(), target: target_idx.unwrap() })
+                }
+            })
+        } else {
+            let idx = match self.current_project_index() {
+                None => Err(BeaverError::NoProjects),
+                Some(idx) => Ok(idx)
+            }?;
+
+            let projects = self.projects()?;
+            let project = &projects[idx];
+
+            let Some(target_idx) = project.find_target(dep)? else {
+                return Err(BeaverError::NoTargetNamed(dep.to_string(), project.name().to_string()));
+            };
+
+            Ok(TargetRef {
+                target: target_idx,
+                project: idx
+            })
+        }
+    }
+
+    fn build_file(&self) -> crate::Result<PathBuf> {
+        self.get_build_dir()
+            .map(|path| path.join(format!("build.{}.{}.ninja", self.optimize_mode, self.target_triple)))
     }
 
     pub fn create_build_file(&self) -> crate::Result<()> {
+        let build_dir = self.build_dir.read().map_err(|err| BeaverError::LockError(err.to_string()))?;
+        if !build_dir.exists() {
+            fs::create_dir(build_dir.as_path())?;
+        }
         let ninja_builder: Arc<RwLock<NinjaBuilder>> = Arc::new(RwLock::new(NinjaBuilder::new()));
         let error: RwLock<Option<BeaverError>> = RwLock::new(None);
         let projects = self.projects()?;
@@ -130,7 +201,7 @@ impl Beaver {
         let builder = Arc::try_unwrap(ninja_builder).unwrap_or_else(|_| panic!("Arc shouldn't be referenced anymore"));
         let builder = builder.into_inner().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
         let output = builder.build();
-        let output_file = self.build_file();
+        let output_file = self.build_file()?;
 
         let mut file = fs::File::options()
             .write(true)

@@ -18,6 +18,10 @@ impl Files {
     }
 
     pub fn from_pats(pats: &[&str]) -> crate::Result<Files> {
+        Self::from_pats_iter(pats.iter().map(|str| *str))
+    }
+
+    pub fn from_pats_iter<'a>(pats: impl Iterator<Item = &'a str>) -> crate::Result<Files> {
         let mut globset = GlobSet::new();
         for pat in pats {
             globset.add_glob(Glob::new(pat).map_err(|err| {
