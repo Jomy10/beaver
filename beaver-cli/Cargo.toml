@@ -7,8 +7,10 @@ authors.workspace = true
 [dependencies]
 clap = { workspace = true, features = ["cargo"] }
 lazy_static = { workspace = true }
+log = { workspace = true }
+colog = { workspace = true }
 beaver = { path = "../beaver" }
+beaver-ruby = { path = "../beaver-ruby" }
 
 [build-dependencies]
 const-gen = "1.6"
-rb-sys-env = "0.2"

@@ -5,7 +5,6 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
-colog = { workspace = true }
 console = { workspace = true }
 log = { workspace = true }
 semver = { workspace = true }

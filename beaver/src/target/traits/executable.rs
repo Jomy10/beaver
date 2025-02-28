@@ -1,5 +1,4 @@
 use std::path::Path;
-use enum_dispatch::enum_dispatch;
 use target_lexicon::Triple;
 
 use crate::backend::BackendBuilder;
@@ -10,6 +9,14 @@ pub trait Executable: Target {
     fn run(&self, project_build_dir: &Path, args: &[String]) -> crate::Result<()> {
         let artifact_file = self.artifact_file(project_build_dir, ArtifactType::Executable(ExecutableArtifactType::Executable), &Triple::host())?;
         todo!("run {:?} {:?}", artifact_file, args)
+    }
+
+    fn default_executable_artifact(&self) -> Option<ExecutableArtifactType> {
+        match self.default_artifact() {
+            Some(ArtifactType::Executable(exe)) => Some(exe),
+            None => None,
+            _ => unreachable!()
+        }
     }
 }
 
@@ -83,6 +90,10 @@ impl Target for AnyExecutable {
     }
 
     fn register<Builder: BackendBuilder<'static>>(&self,project_name: &str,project_base_dir: &Path,project_build_dir: &Path,triple: &Triple,builder: std::sync::Arc<std::sync::RwLock<Builder>>,context: &crate::Beaver) -> crate::Result<()> {
+        todo!()
+    }
+
+    fn default_artifact(&self) -> Option<ArtifactType> {
         todo!()
     }
 }

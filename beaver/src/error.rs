@@ -47,6 +47,24 @@ pub enum BeaverError {
     #[error("Base path {path} of project {project} doesn't exist")]
     ProjectPathDoesntExist { project: String, path: PathBuf },
 
+    // Dependency Resolution //
+    #[error("No target named {0} in project {1}")]
+    NoTargetNamed(String, String),
+    #[error("No project named {0}")]
+    NoProjectNamed(String),
+
+    // General Errors //
+    #[error("There are no projects defined")]
+    NoProjects,
+    #[error("Project `{0}` is not mutable")]
+    ProjectNotMutable(String),
+    #[error("Failed to lock: {0}")]
+    LockError(String),
+    #[error("IO Error: {0}")]
+    IOError(#[from] std::io::Error),
+    #[error("{0}")]
+    AnyError(String),
+
     // Command Line //
     #[error("Invalid {name} `{got}` (valid values are {})", expected_values.iter().map(|v| format!("`{}`", v)).collect::<Vec<String>>().join(", "))]
     TryFromStringError {
@@ -54,6 +72,10 @@ pub enum BeaverError {
         got: String,
         expected_values: Vec<String>,
     },
+    #[error("Invalid library artifact type `{0}`. Valid artifacts are `dynlib`, `staticlib`, `pkgconfig`, `framework` and `xcframework`")]
+    InvalidLibraryArtifactType(String),
+    #[error("Invalid executable artifact type `{0}`. Valid artifacts are `executable` and `app`")]
+    InvalidExecutableArtifactType(String),
 }
 
 pub type Result<Success> = std::result::Result<Success, BeaverError>;

@@ -16,6 +16,7 @@ pub trait Project: Send + Sync + std::fmt::Debug {
     fn build_dir(&self) -> &Path;
     fn update_build_dir(&mut self, new_base_build_dir: &Path);
     fn targets<'a>(&'a self) -> crate::Result<RwLockReadGuard<'a, Vec<AnyTarget>>>;
+    fn find_target(&self, name: &str) -> crate::Result<Option<usize>>;
 
     fn register<Builder: BackendBuilder<'static>>(&self,
         scope: &rayon::Scope,
@@ -23,10 +24,12 @@ pub trait Project: Send + Sync + std::fmt::Debug {
         builder: Arc<RwLock<Builder>>,
         context: &Beaver
     ) -> crate::Result<()>;
+
+    fn as_mutable(&self) -> Option<&dyn MutableProject>;
 }
 
 pub trait MutableProject {
-    fn add_target(&self, target: AnyTarget) -> crate::Result<()>;
+    fn add_target(&self, target: AnyTarget) -> crate::Result<usize>;
 }
 
 use crate::project::beaver::Project as BeaverProject;

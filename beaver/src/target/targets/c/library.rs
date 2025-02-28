@@ -2,7 +2,7 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
-use beaver_macros::init_descriptor;
+use log::warn;
 use target_lexicon::Triple;
 
 use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep, Rule};
@@ -12,12 +12,12 @@ use crate::target::traits::{self, TargetType};
 use crate::target::{ArtifactType, Dependency, Language, LibraryArtifactType, Version};
 use crate::{Beaver, BeaverError};
 
-#[init_descriptor]
+use super::TargetDescriptor;
+
+//TODO #[init_descriptor(super::TargetDescriptor, false)]
 #[derive(Debug)]
 pub struct Library {
-    #[descriptor_value(None)]
     id: Option<usize>,
-    #[descriptor_value(None)]
     project_id: Option<usize>,
     name: String,
     description: Option<String>,
@@ -38,6 +38,23 @@ pub struct Library {
 }
 
 impl Library {
+    pub fn new_desc(desc: TargetDescriptor<LibraryArtifactType>) -> Library {
+        Library::new(
+            desc.name,
+            desc.description,
+            desc.homepage,
+            desc.version,
+            desc.license,
+            desc.language,
+            desc.sources,
+            desc.cflags,
+            desc.headers,
+            desc.linker_flags,
+            desc.artifacts,
+            desc.dependencies
+        )
+    }
+
     pub fn new(
         name: String,
         description: Option<String>,
@@ -126,6 +143,16 @@ impl traits::Target for Library {
 
     fn r#type(&self) -> TargetType {
         TargetType::Library
+    }
+
+    fn default_artifact(&self) -> Option<ArtifactType> {
+        if self.artifacts.contains(&LibraryArtifactType::Staticlib) {
+            return Some(ArtifactType::Library(LibraryArtifactType::Staticlib));
+        } else if self.artifacts.contains(&LibraryArtifactType::Dynlib) {
+            return Some(ArtifactType::Library(LibraryArtifactType::Dynlib));
+        } else {
+            return None;
+        }
     }
 
     fn artifact_output_dir(&self,  project_build_dir: &std::path::Path, target_triple: &Triple) -> std::path::PathBuf {
@@ -251,7 +278,9 @@ impl Library {
                 let obj_ext = OsString::from(if *artifact == LibraryArtifactType::Dynlib { ".dyn.o" } else { ".o" });
 
                 let mut object_files: Vec<PathBuf> = Vec::new();
-                for source in self.sources.resolve(project_base_dir)? {
+                let sources = self.sources.resolve(project_base_dir)?;
+                if sources.len() == 0 { warn!("No sources in C::Library {}", self.name); }
+                for source in sources {
                     let base_source_path = source.as_path().strip_prefix(project_base_dir)
                         .expect("Unexpected error: couldn't strip prefix from source path");
                     let mut object_path = project_build_dir.join(base_source_path);
