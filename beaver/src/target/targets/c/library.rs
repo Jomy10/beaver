@@ -6,7 +6,7 @@ use log::warn;
 use target_lexicon::Triple;
 
 use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep, Rule};
-use crate::platform::{dynlib_extension_for_os, staticlib_extension_for_os};
+use crate::platform::{dynlib_extension_for_os, dynlib_linker_flags_for_os, staticlib_extension_for_os};
 use crate::target::parameters::{DefaultArgument, Files, Flags, Headers};
 use crate::target::traits::{self, TargetType};
 use crate::target::{ArtifactType, Dependency, Language, LibraryArtifactType, Version};
@@ -197,9 +197,7 @@ impl traits::Target for Library {
         let mut guard = builder.write()
             .map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
         for rule in &[&rules::CC as &Rule, &rules::LINK as &Rule] {
-            if !guard.has_rule(&rule.name) {
-                guard.add_rule(rule);
-            }
+            guard.add_rule_if_not_exists(rule);
         }
 
         // let guard = builder.read()
@@ -226,20 +224,25 @@ impl traits::Target for Library {
         let dependencies = self.unique_dependencies_set(context)?;
         let mut artifact_steps: Vec<String> = Vec::new();
         artifact_steps.reserve_exact(self.artifacts.len());
+        let mut cflags = vec!["-c".to_string()];
+        cflags.append(&mut self.cflags(project_base_dir, dependencies.iter(), context)?);
+        let cflags_str = cflags.into_iter().map(|flag| format!("\"{flag}\"")).fold(String::new(), |acc, str| {
+            let mut acc = acc;
+            acc.push_str(&str);
+            acc.push(' ');
+            acc
+        });
         for artifact in &self.artifacts {
             artifact_steps.push(self.register_artifact(
                 artifact,
                 project_name, project_base_dir, project_build_dir,
                 &target_triple,
                 &dependency_steps,
-                &self.cflags(project_base_dir, dependencies.iter(), context)?.into_iter().map(|flag| format!("\"{flag}\"")).fold(String::new(), |acc, str| {
-                    let mut acc = acc;
-                    acc.push_str(&str);
-                    acc
-                }),
+                &cflags_str,
                 &self.linker_flags(dependencies.iter(), target_triple, context)?.into_iter().map(|flag| format!("\"{flag}\"")).fold(String::new(), |acc, str| {
                     let mut acc = acc;
                     acc.push_str(&str);
+                    acc.push(' ');
                     acc
                 }),
                 &mut scope
@@ -349,7 +352,9 @@ impl Library {
 
     /// All linker flags used by this library when linking
     fn linker_flags<'a>(&self, dependencies: impl Iterator<Item = &'a Dependency>, triple: &Triple, context: &Beaver) -> crate::Result<Vec<String>> {
-        let mut flags: Vec<String> = self.linker_flags.clone();
+        let mut flags: Vec<String> = dynlib_linker_flags_for_os(&triple.operating_system)?.iter().map(|s| s.to_string()).collect();
+
+        flags.append(&mut self.linker_flags.clone());
         if let Some(additional_linker_flags) = traits::Library::additional_linker_flags(self) {
             flags.extend(additional_linker_flags.iter().map(|str| str.to_owned()));
         }

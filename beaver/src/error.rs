@@ -1,5 +1,6 @@
 use std::io;
 use std::path::PathBuf;
+use std::process::ExitStatus;
 
 use target_lexicon::OperatingSystem;
 
@@ -64,6 +65,8 @@ pub enum BeaverError {
     IOError(#[from] std::io::Error),
     #[error("{0}")]
     AnyError(String),
+    #[error("A child process exited with a non-zero exit code: {0}")]
+    NonZeroExitStatus(ExitStatus),
 
     // Command Line //
     #[error("Invalid {name} `{got}` (valid values are {})", expected_values.iter().map(|v| format!("`{}`", v)).collect::<Vec<String>>().join(", "))]

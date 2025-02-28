@@ -1,6 +1,7 @@
 use std::process::Command;
 use std::{env, fs};
 use std::path::Path;
+use std::io;
 
 use const_gen::{const_declaration, const_definition, CompileConst};
 
@@ -36,8 +37,8 @@ fn run_ruby(s: &str) -> String {
 }
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Define constants
-    let out_dir = env::var_os("OUT_DIR").unwrap();
+    // Define constants //
+    let out_dir = env::var_os("OUT_DIR").ok_or(io::Error::from(io::ErrorKind::NotFound))?;
     let dest_path = Path::new(&out_dir).join("rb_const_gen.rs");
 
     let major = run_ruby("require 'rbconfig'; puts RbConfig::CONFIG['MAJOR']")
@@ -61,6 +62,8 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     ].join("\n");
 
     fs::write(&dest_path, const_declartations)?;
+
+    // TODO: Generate manpages
 
     return Ok(());
 }

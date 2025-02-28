@@ -1,4 +1,4 @@
-use std::fs;
+use std::{env, fs};
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicIsize, Ordering};
 use console::style;
 use target_lexicon::Triple;
 
-use crate::backend::ninja::NinjaBuilder;
+use crate::backend::ninja::{NinjaBuilder, NinjaRunner};
 use crate::backend::BackendBuilder;
 use crate::traits::AnyProject;
 use crate::OptimizationMode;
@@ -26,6 +26,7 @@ pub struct Beaver {
     build_dir: RwLock<PathBuf>,
     enable_color: bool,
     target_triple: Triple,
+    verbose: bool
 }
 
 impl Beaver {
@@ -36,7 +37,8 @@ impl Beaver {
             optimize_mode,
             build_dir: RwLock::new(std::env::current_dir().unwrap().join("build")),
             enable_color: enable_color.unwrap_or(true), // TODO: derive from isatty or set instance var to optional
-            target_triple: Triple::host()
+            target_triple: Triple::host(),
+            verbose: false
         }
     }
 
@@ -89,6 +91,7 @@ impl Beaver {
         let idx = projects.len();
         project.set_id(idx)?;
         projects.push(project);
+        drop(projects);
         self.set_current_project_index(idx);
         return Ok(idx);
     }
@@ -137,9 +140,20 @@ impl Beaver {
         return cb(&mut projects[idx]);
     }
 
+    pub fn with_current_project<S>(
+        &self,
+        cb: impl FnOnce(&AnyProject) -> crate::Result<S>
+    ) -> crate::Result<S> {
+        let Some(idx) = self.current_project_index() else {
+            return Err(BeaverError::NoProjects);
+        };
+        let projects = self.projects()?;
+        return cb(&projects[idx]);
+    }
+
     pub fn parse_target_ref(&self, dep: &str) -> crate::Result<TargetRef> {
         if dep.contains(":") {
-            let mut components = dep.splitn(1, ":");
+            let mut components = dep.splitn(2, ":");
             let project_name = components.next().unwrap();
             let target_name = components.next().unwrap();
 
@@ -212,6 +226,47 @@ impl Beaver {
             .map_err(|err| BeaverError::BuildFileWriteError(err))?;
 
         return Ok(());
+    }
+
+    /// Retrieve the names to use when calling the backend
+    ///
+    /// For this implementation we assume we won't be passed a lot of targets. This implementation
+    /// is not efficient for high number of targets because there is a lot of locking. If we ever need
+    /// something more efficient, see `Iterator::partition_in_place`
+    fn qualified_names(&self, targets: &[TargetRef]) -> crate::Result<Vec<String>> {
+        let projects = self.projects()?;
+        let mut names = Vec::new();
+        names.reserve_exact(targets.len());
+        for target in targets {
+            let project = &projects[target.project];
+            let targets = project.targets()?;
+            let target = &targets[target.target];
+            names.push(format!("{}:{}", project.name(), target.name()))
+        }
+
+        return Ok(names);
+    }
+
+    pub fn build(&self, target: TargetRef) -> crate::Result<()> {
+        self.build_all(&[target])
+    }
+
+    pub fn build_all(&self, targets: &[TargetRef]) -> crate::Result<()> {
+        let build_file = self.build_file()?;
+        let ninja_runner = NinjaRunner::new(&build_file, self.verbose);
+        let target_names = self.qualified_names(targets)?;
+        ninja_runner.build(target_names.as_slice(), &env::current_dir()?)
+    }
+
+    pub fn build_current_project(&self) -> crate::Result<()> {
+        self.with_current_project(|project| {
+            match project.targets() {
+                Ok(targets) => {
+                    self.build_all(targets.iter().map(|target| target.tref().unwrap()).collect::<Vec<TargetRef>>().as_slice())
+                },
+                Err(err) => Err(err)
+            }
+        })
     }
 }
 

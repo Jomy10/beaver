@@ -22,6 +22,11 @@ impl<'a> NinjaBuilder<'a> {
 impl<'a> BackendBuilder<'a> for NinjaBuilder<'a> {
     fn add_rule(&mut self, rule: &'a Rule) {
         self.rules.insert(&rule.name, rule);
+
+        self.buffer.push_str(&format!("rule {}\n", rule.name));
+        for (name, val) in &rule.options {
+            self.buffer.push_str(&format!("    {} = {}\n", name, val));
+        }
     }
 
     fn get_rule(&self, name: &str) -> Option<&Rule> {
@@ -94,7 +99,7 @@ impl NinjaBuilderScope {
 
     fn write_options(&mut self, options: &[(&str, &str)]) -> crate::Result<()> {
         for opt in options {
-            self.write_fmt(format_args!("    {} = {}", opt.0, opt.1))?;
+            self.write_fmt(format_args!("    {} = {}\n", opt.0, opt.1))?;
         }
         return Ok(());
     }

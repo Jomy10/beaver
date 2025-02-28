@@ -8,3 +8,4 @@ macro_rules! moduse {
 
 pub mod any;
 pub mod str;
+moduse!(which);

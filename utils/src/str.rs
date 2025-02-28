@@ -1,10 +1,23 @@
 use std::ffi::{CString, NulError, OsStr};
+use std::fmt::Display;
 
+#[derive(Debug)]
 pub enum OsStrConversionError {
     NulError(NulError),
     /// The string is not valid UTF-8.
     /// Only thrown on Windows
     EncodingError
+}
+
+impl std::error::Error for OsStrConversionError {}
+
+impl Display for OsStrConversionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OsStrConversionError::NulError(err) => f.write_fmt(format_args!("NulError: {}", err)),
+            OsStrConversionError::EncodingError => f.write_str("OSString is not valid UTF-8"),
+        }
+    }
 }
 
 // see: https://stackoverflow.com/questions/54374381/how-can-i-convert-a-windows-osstring-to-a-cstring
