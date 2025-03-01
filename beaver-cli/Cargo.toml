@@ -1,6 +1,6 @@
 [package]
 name = "beaver-cli"
-version = "5.0.0"
+version = "4.0.0"
 edition.workspace = true
 authors.workspace = true
 
@@ -15,3 +15,5 @@ beaver-ruby = { path = "../beaver-ruby" }
 
 [build-dependencies]
 const-gen = { workspace = true }
+toml = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
