@@ -303,15 +303,9 @@ impl CTarget for Library {
         let mut flags: Vec<String> = dynlib_linker_flags_for_os(&triple.operating_system)?.iter().map(|s| s.to_string()).collect();
 
         flags.append(&mut self.linker_flags.clone());
-        // if let Some(additional_linker_flags) = traits::Library::additional_linker_flags(self) {
-        //     flags.extend(additional_linker_flags.iter().map(|str| str.to_owned()));
-        // }
 
         for dependency in dependencies {
-            let Some(mut depflags) = dependency.linker_flags(triple, context)? else {
-                continue;
-            };
-            flags.append(&mut depflags);
+            dependency.linker_flags(triple, context, &mut flags)?;
         }
 
         flags.extend(context.optimize_mode.linker_flags().iter().map(|str| str.to_string()));
@@ -402,10 +396,6 @@ impl traits::Library for Library {
             flags.push(format!("-I{}", header.display()));
         }
         return flags;
-    }
-
-    fn additional_linker_flags(&self) -> Option<&Vec<String>> {
-        Some(&self.linker_flags)
     }
 
     fn library_artifacts(&self) ->  &[LibraryArtifactType] {

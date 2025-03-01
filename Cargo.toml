@@ -28,7 +28,8 @@ unicode-segmentation = "1.12"
 regex = "1.11"
 lazy_static = "1.5"
 rayon = "1.10"
-rutie = { git = "https://github.com/danielpclark/rutie" }
+# rutie = { git = "https://github.com/danielpclark/rutie" }
+rutie = { path = "/tmp/rutie" }
 enum_dispatch = "0.3"
 const-gen = "1.6"
 pathdiff = "0.2"

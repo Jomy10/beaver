@@ -39,18 +39,14 @@ pub trait CTarget: traits::Target {
         dependencies: impl Iterator<Item = &'a Dependency>,
         context: &Beaver
     ) -> crate::Result<Vec<String>> {
-        let mut cflags: Vec<String> = Vec::from(&["-c".to_string()]);
+        let mut cflags: Vec<String> = context.optimize_mode.cflags().iter().map(|s| *s).map(String::from).collect();
         cflags.extend(self.user_cflags().map(|string| string.clone()));
         cflags.extend(self.all_headers(project_base_dir).map(|path| format!("-I{}", path.display())));
 
         for dependency in dependencies {
-            let Some(mut flags) = dependency.public_cflags(context)? else {
-                continue;
-            };
-            cflags.append(&mut flags);
+            dbg!(dependency);
+            dependency.public_cflags(context, &mut cflags)?;
         }
-
-        cflags.extend(context.optimize_mode.cflags().iter().map(|str| str.to_string()));
 
         return Ok(cflags);
     }

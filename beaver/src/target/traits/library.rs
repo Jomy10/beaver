@@ -26,7 +26,7 @@ pub trait Library: Target {
 
     fn library_artifacts(&self) -> &[LibraryArtifactType];
 
-    fn additional_linker_flags(&self) -> Option<&Vec<String>>;
+    // fn additional_linker_flags(&self) -> Option<&Vec<String>>;
 
     fn public_cflags(&self, project_base_dir: &Path) -> Vec<String>;
 

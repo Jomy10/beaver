@@ -225,6 +225,7 @@ impl Beaver {
         let mut file = fs::File::options()
             .write(true)
             .create(true)
+            .truncate(true)
             .open(output_file)
             .map_err(|err| BeaverError::BuildFileWriteError(err))?;
         file.write(output.as_bytes())

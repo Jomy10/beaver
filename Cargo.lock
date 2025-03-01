@@ -746,7 +746,6 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 [[package]]
 name = "rutie"
 version = "0.10.0"
-source = "git+https://github.com/danielpclark/rutie#0079a50b23b5c0ee18b83317102d1b8e6b5e9443"
 dependencies = [
  "libc",
  "rb-sys",

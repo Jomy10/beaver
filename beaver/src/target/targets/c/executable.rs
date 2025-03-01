@@ -209,10 +209,7 @@ impl CTarget for Executable {
         let mut flags: Vec<String> = self.linker_flags.clone();
 
         for dependency in dependencies {
-            let Some(mut depflags) = dependency.linker_flags(triple, context)? else {
-                continue;
-            };
-            flags.append(&mut depflags);
+            dependency.linker_flags(triple, context, &mut flags)?;
         }
 
         flags.extend(context.optimize_mode.linker_flags().iter().map(|str| str.to_string()));
