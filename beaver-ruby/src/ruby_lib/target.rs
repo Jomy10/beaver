@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use beaver::target::parameters::{DefaultArgument, Files, Flags, Headers};
-use beaver::target::{c, Dependency, Language, LibraryArtifactType, LibraryTargetDependency, TArtifactType, Version};
-use beaver::traits::{AnyLibrary, AnyTarget, Library, Project};
+use beaver::target::{c, Dependency, ExecutableArtifactType, Language, LibraryArtifactType, LibraryTargetDependency, TArtifactType, Version};
+use beaver::traits::{AnyExecutable, AnyLibrary, AnyTarget, Library, Project};
 use beaver::{Beaver, BeaverError};
 use log::trace;
 use rutie::{class, methods, AnyException, Class, Fixnum, Module, Object, RString, Symbol};
@@ -363,6 +363,37 @@ methods!(
             Err(err) => raise!(Class::from_existing("RuntimeError"), &format!("{}", err))
         }
     }
+
+    fn def_c_executable(args: rutie::Hash) -> TargetAccessor {
+        let args = match args {
+            Ok(args) => args,
+            Err(err) => {
+                trace!("{:?}", err);
+                raise!(Class::from_existing("ArgumentError"), "`C::Executable` needs at least a `name` and `sources` argument");
+            }
+        };
+
+        let context = get_context();
+
+        let ctarget_desc: c::TargetDescriptor<ExecutableArtifactType> = c_target_parse_ruby_args(args, &context.context);
+
+        let exe = AnyExecutable::CExecutable(c::Executable::new_desc(ctarget_desc));
+
+        match context.context.with_current_project_mut(|project| {
+            match project.as_mutable() {
+                Some(project) => {
+                    let target_id = project.add_target(AnyTarget::Executable(exe))?;
+                    let mut target_accessor = Class::from_existing("TargetAccessor").allocate();
+                    target_accessor.instance_variable_set("@id", Fixnum::new(target_id as i64));
+                    Ok(unsafe { target_accessor.to() })
+                },
+                None => Err(BeaverError::ProjectNotMutable(project.name().to_string())),
+            }
+        }) {
+            Ok(acc) => acc,
+            Err(err) => raise!(Class::from_existing("RuntimeError"), &format!("{}", err))
+        }
+    }
 );
 
 pub fn load(c: &mut rutie::Class) -> crate::Result<()> {
@@ -372,6 +403,7 @@ pub fn load(c: &mut rutie::Class) -> crate::Result<()> {
 
     let mut c_mod = Module::new("C");
     c_mod.define_singleton_method("Library", def_c_library);
+    c_mod.define_singleton_method("Executable", def_c_executable);
 
     Ok(())
 }

@@ -31,4 +31,5 @@ rayon = "1.10"
 rutie = { git = "https://github.com/danielpclark/rutie" }
 enum_dispatch = "0.3"
 const-gen = "1.6"
+pathdiff = "0.2"
 # clap_mangen = "0.2"

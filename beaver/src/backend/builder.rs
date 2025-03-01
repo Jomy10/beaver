@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub trait BackendBuilder<'a>: Send + Sync + std::fmt::Debug {
     fn add_rule(&mut self, rule: &'a Rule);
@@ -22,6 +22,7 @@ pub trait BackendBuilder<'a>: Send + Sync + std::fmt::Debug {
 pub trait BackendBuilderScope: std::fmt::Debug {
     fn add_step(&mut self, step: &BuildStep) -> crate::Result<()>;
 
+    fn format_path(&self, path: PathBuf) -> PathBuf;
     // fn as_any(&self) -> &dyn Any;
 }
 

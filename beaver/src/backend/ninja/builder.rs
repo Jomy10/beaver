@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 use std::fmt::Write;
+use std::path::{Path, PathBuf};
+
+use pathdiff::diff_paths;
 
 use crate::backend::{BackendBuilder, BackendBuilderScope, BuildStep, Rule};
 use crate::BeaverError;
@@ -7,14 +10,17 @@ use crate::BeaverError;
 #[derive(Debug)]
 pub struct NinjaBuilder<'a> {
     buffer: String,
-    rules: HashMap<&'a str, &'a Rule>
+    rules: HashMap<&'a str, &'a Rule>,
+    rel_path: PathBuf,
 }
 
 impl<'a> NinjaBuilder<'a> {
-    pub fn new() -> Self {
+    pub fn new(base_dir: &Path, build_dir: &Path) -> Self {
+        let rel_path = diff_paths(base_dir, build_dir);
         NinjaBuilder {
             buffer: String::new(),
-            rules: HashMap::new()
+            rules: HashMap::new(),
+            rel_path: rel_path.unwrap()
         }
     }
 }
@@ -40,7 +46,7 @@ impl<'a> BackendBuilder<'a> for NinjaBuilder<'a> {
     type Scope = NinjaBuilderScope;
 
     fn new_scope(&mut self) -> NinjaBuilderScope {
-        NinjaBuilderScope::new()
+        NinjaBuilderScope::new(self.rel_path.clone())
     }
 
     fn apply_scope(&mut self, scope: NinjaBuilderScope) {
@@ -56,12 +62,13 @@ impl<'a> BackendBuilder<'a> for NinjaBuilder<'a> {
 
 #[derive(Debug)]
 pub struct NinjaBuilderScope {
-    pub(self) buffer: String
+    pub(self) buffer: String,
+    rel_path: PathBuf,
 }
 
 impl NinjaBuilderScope {
-    fn new() -> Self {
-        NinjaBuilderScope { buffer: String::new() }
+    fn new(rel_path: PathBuf) -> Self {
+        NinjaBuilderScope { buffer: String::new(), rel_path }
     }
 }
 
@@ -117,13 +124,14 @@ impl BackendBuilderScope for NinjaBuilderScope {
             BuildStep::Build { rule, output, input, dependencies, options } => {
                 self.write_fmt(format_args!(
                     "build {}: {} {}",
-                    output.display(),
+                    self.rel_path.join(output).display(),
                     rule.name,
                     input.iter()
-                        .map(|f| f.to_str().expect("Path is not UTF-8 encoded"))
+                        .map(|f| self.rel_path.join(f))
+                        // .map(|f| f.to_str().expect("Path is not UTF-8 encoded"))
                         .fold(String::new(), |acc, path| {
                             let mut acc = acc;
-                            acc.push_str(path);
+                            acc.push_str(path.to_str().expect("Path is not UTF-8 encoded"));
                             acc.push(' ');
                             acc
                         })
@@ -137,7 +145,7 @@ impl BackendBuilderScope for NinjaBuilderScope {
         return Ok(());
     }
 
-    // fn as_any(&self) -> &dyn Any {
-    //     self
-    // }
+    fn format_path(&self, path: PathBuf) -> PathBuf {
+        self.rel_path.join(path)
+    }
 }

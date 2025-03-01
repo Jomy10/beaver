@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{self, Path};
 use enum_dispatch::enum_dispatch;
 use target_lexicon::Triple;
 
@@ -10,12 +10,13 @@ pub trait Library: Target {
         use LibraryArtifactType::*;
         match artifact {
             Dynlib => {
-                let outdir = self.artifact_output_dir(project_build_dir, target_triple);
+                // TODO: do we need path::canonicalize?
+                let outdir = path::absolute(self.artifact_output_dir(project_build_dir, target_triple))?;
                 Ok(vec![format!("-L{}", outdir.display()), format!("-l{}", self.name())])
             },
-            Staticlib => Ok(vec![self.artifact_file(project_build_dir, ArtifactType::Library(artifact), target_triple)?.to_str().unwrap().to_string()]),
+            Staticlib => Ok(vec![path::absolute(self.artifact_file(project_build_dir, ArtifactType::Library(artifact), target_triple)?)?.to_str().unwrap().to_string()]),
             Framework => {
-                let outdir = self.artifact_output_dir(project_build_dir, target_triple);
+                let outdir = path::absolute(self.artifact_output_dir(project_build_dir, target_triple))?;
                 Ok(vec![format!("-F{}", outdir.display()), "-framework".to_string(), self.name().to_string()])
             },
             XCFramework => todo!("XCFramework is unimplemented"),

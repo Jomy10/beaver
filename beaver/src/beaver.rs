@@ -193,7 +193,7 @@ impl Beaver {
         if !build_dir.exists() {
             fs::create_dir(build_dir.as_path())?;
         }
-        let ninja_builder: Arc<RwLock<NinjaBuilder>> = Arc::new(RwLock::new(NinjaBuilder::new()));
+        let ninja_builder: Arc<RwLock<NinjaBuilder>> = Arc::new(RwLock::new(NinjaBuilder::new(&env::current_dir()?, &build_dir)));
         let error: RwLock<Option<BeaverError>> = RwLock::new(None);
         let projects = self.projects()?;
         rayon::scope(|s| {
@@ -255,7 +255,8 @@ impl Beaver {
         let build_file = self.build_file()?;
         let ninja_runner = NinjaRunner::new(&build_file, self.verbose);
         let target_names = self.qualified_names(targets)?;
-        ninja_runner.build(target_names.as_slice(), &env::current_dir()?)
+        let build_dir = self.get_build_dir()?;
+        ninja_runner.build(target_names.as_slice(), &env::current_dir()?, &build_dir)
     }
 
     pub fn build_current_project(&self) -> crate::Result<()> {
