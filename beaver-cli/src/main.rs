@@ -1,6 +1,7 @@
 use std::ffi::OsString;
 use std::path::Path;
 
+use beaver::target::TargetRef;
 use beaver::{Beaver, OptimizationMode};
 use clap::{arg, Arg, ArgAction, ArgMatches, Command, ValueHint};
 use lazy_static::lazy_static;
@@ -89,9 +90,9 @@ When the argument is provided, but without a value, then the optimization mode i
             match ArgMatches::get_many::<String>(&matches, "targets") {
                 Some(targets) => {
                     assert!(targets.len() > 0);
-                    for target in targets {
-                        ctx.context.build(ctx.context.parse_target_ref(target).unwrap()).unwrap();
-                    }
+                    ctx.context.build_all(&targets.into_iter().map(|target_name| {
+                        ctx.context.parse_target_ref(target_name).unwrap()
+                    }).collect::<Vec<TargetRef>>()).unwrap();
                 },
                 None => {
                     ctx.context.build_current_project().unwrap();

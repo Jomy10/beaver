@@ -379,7 +379,8 @@ impl CTarget for Library {
                 let artifact_step = format!("{}$:{}$:{}", project_name, &self.name, artifact);
                 builder.add_step(&BuildStep::Phony {
                     name: &artifact_step,
-                    args: &[&artifact_file.to_str().unwrap()],
+                    args: &[Scope::format_path(builder, artifact_file).to_str().unwrap()],
+                    // args: &[&artifact_file.to_str().unwrap()],
                     dependencies: dependency_steps
                 })?;
 

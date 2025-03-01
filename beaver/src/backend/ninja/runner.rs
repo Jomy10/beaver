@@ -16,8 +16,12 @@ impl<'a> NinjaRunner<'a> {
         }
     }
 
-    pub fn build<S: AsRef<str>>(&self, targets: &[S], base_dir: &Path) -> crate::Result<()> {
-        let mut args = vec!["-f", self.build_file.to_str().expect("build file path is not UTF-8 encoded")];
+    pub fn build<S: AsRef<str>>(&self, targets: &[S], base_dir: &Path, build_dir: &Path) -> crate::Result<()> {
+        let mut args = vec![
+            "-C", build_dir.to_str().expect("build dir path is not UTF-8 encoded"),
+            "-f", self.build_file.strip_prefix(build_dir).expect("Couldn't strip build path prefix")
+                .to_str().expect("build file path is not UTF-8 encoded")
+        ];
         args.extend(targets.iter().map(|s| s.as_ref()));
         if self.verbose {
             args.push("-v");
