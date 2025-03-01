@@ -15,6 +15,7 @@ lazy_static = { workspace = true }
 rayon = { workspace = true }
 enum_dispatch = { workspace = true }
 pathdiff = { workspace = true }
+shlex = { workspace = true }
 utils = { path = "../utils" }
 glob = { path = "../glob" }
 beaver-macros = { path = "../beaver-macros" }

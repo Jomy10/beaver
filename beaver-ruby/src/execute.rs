@@ -1,7 +1,6 @@
 use core::ffi;
 use std::ffi::CString;
 use std::io::Read;
-use std::str::FromStr;
 use std::{fs, mem};
 use std::path::Path;
 
@@ -48,19 +47,18 @@ pub fn execute(context: beaver::Beaver, script_file: &Path) -> crate::Result<Box
     let script_name: CString = script_file.file_name()
         .map(|osstr| {
             osstr_to_cstr(osstr)
-                .unwrap_or(CString::from_str("beaver").expect("valid utf-8"))
+                .unwrap_or(CString::new("beaver").expect("string `beaver` contains nil"))
         })
-        .unwrap_or(CString::from_str("beaver").expect("valid utf-8"));
+        .unwrap_or(CString::new("beaver").expect("string `beaver` contains nil"));
     unsafe { ruby_script(script_name.as_ptr()) };
 
 
     let mut context = Box::new(RubyContext {
         status: 0,
-        context: context,
+        context,
     });
 
-    // The context will live as long as the VM is alive, because it is inside of `RubyContext`,
-    // which will exit the VM on drop
+    // this pointer needs to live as long as the VM
     let context_ptr = Box::as_mut_ptr(&mut context);
     let context_ptr_int: isize = unsafe { mem::transmute(context_ptr) };
 
@@ -70,6 +68,7 @@ pub fn execute(context: beaver::Beaver, script_file: &Path) -> crate::Result<Box
     ruby_lib::project::load(&mut c_class)?;
     ruby_lib::target::load(&mut c_class)?;
     ruby_lib::global::load(&mut c_class)?;
+    ruby_lib::dependency::load(&mut c_class)?;
 
     // Read & execute file
     let mut script_file_p = fs::File::open(script_file).map_err(|err| BeaverRubyError::ScriptFileOpenError(err))?;

@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
 use beaver::target::parameters::{DefaultArgument, Files, Flags, Headers};
-use beaver::target::{c, Dependency, ExecutableArtifactType, Language, LibraryArtifactType, LibraryTargetDependency, TArtifactType, Version};
+use beaver::target::{c, Dependency, ExecutableArtifactType, Language, LibraryArtifactType, LibraryTargetDependency, PkgconfigFlagOption, PkgconfigOption, TArtifactType, Version};
 use beaver::traits::{AnyExecutable, AnyLibrary, AnyTarget, Library, Project};
 use beaver::{Beaver, BeaverError};
-use log::trace;
-use rutie::{class, methods, AnyException, Class, Fixnum, Module, Object, RString, Symbol};
+use log::{trace, warn};
+use rutie::{class, methods, AnyException, AnyObject, Class, Exception, Fixnum, Module, Object, RString, Symbol};
 
 use crate::{get_context, raise};
 use crate::rutie_ext::{RbValue, RutieArrayExt, RutieExceptionExt, RutieObjExt};
@@ -37,9 +37,53 @@ fn c_target_parse_headers_string_or_array(val: RbValue) -> Result<Option<Vec<Pat
     }
 }
 
-fn c_target_parse_library_dependency(dep: &str, context: &Beaver) -> Result<Dependency, AnyException> {
+/// Parse a single dependency element
+fn c_target_parse_dependency(obj: AnyObject, context: &Beaver) -> Result<Dependency, AnyException> {
+    match obj.vty() {
+        RbValue::RString(str) => c_target_parse_library_dependency_from_str(str.to_str(), None, context).map(|d| Dependency::Library(d)),
+        RbValue::Symbol(sym) => c_target_parse_library_dependency_from_str(sym.to_str(), None, context).map(|d| Dependency::Library(d)),
+        RbValue::Object(obj) => {
+            let str = obj.instance_variable_get("@string")
+                .try_convert_to::<RString>()
+                .expect("@string property of Dependency should be a string!");
+            let str = str.to_str();
+            let ty = obj.instance_variable_get("@type").try_convert_to::<Symbol>().expect("@type property of Dependency should be symbol!");
+            let ty = ty.to_str();
+            match ty {
+                "static" => c_target_parse_library_dependency_from_str(str, Some(LibraryArtifactType::Staticlib), context).map(|d| Dependency::Library(d)),
+                "dynamic" => c_target_parse_library_dependency_from_str(str, Some(LibraryArtifactType::Dynlib), context).map(|d| Dependency::Library(d)),
+                "system" => Ok(Dependency::Flags { cflags: None, linker_flags: Some(vec![format!("-l{}", str.to_string())]) }),
+                "pkgconfig" => {
+                    let version_req = obj.instance_variable_get("@version_req");
+                    let version_req: Option<String> = if version_req.is_nil() { None } else { Some(version_req.try_convert_to::<RString>().expect("should be a string").to_string()) };
+                    let options: rutie::Array = obj.instance_variable_get("@options").try_convert_to().expect("should be an array");
+                    let options = options.into_iter().fold((Vec::<PkgconfigOption>::new(), Vec::<PkgconfigFlagOption>::new()), |acc, obj| {
+                        let mut acc = acc;
+                        let sym = obj.try_convert_to::<Symbol>().expect("should be a symbol");
+                        match sym.to_str() {
+                            "static" => acc.1.push(PkgconfigFlagOption::PreferStatic),
+                            "with_path" => todo!(),
+                            _ => warn!("Unrecognised option {:?}", sym)
+                        }
+                        acc
+                    });
+                    Dependency::pkgconfig(
+                        str,
+                        version_req.as_deref(),
+                        &options.0,
+                        &options.1
+                    ).map_err(|err| AnyException::new("RuntimeError", Some(&format!("{}", err))))
+                },
+                _ => Err(AnyException::new("RuntimeError", Some(&format!("invalid dependency type {}", ty))))
+            }
+        },
+        _ => Err(AnyException::argerr(&format!("Invalid dependency object: {:?}", obj.vty())))
+    }
+}
+
+fn c_target_parse_library_dependency_from_str(dep: &str, artifact: Option<LibraryArtifactType>, context: &Beaver) -> Result<LibraryTargetDependency, AnyException> {
     context.parse_target_ref(dep).map(|target_ref| {
-        match context.with_project_and_target(&target_ref, |_, target| {
+        match artifact.map(|v| Ok(v)).unwrap_or(context.with_project_and_target(&target_ref, |_, target| {
             if let AnyTarget::Library(target) = target {
                 match target.default_library_artifact() {
                     Some(artifact) => Ok(artifact),
@@ -48,11 +92,11 @@ fn c_target_parse_library_dependency(dep: &str, context: &Beaver) -> Result<Depe
             } else {
                 Err(BeaverError::AnyError(format!("Dependency {} should be a library, not an executable", dep)))
             }
-        }) {
-            Ok(artifact) => Ok(Dependency::Library(LibraryTargetDependency {
+        })) {
+            Ok(artifact) => Ok(LibraryTargetDependency {
                 target: target_ref,
                 artifact,
-            })),
+            }),
             Err(err) => Err(err)
         }
     }).map_err(|err| AnyException::argerr(&err.to_string()))?
@@ -197,7 +241,10 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: rutie::Hash, cont
                     _ => raise!(AnyException::argerr("Argument `cflags` should be an array, string or hash"))
                 });
             },
-            "headers" => {
+            "headers" | "include" => {
+                if headers.is_some() {
+                    raise!(AnyException::argerr("both keys `headers` and `include` are specified"));
+                }
                 let vty = val.vty();
                 headers = Some(match vty {
                     RbValue::RString(_) | RbValue::Array(_) => match c_target_parse_headers_string_or_array(vty) {
@@ -282,20 +329,18 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: rutie::Hash, cont
             "dependencies" => {
                 dependencies = Some(match val.vty() {
                     RbValue::Nil => Vec::new(),
-                    RbValue::RString(str) => match c_target_parse_library_dependency(str.to_str(), context) {
+                    RbValue::Symbol(_) | RbValue::RString(_) | RbValue::Class(_) => match c_target_parse_dependency(val, context) {
                         Ok(dep) => vec![dep],
                         Err(err) => raise!(err)
                     },
                     RbValue::Array(arr) => {
                         match arr.into_iter().map(|obj| {
-                            obj.try_convert_to::<RString>().map(|str| {
-                                c_target_parse_library_dependency(str.to_str(), context)
-                            })?
+                            c_target_parse_dependency(obj, context)
                         }).collect::<Result<Vec<Dependency>, AnyException>>() {
                             Ok(val) => val,
                             Err(err) => raise!(err)
                         }
-                    }
+                    },
                     _ => raise!(AnyException::argerr("Argument `dependencies` should be an array or a string"))
                 });
             },

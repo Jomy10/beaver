@@ -80,16 +80,19 @@ pub trait Target: Send + Sync + std::fmt::Debug {
 
     fn collect_unique_dependencies<'a>(&'a self, into_set: Rc<RefCell<HashSet<Dependency>>>, context: &Beaver) -> crate::Result<()> {
         for dep in self.dependencies().iter() {
+            // insert dep
             let mut set = into_set.borrow_mut();
             if set.contains(dep) { continue }
-            set.insert(*dep);
+            set.insert(dep.clone());
             drop(set);
+            // collect dep's dependencies
             match dep {
                 Dependency::Library(target_dep) => {
                     context.with_project_and_target(&target_dep.target, |_, target| {
                        target.collect_unique_dependencies(into_set.clone(), context)
                     })?;
-                }
+                },
+                Dependency::Flags { cflags: _, linker_flags: _ } => {}
             }
         }
 

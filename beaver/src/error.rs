@@ -4,7 +4,7 @@ use std::process::ExitStatus;
 
 use target_lexicon::OperatingSystem;
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error)]
 pub enum BeaverError {
     // Set Build Dir //
     #[error("Can't set the build directory when a project is alreadt defined")]
@@ -53,6 +53,12 @@ pub enum BeaverError {
     NoTargetNamed(String, String),
     #[error("No project named {0}")]
     NoProjectNamed(String),
+    #[error("Library `{0}` not found with pkgconfig")]
+    PkgconfigNotFound(String),
+    #[error("Malformed arguments received from pkgconfig: {0}")]
+    PkgconfigMalformed(String),
+    #[error("Malformed version requirement for pkgconfig dependency. Valid requirements are for example `>=1.3.4`, `=1.3`, `<=5`")]
+    PkgconfigMalformedVersionRequirement(String),
 
     // General Errors //
     #[error("There are no projects defined")]
@@ -90,3 +96,10 @@ pub enum BeaverError {
 }
 
 pub type Result<Success> = std::result::Result<Success, BeaverError>;
+
+impl std::fmt::Debug for BeaverError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Automatically get propper error messages from main function returning a result
+        std::fmt::Display::fmt(self, f)
+    }
+}

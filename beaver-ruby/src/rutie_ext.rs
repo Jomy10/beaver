@@ -33,6 +33,35 @@ pub(crate) enum RbValue {
     Mask(AnyObject),
 }
 
+impl std::fmt::Debug for RbValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use RbValue::*;
+
+        match self {
+            None => f.write_str("None"),
+            Class(class) => class.fmt(f),
+            Module(m) => m.fmt(f),
+            Float(fl) => f.write_fmt(format_args!("{}", fl.to_f64())),
+            RString(str) => f.write_fmt(format_args!("\"{}\"", str.to_str())),
+            Regexp(regex) => f.write_str(unsafe { regex.inspect().to_str() }),
+            Array(arr) => f.write_str(unsafe { AnyObject::to::<rutie::RString>(&arr.send("inpsect", &[])).to_str() }),
+            Hash(hash) => f.write_str(unsafe { AnyObject::to::<rutie::RString>(&hash.send("inpsect", &[])).to_str() }),
+            Object(obj) | Struct(obj) | Bignum(obj) | File(obj) | Data(obj) | Match(obj) | Complex(obj) | Rational(obj)
+                => f.write_str(unsafe { AnyObject::to::<rutie::RString>(&obj.send("inspect", &[])).to_str() }),
+            Nil => f.write_str("nil"),
+            Bool(b) => f.write_fmt(format_args!("{}", b)),
+            Symbol(sym) => f.write_fmt(format_args!(":{}", sym.to_str())),
+            Fixnum(n) => f.write_fmt(format_args!("{}", n.to_i64())),
+            Undef(obj) => f.write_fmt(format_args!("Undef({:?})", obj)),
+            IMemo(obj) => f.write_fmt(format_args!("IMemo({:?})", obj)),
+            Node(obj) => f.write_fmt(format_args!("Node({:?})", obj)),
+            IClass(obj) => f.write_fmt(format_args!("IClass({:?})", obj)),
+            Zombie(obj) => f.write_fmt(format_args!("Zombie({:?})", obj)),
+            Mask(obj) => f.write_fmt(format_args!("Mask({:?})", obj)),
+        }
+    }
+}
+
 pub(crate) trait RutieObjExt: rutie::Object {
     fn vty(&self) -> RbValue {
         use ValueType::*;
@@ -65,6 +94,10 @@ pub(crate) trait RutieObjExt: rutie::Object {
             Zombie => RbValue::Zombie(self.to_any_object()),
             Mask => RbValue::Mask(self.to_any_object()),
         }
+    }
+
+    unsafe fn inspect(&self) -> RString {
+        AnyObject::to::<RString>(&self.send("inspect", &[]))
     }
 }
 
