@@ -13,6 +13,7 @@ use crate::Beaver;
 
 use super::{AnyExecutable, AnyLibrary};
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum TargetType {
     Library,
     Executable,

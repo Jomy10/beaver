@@ -5,7 +5,8 @@ use target_lexicon::Triple;
 
 use crate::backend::BackendBuilder;
 use crate::target::traits::Target;
-use crate::traits::{AnyTarget, MutableProject};
+use crate::target::TargetRef;
+use crate::traits::{AnyExecutable, AnyTarget, MutableProject};
 use crate::Beaver;
 use crate::{error::BeaverError, project};
 
@@ -75,6 +76,25 @@ impl project::traits::Project for Project {
 
     fn update_build_dir(&mut self, new_dir: &Path) {
         self.build_dir = new_dir.join(&self.name);
+    }
+
+    fn default_executable(&self) -> crate::Result<TargetRef> {
+        let targets = self.targets()?;
+        let executables = targets.iter().filter_map(|target| {
+            match target {
+                AnyTarget::Library(_) => None,
+                AnyTarget::Executable(exe) => Some(exe),
+            }
+        }).collect::<Vec<&AnyExecutable>>();
+
+        match executables.len() {
+            0 => Err(BeaverError::NoExecutable(self.name.to_string())),
+            1 => Ok(executables[0].tref().unwrap()),
+            2.. => Err(BeaverError::ManyExecutable {
+                project: self.name.to_string(),
+                targets: executables.into_iter().map(|exe| exe.name().to_string()).collect::<Vec<String>>()
+            })
+        }
     }
 
     fn targets<'a>(&'a self) -> crate::Result<std::sync::RwLockReadGuard<'a, Vec<AnyTarget>>> {

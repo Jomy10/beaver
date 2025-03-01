@@ -1,16 +1,10 @@
 build_dir "build"
 
+# Define a new project
 Project(name: "MyProject")
 
-C::Library(
-  name: "MyMathLibrary",
-  sources: "math/**/*.c",
-  headers: "math",
-  artifacts: [:staticlib, :dynlib]
-)
-
+# Add an executable to the project
 C::Executable(
-  name: "MyExecutable",
-  sources: "src/**/*.c",
-  dependencies: ["MyMathLibrary"]
+  name: "HelloWorld",
+  sources: "src/main.c"
 )

@@ -52,7 +52,8 @@ When the argument is provided, but without a value, then the optimization mode i
             .about("Clean the project"))
         .subcommand(Command::new("run")
             .about("Build and run an executable target")
-            .arg(arg!(<target> "The target to run. Format: [project:]target")))
+            .arg(arg!([target] "The target to run. Format: [project:]target"))
+            .arg(arg!([args]... "Arguments to pass to the executable").trailing_var_arg(true)))
         .get_matches();
 
     let flag_color = matches.get_flag("color");
@@ -85,7 +86,7 @@ When the argument is provided, but without a value, then the optimization mode i
                 Ok(ctx) => ctx,
             };
 
-            ctx.context.create_build_file().unwrap();
+            // ctx.context.create_build_file().unwrap();
 
             match ArgMatches::get_many::<String>(&matches, "targets") {
                 Some(targets) => {
@@ -111,8 +112,29 @@ When the argument is provided, but without a value, then the optimization mode i
             unimplemented!("clean")
         },
         Some(("run", matches)) => {
-            let target_name: &String = matches.get_one("target").unwrap();
-            unimplemented!("run {target_name}")
+            let beaver = Beaver::new(color, opt);
+            let ctx = match beaver_ruby::execute(beaver, script_file) {
+                Err(err) => panic!("{}", err),
+                Ok(ctx) => ctx,
+            };
+
+            let target_name: Option<&String> = matches.get_one("target");
+            let args = ArgMatches::get_many::<String>(&matches, "args");
+            match target_name {
+                Some(target_name) => {
+                    let target = ctx.context.parse_target_ref(target_name).unwrap();
+                    if let Some(args) = args {
+                        ctx.context.run(target, args).unwrap()
+                    } else {
+                        ctx.context.run(target, [OsString::new();0].iter()).unwrap()
+                    }
+                },
+                None => if let Some(args) = args {
+                    ctx.context.run_default(args).unwrap()
+                } else {
+                    ctx.context.run_default([OsString::new();0].iter()).unwrap()
+                }
+            }
         }
         Some((subcommand_name, _)) => {
             unreachable!("Invalid subcommand {subcommand_name}")

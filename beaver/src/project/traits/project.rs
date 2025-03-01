@@ -5,6 +5,7 @@ use target_lexicon::Triple;
 
 use crate::backend::BackendBuilder;
 use crate::target::traits::AnyTarget;
+use crate::target::TargetRef;
 use crate::Beaver;
 
 #[enum_dispatch]
@@ -17,6 +18,7 @@ pub trait Project: Send + Sync + std::fmt::Debug {
     fn update_build_dir(&mut self, new_base_build_dir: &Path);
     fn targets<'a>(&'a self) -> crate::Result<RwLockReadGuard<'a, Vec<AnyTarget>>>;
     fn find_target(&self, name: &str) -> crate::Result<Option<usize>>;
+    fn default_executable(&self) -> crate::Result<TargetRef>;
 
     fn register<Builder: BackendBuilder<'static>>(&self,
         scope: &rayon::Scope,
