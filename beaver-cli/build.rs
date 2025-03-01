@@ -21,7 +21,7 @@ impl std::fmt::Display for RubyVersion {
     }
 }
 
-const VERSION: &'static str = "v4.0.0";
+// const VERSION: &'static str = "v4.0.0";
 
 fn run_ruby(s: &str) -> String {
     let out = Command::new("ruby")
@@ -34,6 +34,16 @@ fn run_ruby(s: &str) -> String {
         panic!("Error: {}", String::from_utf8(out.stderr).unwrap_or("no stderr".to_string()));
     }
     return String::from_utf8(out.stdout).expect("Output is not valid utf8");
+}
+
+#[derive(serde::Deserialize)]
+struct CargoToml {
+    package: Package
+}
+
+#[derive(serde::Deserialize)]
+struct Package {
+    version: String
 }
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -52,12 +62,16 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let ruby_version = RubyVersion { major, minor, teeny, patch };
 
+    let cargo_toml = std::fs::read_to_string("Cargo.toml")?;
+    let parsed_toml: CargoToml = toml::from_str(cargo_toml.as_str())?;
+    let version = parsed_toml.package.version;
+
     // long version shows both Beaver version and Ruby version and any other dynamic dependency versions
-    let long_version = format!("{}\n{}", VERSION, ruby_version);
+    let long_version = format!("v{}\n{}", version, ruby_version);
     let const_declartations = vec![
         const_definition!(#[derive(Debug)] #[allow(unused)] pub RubyVersion),
         const_declaration!(pub RUBY_VERSION = ruby_version),
-        const_declaration!(pub VERSION = VERSION),
+        const_declaration!(pub VERSION = version),
         const_declaration!(pub LONG_VERSION = long_version),
     ].join("\n");
 
