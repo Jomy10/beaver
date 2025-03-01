@@ -46,12 +46,11 @@ pub trait Target: Send + Sync + std::fmt::Debug {
     }
 
     fn artifacts(&self) -> Vec<ArtifactType>;
-    fn dependencies(&self) -> &Vec<Dependency>;
+    fn dependencies(&self) -> &[Dependency];
 
     fn r#type(&self) -> TargetType;
 
     /// Default artifact to link against
-    fn default_artifact(&self) -> Option<ArtifactType>;
     fn artifact_output_dir(&self, project_build_dir: &Path, triple: &Triple) -> PathBuf;
     fn artifact_file(&self, project_build_dir: &Path, artifact: ArtifactType, triple: &Triple) -> crate::Result<PathBuf>;
 
@@ -69,6 +68,7 @@ pub trait Target: Send + Sync + std::fmt::Debug {
         return Ok(set.into_iter());
     }
 
+    /// Collect dependencies recursively into a set
     fn unique_dependencies_set(&self, context: &Beaver) -> crate::Result<HashSet<Dependency>> {
         let set = Rc::new(RefCell::new(HashSet::<Dependency>::new()));
         self.collect_unique_dependencies(set.clone(), context)?;

@@ -9,3 +9,7 @@
 0	51	1740769312110706136	build/MyProject/math/math.c.dyn.o	60650a9c9ce67cf6
 0	52	1740769965358143812	build/MyProject/artifacts/libMyMathLibrary.a	b6efe32b4b924a7
 1	55	1740769965358377853	build/MyProject/artifacts/libMyMathLibrary.dylib	c0eb3a0d3e49fc86
+0	109	1740819670128007980	build/MyProject/objects/math/math.c.o	7f8d893495aa192d
+0	113	1740819670128360312	build/MyProject/objects/math/math.c.dyn.o	8b1fa160ff113236
+110	127	1740819670237402137	build/MyProject/artifacts/libMyMathLibrary.a	45a4ca32f80d7875
+113	155	1740819670240818633	build/MyProject/artifacts/libMyMathLibrary.dylib	9b3f5bfa107f0014

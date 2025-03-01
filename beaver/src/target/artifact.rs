@@ -82,6 +82,15 @@ impl TArtifactType for ExecutableArtifactType {
     }
 }
 
+impl std::fmt::Display for ExecutableArtifactType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ExecutableArtifactType::Executable => f.write_str("exe"),
+            ExecutableArtifactType::App => f.write_str("app"),
+        }
+    }
+}
+
 #[derive(Eq, PartialEq, Hash, Clone, Copy, Debug)]
 pub enum CObjectType {
     Dynamic,
