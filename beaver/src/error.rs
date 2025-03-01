@@ -59,6 +59,14 @@ pub enum BeaverError {
     NoProjects,
     #[error("Project `{0}` is not mutable")]
     ProjectNotMutable(String),
+    #[error("More than one executable is present in project {project}. Specify the target to run (targets in this project are {})", targets.join(" "))]
+    ManyExecutable {
+        project: String,
+        targets: Vec<String>
+    },
+    #[error("No executable target found in project {0}")]
+    NoExecutable(String),
+
     #[error("Failed to lock: {0}")]
     LockError(String),
     #[error("IO Error: {0}")]

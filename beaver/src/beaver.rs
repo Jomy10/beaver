@@ -1,7 +1,9 @@
+use std::ffi::OsStr;
+use std::process::Command;
 use std::{env, fs};
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{Arc, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::sync::atomic::{AtomicIsize, Ordering};
 
 use console::style;
@@ -14,7 +16,7 @@ use crate::OptimizationMode;
 use crate::error::BeaverError;
 use crate::project::traits::Project;
 use crate::target::traits::{AnyTarget, Target};
-use crate::target::TargetRef;
+use crate::target::{ArtifactType, ExecutableArtifactType, TargetRef};
 
 /// All methods of this struct are immutable because this struct ensures all calls to its
 /// methods are thread safe
@@ -26,7 +28,9 @@ pub struct Beaver {
     build_dir: RwLock<PathBuf>,
     enable_color: bool,
     target_triple: Triple,
-    verbose: bool
+    verbose: bool,
+    /// Create the build file once and store the result of the operation in this cell
+    build_file_create_result: OnceLock<crate::Result<()>>
 }
 
 impl Beaver {
@@ -38,7 +42,8 @@ impl Beaver {
             build_dir: RwLock::new(std::env::current_dir().unwrap().join("build")),
             enable_color: enable_color.unwrap_or(true), // TODO: derive from isatty or set instance var to optional
             target_triple: Triple::host(),
-            verbose: false
+            verbose: false,
+            build_file_create_result: OnceLock::new()
         }
     }
 
@@ -252,6 +257,12 @@ impl Beaver {
     }
 
     pub fn build_all(&self, targets: &[TargetRef]) -> crate::Result<()> {
+        if let Err(err) = self.build_file_create_result.get_or_init(|| {
+            self.create_build_file()
+        }) {
+            return Err(BeaverError::AnyError(err.to_string()));
+        }
+
         let build_file = self.build_file()?;
         let ninja_runner = NinjaRunner::new(&build_file, self.verbose);
         let target_names = self.qualified_names(targets)?;
@@ -268,6 +279,35 @@ impl Beaver {
                 Err(err) => Err(err)
             }
         })
+    }
+
+    pub fn run<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(&self, target: TargetRef, args: I) -> crate::Result<()> {
+        if self.target_triple != Triple::host() {
+            panic!("Running targets in a triple that is not the current host is currently unsupported");
+        }
+        self.build(target)?;
+        let artifact_file = self.with_project_and_target(&target, |project, target| {
+            target.artifact_file(project.build_dir(), ArtifactType::Executable(ExecutableArtifactType::Executable), &self.target_triple)
+        })?;
+
+        let mut process = Command::new(artifact_file.as_path())
+            .args(args)
+            .current_dir(env::current_dir()?)
+            .spawn()?;
+
+        let exit_status = process.wait()?;
+        if !exit_status.success() {
+            return Err(BeaverError::NonZeroExitStatus(exit_status));
+        } else {
+            return Ok(());
+        }
+    }
+
+    pub fn run_default<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(&self, args: I) -> crate::Result<()> {
+        let exe = self.with_current_project(|project| {
+            project.default_executable()
+        })?;
+        self.run(exe, args)
     }
 }
 
