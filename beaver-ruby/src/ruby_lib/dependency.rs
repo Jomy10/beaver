@@ -51,6 +51,15 @@ methods!(
     rutie::Class,
     rtself,
 
+    fn static_fn(obj: rutie::AnyObject) -> DependencyRef {
+        let obj = match obj {
+            Ok(obj) => obj,
+            Err(err) => raise!(err),
+        };
+
+        create_dependency(obj, "static", None)
+    }
+
     fn dynamic(obj: rutie::AnyObject) -> DependencyRef {
         let obj = match obj {
             Ok(obj) => obj,
@@ -127,6 +136,7 @@ pub fn load(c: &mut rutie::Class) -> crate::Result<()> {
     let mut dependency_ref_klass = Class::new("Dependency", None);
     _ = &mut dependency_ref_klass;
 
+    c.define_method("static", static_fn);
     c.define_method("dynamic", dynamic);
     c.define_method("pkgconfig", pkgconfig);
     c.define_method("pkgconf", pkgconfig);
