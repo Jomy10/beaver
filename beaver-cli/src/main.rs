@@ -2,7 +2,7 @@ use std::ffi::OsString;
 use std::path::Path;
 
 use beaver::target::TargetRef;
-use beaver::{Beaver, OptimizationMode};
+use beaver::{Beaver, BeaverError, OptimizationMode};
 use clap::{arg, Arg, ArgAction, ArgMatches, Command, ValueHint};
 use lazy_static::lazy_static;
 use log::warn;
@@ -14,7 +14,25 @@ lazy_static! {
     static ref release_opt_mode: OsString = Into::<OsString>::into(OptimizationMode::Release);
 }
 
-fn main() {
+struct MainError {
+    inner: Box<dyn std::error::Error + 'static>
+}
+
+impl<E: std::error::Error + 'static> From<E> for MainError {
+    fn from(value: E) -> Self {
+        Self { inner: Box::new(value) }
+    }
+}
+
+impl std::fmt::Debug for MainError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("\x1b[1;31m")?;
+        std::fmt::Display::fmt(self.inner.as_ref(), f)?;
+        f.write_str("\x1b[0m")
+    }
+}
+
+fn main() -> Result<(), MainError> {
     let mut clog = colog::default_builder();
     clog.filter(None, log::LevelFilter::Trace);
     clog.init();
@@ -60,8 +78,11 @@ When the argument is provided, but without a value, then the optimization mode i
     let flag_no_color = matches.get_flag("no-color");
     if flag_color == true && flag_no_color == true { warn!("Both --color and --no-color are specified. --color will get priority") };
     let color = if flag_color == false && flag_no_color == false { None } else { Some(flag_color || !flag_no_color) };
+    if let Some(color) = color {
+        console::set_colors_enabled(color);
+    }
 
-    let opt = OptimizationMode::try_from(matches.get_one::<String>("opt").unwrap().as_str()).unwrap();
+    let opt = OptimizationMode::try_from(matches.get_one::<String>("opt").unwrap().as_str())?;
 
     let filenames = ["beaver.rb", "Beaverfile", "build.rb", "make.rb"];
     let script_file = match matches.get_one::<String>("script-file") {
@@ -78,61 +99,45 @@ When the argument is provided, but without a value, then the optimization mode i
         }
     };
 
+    let beaver = Beaver::new(color, opt);
+    let ctx = beaver_ruby::execute(beaver, script_file)?;
+
     match matches.subcommand() {
         None => {
-            let beaver = Beaver::new(color, opt);
-            let ctx = match beaver_ruby::execute(beaver, script_file) {
-                Err(err) => panic!("{}", err),
-                Ok(ctx) => ctx,
-            };
-
-            // ctx.context.create_build_file().unwrap();
-
             match ArgMatches::get_many::<String>(&matches, "targets") {
                 Some(targets) => {
                     assert!(targets.len() > 0);
                     ctx.context.build_all(&targets.into_iter().map(|target_name| {
-                        ctx.context.parse_target_ref(target_name).unwrap()
-                    }).collect::<Vec<TargetRef>>()).unwrap();
+                        ctx.context.parse_target_ref(target_name)
+                    }).collect::<Result<Vec<TargetRef>, BeaverError>>()?)?;
                 },
                 None => {
-                    ctx.context.build_current_project().unwrap();
+                    ctx.context.build_current_project()?
                 }
             }
         },
         Some(("list", _)) => {
-            let beaver = Beaver::new(color, opt);
-            let rb_context = match beaver_ruby::execute(beaver, script_file) {
-                Err(err) => panic!("{}", err),
-                Ok(ctx) => ctx,
-            };
-            println!("{}", rb_context.context);
+            println!("{}", ctx.context);
         },
         Some(("clean", _)) => {
             unimplemented!("clean")
         },
         Some(("run", matches)) => {
-            let beaver = Beaver::new(color, opt);
-            let ctx = match beaver_ruby::execute(beaver, script_file) {
-                Err(err) => panic!("{}", err),
-                Ok(ctx) => ctx,
-            };
-
             let target_name: Option<&String> = matches.get_one("target");
             let args = ArgMatches::get_many::<String>(&matches, "args");
             match target_name {
                 Some(target_name) => {
-                    let target = ctx.context.parse_target_ref(target_name).unwrap();
+                    let target = ctx.context.parse_target_ref(target_name)?;
                     if let Some(args) = args {
-                        ctx.context.run(target, args).unwrap()
+                        ctx.context.run(target, args)?
                     } else {
-                        ctx.context.run(target, [OsString::new();0].iter()).unwrap()
+                        ctx.context.run(target, [OsString::new();0].iter())?
                     }
                 },
                 None => if let Some(args) = args {
                     ctx.context.run_default(args).unwrap()
                 } else {
-                    ctx.context.run_default([OsString::new();0].iter()).unwrap()
+                    ctx.context.run_default([OsString::new();0].iter())?
                 }
             }
         }
@@ -141,4 +146,5 @@ When the argument is provided, but without a value, then the optimization mode i
         }
     }
 
+    return Ok(());
 }
