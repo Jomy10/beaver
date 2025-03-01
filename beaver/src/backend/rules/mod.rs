@@ -5,22 +5,32 @@ use super::Rule;
 lazy_static! {
     pub static ref CC: Rule = {
         Rule {
-            name: "cc".to_string(),
+            name: "cc",
             options: vec![
-                ("description".to_string(), "cc $in > $out".to_string()),
-                ("command".to_string(), "cc $cflags -MD -MF $out.d -c $in -o $out".to_string()), // TODO!
-                ("deps".to_string(), "gcc".to_string()),
-                ("depfile".to_string(), "$out.d".to_string())
+                ("description", "cc $in > $out"),
+                ("command", "cc $cflags -MD -MF $out.d -c $in -o $out"), // TODO!
+                ("deps", "gcc"),
+                ("depfile", "$out.d")
             ]
         }
     };
 
     pub static ref LINK: Rule = {
         Rule {
-            name: "link".to_string(),
+            name: "link",
             options: vec![
-                ("description".to_string(), "linking $out".to_string()),
-                ("command".to_string(), "cc $linkerFlags $in -o $out".to_string()), // TODO!
+                ("description", "linking $out"),
+                ("command", "cc $linkerFlags $in -o $out"), // TODO!
+            ]
+        }
+    };
+
+    pub static ref AR: Rule = {
+        Rule {
+            name: "ar",
+            options: vec![
+                ("description", "creating $out"),
+                ("command", "ar -rc $out $in")
             ]
         }
     };

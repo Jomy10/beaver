@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use beaver::target::parameters::{DefaultArgument, Files, Flags, Headers};
 use beaver::target::{c, Dependency, Language, LibraryArtifactType, LibraryTargetDependency, TArtifactType, Version};
-use beaver::traits::{AnyLibrary, AnyTarget, Project, Target};
+use beaver::traits::{AnyLibrary, AnyTarget, Library, Project};
 use beaver::{Beaver, BeaverError};
 use log::trace;
 use rutie::{class, methods, AnyException, Class, Fixnum, Module, Object, RString, Symbol};
@@ -40,13 +40,20 @@ fn c_target_parse_headers_string_or_array(val: RbValue) -> Result<Option<Vec<Pat
 fn c_target_parse_library_dependency(dep: &str, context: &Beaver) -> Result<Dependency, AnyException> {
     context.parse_target_ref(dep).map(|target_ref| {
         match context.with_project_and_target(&target_ref, |_, target| {
-            Ok(target.default_artifact())
-        })? {
-            Some(artifact) => Ok(Dependency::Library(LibraryTargetDependency {
+            if let AnyTarget::Library(target) = target {
+                match target.default_library_artifact() {
+                    Some(artifact) => Ok(artifact),
+                    None => Err(BeaverError::AnyError(format!("Dependency {} has no artifacts to link against", dep))),
+                }
+            } else {
+                Err(BeaverError::AnyError(format!("Dependency {} should be a library, not an executable", dep)))
+            }
+        }) {
+            Ok(artifact) => Ok(Dependency::Library(LibraryTargetDependency {
                 target: target_ref,
-                artifact: artifact.as_library().unwrap(),
+                artifact,
             })),
-            None => Err(BeaverError::AnyError(format!("Library {} has no artifacts to link to", dep)))
+            Err(err) => Err(err)
         }
     }).map_err(|err| AnyException::argerr(&err.to_string()))?
         .map_err(|err| AnyException::argerr(&err.to_string()))

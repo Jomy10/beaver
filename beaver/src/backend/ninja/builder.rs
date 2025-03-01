@@ -37,14 +37,15 @@ impl<'a> BackendBuilder<'a> for NinjaBuilder<'a> {
         self.rules.contains_key(&name)
     }
 
-    fn new_scope(&mut self) -> Box<dyn BackendBuilderScope> {
-        Box::new(NinjaBuilderScope::new())
+    type Scope = NinjaBuilderScope;
+
+    fn new_scope(&mut self) -> NinjaBuilderScope {
+        NinjaBuilderScope::new()
     }
 
-    /// Unsafe because the scope is assumed to be a NinjaBuilderScope
-    unsafe fn apply_scope(&mut self, scope: Box<dyn BackendBuilderScope>) {
-        let scope = Box::into_raw(scope);
-        let scope = Box::from_raw(scope as *mut NinjaBuilderScope);
+    fn apply_scope(&mut self, scope: NinjaBuilderScope) {
+        // let scope = Box::into_raw(scope);
+        // let scope = Box::from_raw(scope as *mut NinjaBuilderScope);
         self.buffer.push_str(&scope.buffer);
     }
 

@@ -63,6 +63,18 @@ pub fn staticlib_extension_for_os(os: &OperatingSystem) -> crate::Result<&'stati
         WasiP1 |
         WasiP2 => Ok("wasm"),
 
-        _ => Ok("a")
+        _ => Ok("a") // TODO: check
+    }
+}
+
+pub fn executable_extension_for_os(os: &OperatingSystem) -> crate::Result<Option<&'static str>> {
+    match os {
+        Windows => Ok(Some("exe")),
+        Emscripten |
+        Nebulet	|
+        Wasi |
+        WasiP1 |
+        WasiP2 => Ok(Some("wasm")),
+        _ => Ok(None), // TODO: check
     }
 }

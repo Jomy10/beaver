@@ -23,17 +23,21 @@ pub trait Library: Target {
         }
     }
 
-    fn additional_linker_flags(&self) -> Option<&Vec<String>> {
-        None
-    }
+    fn library_artifacts(&self) -> &[LibraryArtifactType];
+
+    fn additional_linker_flags(&self) -> Option<&Vec<String>>;
 
     fn public_cflags(&self, project_base_dir: &Path) -> Vec<String>;
 
     fn default_library_artifact(&self) -> Option<LibraryArtifactType> {
-        match self.default_artifact() {
-            Some(ArtifactType::Library(lib)) => Some(lib),
-            None => None,
-            _ => unreachable!()
+        let artifacts = self.library_artifacts();
+
+        if artifacts.contains(&LibraryArtifactType::Staticlib) {
+            return Some(LibraryArtifactType::Staticlib);
+        } else if artifacts.contains(&LibraryArtifactType::Dynlib) {
+            return Some(LibraryArtifactType::Dynlib)
+        } else {
+            return None;
         }
     }
 }

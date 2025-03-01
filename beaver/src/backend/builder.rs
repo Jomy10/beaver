@@ -10,9 +10,11 @@ pub trait BackendBuilder<'a>: Send + Sync + std::fmt::Debug {
         }
     }
 
+    type Scope: BackendBuilderScope;
+
     // could be &self maybe
-    fn new_scope(&mut self) -> Box<dyn BackendBuilderScope>;
-    unsafe fn apply_scope(&mut self, scope: Box<dyn BackendBuilderScope>);
+    fn new_scope(&mut self) -> Self::Scope;
+    fn apply_scope(&mut self, scope: Self::Scope);
 
     fn build(self) -> String;
 }
@@ -25,8 +27,8 @@ pub trait BackendBuilderScope: std::fmt::Debug {
 
 #[derive(Debug)]
 pub struct Rule {
-    pub name: String,
-    pub options: Vec<(String, String)>,
+    pub name: &'static str,
+    pub options: Vec<(&'static str, &'static str)>,
 }
 
 #[derive(Debug)]
