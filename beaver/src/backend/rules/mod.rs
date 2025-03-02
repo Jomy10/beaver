@@ -1,4 +1,3 @@
-use std::fmt::format;
 
 use lazy_static::lazy_static;
 
