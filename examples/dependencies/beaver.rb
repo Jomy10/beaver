@@ -1,7 +1,5 @@
 build_dir "build"
 
-p send(:methods)
-
 Project(name: "MyProject")
 
 C::Library(

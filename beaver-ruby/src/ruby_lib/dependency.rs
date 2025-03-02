@@ -14,22 +14,15 @@ class!(DependencyRef);
 fn create_dependency(obj: AnyObject, ty: &str, extra_variables: Option<Vec<(&str, AnyObject)>>) -> DependencyRef {
     match obj.vty() {
         RbValue::RString(str) => {
-            trace!("{:?}", str.to_str());
             let mut dep = Class::from_existing("Dependency").allocate();
-            trace!("{:?}", dep);
             dep.instance_variable_set("@string", str);
-            trace!("{:?}", ty);
             dep.instance_variable_set("@type", Symbol::new(ty));
-            trace!("ok");
             if let Some(vars) = extra_variables {
                 for var in vars {
-                    trace!("{:?}", var);
                     dep.instance_variable_set(var.0, var.1);
                 }
             }
-            trace!("returning {:?}", dep);
             let res = unsafe { dep.to() };
-            trace!("res = {:?}", res);
             return res;
         },
         RbValue::Symbol(sym) => {

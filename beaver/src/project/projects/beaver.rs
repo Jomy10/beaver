@@ -1,6 +1,7 @@
-use std::path::Path;
+use std::path::{self, Path};
 use std::sync::Arc;
 use std::{path::PathBuf, sync::RwLock};
+use log::trace;
 use target_lexicon::Triple;
 
 use crate::backend::BackendBuilder;
@@ -36,7 +37,7 @@ impl Project {
         Ok(Project {
             id: None,
             name,
-            base_dir,
+            base_dir: path::absolute(base_dir)?,
             build_dir,
             targets: RwLock::new(Vec::new())
         })

@@ -43,6 +43,21 @@ impl<'a> BackendBuilder<'a> for NinjaBuilder<'a> {
         self.rules.contains_key(&name)
     }
 
+    fn add_comment(&mut self, comment: &str) -> crate::Result<()> {
+        self.buffer.write_str("# ")
+            .map_err(|err| {
+                BeaverError::BufferWriteError(err.to_string())
+            })?;
+        self.buffer.write_str(comment)
+            .map_err(|err| {
+                BeaverError::BufferWriteError(err.to_string())
+            })?;
+        self.buffer.write_char('\n')
+            .map_err(|err| {
+                BeaverError::BufferWriteError(err.to_string())
+            })
+    }
+
     type Scope = NinjaBuilderScope;
 
     fn new_scope(&mut self) -> NinjaBuilderScope {
@@ -143,6 +158,12 @@ impl BackendBuilderScope for NinjaBuilderScope {
         }
 
         return Ok(());
+    }
+
+    fn add_comment(&mut self, comment: &str) -> crate::Result<()> {
+        self.write_str("# ")?;
+        self.write_str(comment)?;
+        self.write_char('\n')
     }
 
     fn format_path(&self, path: PathBuf) -> PathBuf {

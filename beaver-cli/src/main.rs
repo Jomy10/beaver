@@ -26,9 +26,14 @@ impl<E: std::error::Error + 'static> From<E> for MainError {
 
 impl std::fmt::Debug for MainError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("\x1b[1;31m")?;
+        if console::colors_enabled() {
+            f.write_str("\x1b[1;31m")?;
+        }
         std::fmt::Display::fmt(self.inner.as_ref(), f)?;
-        f.write_str("\x1b[0m")
+        if console::colors_enabled() {
+            f.write_str("\x1b[0m")?;
+        }
+        return Ok(());
     }
 }
 
@@ -40,7 +45,7 @@ fn main() -> Result<(), MainError> {
     let matches = Command::new("beaver")
         .author("Jonas Everaert")
         .version(VERSION)
-        .long_version(LONG_VERSION)
+        .long_version(LONG_VERSION) // TODO: ninja version
         .propagate_version(true)
         .about("Reliable, powerful build system")
         .arg(Arg::new("script-file")
@@ -59,6 +64,7 @@ When the argument is provided, but without a value, then the optimization mode i
             .ignore_case(true))
         .arg(arg!(--color "Enable color output (default: automatic)"))
         .arg(Arg::new("no-color").long("no-color").action(ArgAction::SetTrue).hide(true))
+        .arg(arg!(--debug))
         .arg(arg!([targets]... "Target(s) to build")
             .long_help("Target(s) to build\nWhen no targets are passed, all targets in the current project are built."))
         .arg(arg!([args]... "Arguments passed to the build script")
@@ -99,8 +105,16 @@ When the argument is provided, but without a value, then the optimization mode i
         }
     };
 
-    let beaver = Beaver::new(color, opt);
+    let debug = matches.get_one::<bool>("debug").unwrap();
+
+    let beaver = Beaver::new(color, opt)?;
     let ctx = beaver_ruby::execute(beaver, script_file)?;
+
+    if *debug {
+        let mut str = String::new();
+        ctx.context.fmt_debug(&mut str)?;
+        eprintln!("{}", str);
+    }
 
     match matches.subcommand() {
         None => {

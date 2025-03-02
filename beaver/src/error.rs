@@ -47,6 +47,8 @@ pub enum BeaverError {
     // Project Validation //
     #[error("Base path {path} of project {project} doesn't exist")]
     ProjectPathDoesntExist { project: String, path: PathBuf },
+    #[error("PathDiffFailed")]
+    PathDiffFailed,
 
     // Dependency Resolution //
     #[error("No target named {0} in project {1}")]
@@ -59,6 +61,10 @@ pub enum BeaverError {
     PkgconfigMalformed(String),
     #[error("Malformed version requirement for pkgconfig dependency. Valid requirements are for example `>=1.3.4`, `=1.3`, `<=5`")]
     PkgconfigMalformedVersionRequirement(String),
+
+    // Debug fmt //
+    #[error("")]
+    DebugBufferWriteError(std::fmt::Error),
 
     // General Errors //
     #[error("There are no projects defined")]

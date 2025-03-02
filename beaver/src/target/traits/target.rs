@@ -98,6 +98,9 @@ pub trait Target: Send + Sync + std::fmt::Debug {
 
         return Ok(());
     }
+
+    /// Debug attributes to print when using `--debug`
+    fn debug_attributes(&self) -> Vec<(&'static str, String)>;
 }
 
 // macro_rules! target_fn_impl {

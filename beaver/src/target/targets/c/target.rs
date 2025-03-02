@@ -44,7 +44,6 @@ pub trait CTarget: traits::Target {
         cflags.extend(self.all_headers(project_base_dir).map(|path| format!("-I{}", path.display())));
 
         for dependency in dependencies {
-            dbg!(dependency);
             dependency.public_cflags(context, &mut cflags)?;
         }
 
@@ -100,6 +99,10 @@ pub trait CTarget: traits::Target {
         let linker_flags_str = utils::flags::concat_quoted(linker_flags.into_iter());
 
         for artifact in self.target_artifacts() {
+            #[cfg(debug_assertions)] {
+                scope.add_comment(&format!("{}:{}", self.name(), artifact))?;
+            }
+
             artifact_steps.push(self.register_artifact(
                 artifact,
                 project_name, project_base_dir, project_build_dir,
