@@ -9,7 +9,7 @@ use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep};
 use crate::platform::{dynlib_extension_for_os, dynlib_linker_flags_for_os, staticlib_extension_for_os};
 use crate::target::parameters::{DefaultArgument, Files, Flags, Headers};
 use crate::target::traits::{self, TargetType};
-use crate::target::{ArtifactType, Dependency, Language, LibraryArtifactType, Version};
+use crate::target::{language, ArtifactType, Dependency, Language, LibraryArtifactType, Version};
 use crate::{Beaver, BeaverError};
 
 use super::{CTarget, TargetDescriptor};
@@ -247,13 +247,17 @@ impl CTarget for Library {
     }
 
     /// All linker flags used by this library when linking
-    fn linker_flags<'a>(&self, dependencies: impl Iterator<Item = &'a Dependency>, triple: &Triple, context: &Beaver) -> crate::Result<Vec<String>> {
+    fn linker_flags<'a>(&self, dependencies: impl Iterator<Item = &'a Dependency>, languages: impl Iterator<Item = &'a Language>, triple: &Triple, context: &Beaver) -> crate::Result<Vec<String>> {
         let mut flags: Vec<String> = dynlib_linker_flags_for_os(&triple.operating_system)?.iter().map(|s| s.to_string()).collect();
 
         flags.append(&mut self.linker_flags.clone());
 
         for dependency in dependencies {
             dependency.linker_flags(triple, context, &mut flags)?;
+        }
+        for lang in languages {
+            let Some(lang_flags) = Language::linker_flags(*lang, self.language) else { continue };
+            flags.extend(lang_flags.iter().map(|str| str.to_string()))
         }
 
         flags.extend(context.optimize_mode.linker_flags().iter().map(|str| str.to_string()));
