@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
@@ -37,6 +38,7 @@ pub trait CTarget: traits::Target {
         &self,
         project_base_dir: &Path,
         dependencies: impl Iterator<Item = &'a Dependency>,
+        dependency_languages: impl Iterator<Item = &'a Language>,
         context: &Beaver
     ) -> crate::Result<Vec<String>> {
         let mut cflags: Vec<String> = context.optimize_mode.cflags().iter().map(|s| *s).map(String::from).collect();
@@ -46,6 +48,10 @@ pub trait CTarget: traits::Target {
         for dependency in dependencies {
             dependency.public_cflags(context, &mut cflags)?;
         }
+        for lang in dependency_languages {
+            let Some(lang_cflags) = Language::cflags(*lang, self.language()) else { continue };
+            cflags.extend(lang_cflags.iter().map(|str| str.to_string()));
+        }
 
         return Ok(cflags);
     }
@@ -54,6 +60,7 @@ pub trait CTarget: traits::Target {
     fn linker_flags<'a>(
         &self,
         dependencies: impl Iterator<Item = &'a Dependency>,
+        languages: impl Iterator<Item = &'a Language>,
         triple: &Triple,
         context: &Beaver
     ) -> crate::Result<Vec<String>>;
@@ -90,13 +97,16 @@ pub trait CTarget: traits::Target {
             .map(|str| str.as_str())
             .collect::<Vec<&str>>();
 
-        let dependencies = self.unique_dependencies_set(context)?;
+        let (dependencies, languages) = self.unique_dependencies_and_languages_set(context)?;
+
+        let cflags = self.cflags(project_base_dir, dependencies.iter(), languages.iter(), context)?;
+        let cflags_str = utils::flags::concat_quoted(cflags.into_iter());
+
+        let linker_flags = self.linker_flags(dependencies.iter(), languages.iter(), target_triple, context)?;
+        let linker_flags_str = utils::flags::concat_quoted(linker_flags.into_iter());
+
         let mut artifact_steps: Vec<String> = Vec::new();
         artifact_steps.reserve_exact(self.artifacts().len());
-        let cflags = self.cflags(project_base_dir, dependencies.iter(), context)?;
-        let cflags_str = utils::flags::concat_quoted(cflags.into_iter());
-        let linker_flags = self.linker_flags(dependencies.iter(), target_triple, context)?;
-        let linker_flags_str = utils::flags::concat_quoted(linker_flags.into_iter());
 
         for artifact in self.target_artifacts() {
             #[cfg(debug_assertions)] {

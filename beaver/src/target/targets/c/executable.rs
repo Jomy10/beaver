@@ -213,11 +213,15 @@ impl CTarget for Executable {
     }
 
     /// All linker flags used by this executable when linking
-    fn linker_flags<'a>(&self, dependencies: impl Iterator<Item = &'a Dependency>, triple: &Triple, context: &Beaver) -> crate::Result<Vec<String>> {
+    fn linker_flags<'a>(&self, dependencies: impl Iterator<Item = &'a Dependency>, languages: impl Iterator<Item = &'a Language>, triple: &Triple, context: &Beaver) -> crate::Result<Vec<String>> {
         let mut flags: Vec<String> = self.linker_flags.clone();
 
         for dependency in dependencies {
             dependency.linker_flags(triple, context, &mut flags)?;
+        }
+        for lang in languages {
+            let Some(lang_flags) = Language::linker_flags(*lang, self.language) else { continue };
+            flags.extend(lang_flags.iter().map(|str| str.to_string()))
         }
 
         flags.extend(context.optimize_mode.linker_flags().iter().map(|str| str.to_string()));

@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use std::sync::{Arc, RwLock};
 
 use enum_dispatch::enum_dispatch;
@@ -64,32 +63,36 @@ pub trait Target: Send + Sync + std::fmt::Debug {
         context: &Beaver
     ) -> crate::Result<()>;
 
-    fn unique_dependencies(&self, context: &Beaver) -> crate::Result<std::collections::hash_set::IntoIter<Dependency>> {
-        let set = self.unique_dependencies_set(context)?;
-        return Ok(set.into_iter());
+    fn unique_dependencies_and_languages(&self, context: &Beaver) -> crate::Result<(std::collections::hash_set::IntoIter<Dependency>, std::collections::hash_set::IntoIter<Language>)> {
+        let (set, lang) = self.unique_dependencies_and_languages_set(context)?;
+        return Ok((set.into_iter(), lang.into_iter()));
     }
 
     /// Collect dependencies recursively into a set
-    fn unique_dependencies_set(&self, context: &Beaver) -> crate::Result<HashSet<Dependency>> {
-        let set = Rc::new(RefCell::new(HashSet::<Dependency>::new()));
-        self.collect_unique_dependencies(set.clone(), context)?;
-        let set = Rc::try_unwrap(set).unwrap(); // there should be no references alive at this point
-        let set = set.into_inner();
-        return Ok(set);
+    fn unique_dependencies_and_languages_set(&self, context: &Beaver) -> crate::Result<(HashSet<Dependency>, HashSet<Language>)> {
+        let mut set = HashSet::<Dependency>::new();
+        let mut languages = HashSet::<Language>::new();
+        self.collect_unique_dependencies_and_languages(&mut set, &mut languages, context)?;
+        return Ok((set, languages));
     }
 
-    fn collect_unique_dependencies<'a>(&'a self, into_set: Rc<RefCell<HashSet<Dependency>>>, context: &Beaver) -> crate::Result<()> {
+    fn collect_unique_dependencies_and_languages<'a>(
+        &'a self,
+        into_set: &mut HashSet<Dependency>,
+        into_language_set: &mut HashSet<Language>,
+        context: &Beaver
+    ) -> crate::Result<()> {
         for dep in self.dependencies().iter() {
             // insert dep
-            let mut set = into_set.borrow_mut();
-            if set.contains(dep) { continue }
-            set.insert(dep.clone());
-            drop(set);
+            if into_set.contains(dep) { continue }
+            into_set.insert(dep.clone());
+
             // collect dep's dependencies
             match dep {
                 Dependency::Library(target_dep) => {
                     context.with_project_and_target(&target_dep.target, |_, target| {
-                       target.collect_unique_dependencies(into_set.clone(), context)
+                        into_language_set.insert(target.language());
+                        target.collect_unique_dependencies_and_languages(into_set, into_language_set, context)
                     })?;
                 },
                 Dependency::Flags { cflags: _, linker_flags: _ } => {}
