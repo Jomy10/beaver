@@ -194,66 +194,14 @@ impl traits::Target for Library {
             &[&rules::CC, &rules::LINK, &rules::AR],
             context
         )
-        // let mut guard = builder.write()
-        //     .map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
-        // for rule in &[&rules::CC as &Rule, &rules::LINK as &Rule, &rules::AR as &Rule] {
-        //     guard.add_rule_if_not_exists(rule);
-        // }
+    }
 
-        // // let guard = builder.read()
-        // //     .map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
-        // let mut scope = guard.new_scope(); // We acquire a scope and later add it to the builder
-        // drop(guard);
-
-        // let dependency_steps = self.dependencies.iter()
-        //     .filter_map(|dep| {
-        //         match dep.ninja_name(context) {
-        //             Err(err) => Some(Err(err)),
-        //             Ok(val) => match val {
-        //                 Some(val) => Some(Ok(val)),
-        //                 None => None
-        //             }
-        //         }
-        //     })
-        //     .collect::<crate::Result<Vec<String>>>()?;
-        // let dependency_steps = dependency_steps.iter()
-        //     .map(|str| str.as_str())
-        //     .collect::<Vec<&str>>();
-
-        // let dependencies = self.unique_dependencies_set(context)?;
-        // let mut artifact_steps: Vec<String> = Vec::new();
-        // artifact_steps.reserve_exact(self.artifacts.len());
-        // let cflags = self.cflags(project_base_dir, dependencies.iter(), context)?;
-        // let cflags_str = utils::flags::concat_quoted(cflags.into_iter());
-        // for artifact in &self.artifacts {
-        //     artifact_steps.push(self.register_artifact(
-        //         artifact,
-        //         project_name, project_base_dir, project_build_dir,
-        //         &target_triple,
-        //         &dependency_steps,
-        //         &cflags_str,
-        //         &self.linker_flags(dependencies.iter(), target_triple, context)?.into_iter().map(|flag| format!("\"{flag}\"")).fold(String::new(), |acc, str| {
-        //             let mut acc = acc;
-        //             acc.push_str(&str);
-        //             acc.push(' ');
-        //             acc
-        //         }),
-        //         &mut scope
-        //     )?);
-        // }
-
-        // let target_step = format!("{}$:{}", project_name, self.name);
-        // scope.add_step(&BuildStep::Phony {
-        //     name: &target_step,
-        //     args: &artifact_steps.iter().map(|str| str.as_str()).collect::<Vec<&str>>(),
-        //     dependencies: &[]
-        // })?;
-
-        // let mut builder_guard = builder.write()
-        //     .map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
-        // unsafe { builder_guard.apply_scope(scope); }
-
-        // return Ok(());
+    fn debug_attributes(&self) -> Vec<(&'static str, String)> {
+        vec![
+            ("cflags", format!("{:?}", self.cflags)),
+            ("headers", format!("{:?}", self.headers)),
+            ("linker_flags", self.linker_flags.join(", ")),
+        ]
     }
 }
 

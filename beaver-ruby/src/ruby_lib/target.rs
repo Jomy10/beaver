@@ -261,7 +261,7 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: rutie::Hash, cont
                         } else if (len == 1 && public.is_nil() && private.is_nil()) || (len == 2 && (public.is_nil() || private.is_nil())) {
                             raise!(AnyException::argerr(&format!("Invalid argument for `headers`: invalid key specified in `{:?}`. The hash should only contain `public` and/or `private` keys.", hash)))
                         } else {
-                            let public = if private.is_nil() {
+                            let public = if public.is_nil() {
                                 Vec::new()
                             } else {
                                 match c_target_parse_headers_string_or_array(public.vty()) {

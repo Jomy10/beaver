@@ -10,6 +10,8 @@ pub trait BackendBuilder<'a>: Send + Sync + std::fmt::Debug {
         }
     }
 
+    fn add_comment(&mut self, comment: &str) -> crate::Result<()>;
+
     type Scope: BackendBuilderScope;
 
     // could be &self maybe
@@ -22,8 +24,9 @@ pub trait BackendBuilder<'a>: Send + Sync + std::fmt::Debug {
 pub trait BackendBuilderScope: std::fmt::Debug {
     fn add_step(&mut self, step: &BuildStep) -> crate::Result<()>;
 
+    fn add_comment(&mut self, comment: &str) -> crate::Result<()>;
+
     fn format_path(&self, path: PathBuf) -> PathBuf;
-    // fn as_any(&self) -> &dyn Any;
 }
 
 #[derive(Debug)]

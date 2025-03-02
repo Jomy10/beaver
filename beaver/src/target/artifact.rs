@@ -2,7 +2,7 @@ use std::cmp::{Eq, PartialEq};
 
 use crate::BeaverError;
 
-pub trait TArtifactType: Sized {
+pub trait TArtifactType: Sized + std::fmt::Display {
     fn parse(str: &str) -> crate::Result<Self>;
 }
 

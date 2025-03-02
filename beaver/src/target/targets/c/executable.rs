@@ -185,6 +185,14 @@ impl traits::Target for Executable {
             context
         )
     }
+
+    fn debug_attributes(&self) -> Vec<(&'static str, String)> {
+        vec![
+            ("cflags", format!("{:?}", self.cflags)),
+            ("headers", format!("{:?}", self.headers)),
+            ("linker_flags", self.linker_flags.join(", ")),
+        ]
+    }
 }
 
 impl CTarget for Executable {

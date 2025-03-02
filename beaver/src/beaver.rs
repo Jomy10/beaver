@@ -1,7 +1,8 @@
 use std::ffi::OsStr;
+use std::fmt::Write;
 use std::process::Command;
-use std::{env, fs};
-use std::io::Write;
+use std::{env, fs, path};
+use std::io::Write as IOWrite;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::sync::atomic::{AtomicIsize, Ordering};
@@ -34,17 +35,17 @@ pub struct Beaver {
 }
 
 impl Beaver {
-    pub fn new(enable_color: Option<bool>, optimize_mode: OptimizationMode) -> Beaver {
-        Beaver {
+    pub fn new(enable_color: Option<bool>, optimize_mode: OptimizationMode) -> crate::Result<Beaver> {
+        Ok(Beaver {
             projects: RwLock::new(Vec::new()),
             project_index: AtomicIsize::new(-1),
             optimize_mode,
-            build_dir: RwLock::new(std::env::current_dir().unwrap().join("build")),
+            build_dir: RwLock::new(path::absolute(std::env::current_dir().unwrap().join("build"))?),
             enable_color: enable_color.unwrap_or(true), // TODO: derive from isatty or set instance var to optional
             target_triple: Triple::host(),
             verbose: false,
             build_file_create_result: OnceLock::new()
-        }
+        })
     }
 
     fn set_current_project_index(&self, idx: usize) {
@@ -65,7 +66,7 @@ impl Beaver {
             return Err(BeaverError::SetBuildDirAfterAddProject);
         }
 
-        *self.build_dir.write().map_err(|err| BeaverError::LockError(err.to_string()))? = dir;
+        *self.build_dir.write().map_err(|err| BeaverError::LockError(err.to_string()))? = path::absolute(dir)?;
         // Not needed because of check
         // for project in self.projects_mut()?.iter_mut() {
         //     project.update_build_dir(&self.build_dir);
@@ -309,6 +310,47 @@ impl Beaver {
             project.default_executable()
         })?;
         self.run(exe, args)
+    }
+
+    /// Used by the CLI
+    pub fn fmt_debug(&self, str: &mut String) -> crate::Result<()> {
+        let current_project_index = self.current_project_index();
+        for (i, project) in self.projects()?.iter().enumerate() {
+            if current_project_index == Some(i) {
+                str.write_fmt(format_args!("{}\n", console::style(project.name()).blue())).map_err(|err| BeaverError::DebugBufferWriteError(err))?;
+            } else {
+                str.write_str(project.name()).map_err(|err| BeaverError::DebugBufferWriteError(err))?;
+                str.write_char('\n').map_err(|err| BeaverError::DebugBufferWriteError(err))?;
+            }
+
+            for target in project.targets()?.iter() {
+                str.write_fmt(format_args!("  {} ({:?}) [{}]\n",
+                    target.name(),
+                    target.language(),
+                    target.artifacts().iter().map(|art| match art {
+                        ArtifactType::Library(lib) => lib.to_string(),
+                        ArtifactType::Executable(exe) => exe.to_string(),
+                    }).intersperse(String::from(", "))
+                    .fold(String::new(), |acc, val| {
+                        let mut acc = acc;
+                        acc.push_str(val.as_str());
+                        acc
+                    })
+                )).map_err(|err| BeaverError::DebugBufferWriteError(err))?;
+                for attr in target.debug_attributes() {
+                    str.write_fmt(format_args!("    {}: {}\n", attr.0, attr.1)).map_err(|err| BeaverError::DebugBufferWriteError(err))?;
+                }
+                for dependency in target.dependencies() {
+                    if let Some(name) = dependency.ninja_name_not_escaped(self)? {
+                        str.write_fmt(format_args!("    -> {}\n", name)).map_err(|err| BeaverError::DebugBufferWriteError(err))?;
+                    } else {
+                        str.write_fmt(format_args!("    -> {:?}\n", dependency)).map_err(|err| BeaverError::DebugBufferWriteError(err))?;
+                    }
+                }
+            }
+        }
+
+        return Ok(());
     }
 }
 

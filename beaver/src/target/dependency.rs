@@ -168,6 +168,19 @@ impl Dependency {
         }
     }
 
+    pub(crate) fn ninja_name_not_escaped(&self, context: &Beaver) -> crate::Result<Option<String>> {
+        match self {
+            Dependency::Library(dep) => {
+                return context.with_project_and_target(&dep.target, |project, target| {
+                    Ok(Some(format!("{}:{}:{}", project.name(), target.name(), dep.artifact)))
+                });
+            },
+            Dependency::Flags { cflags: _, linker_flags: _ } => {
+                return Ok(None);
+            }
+        }
+    }
+
     pub(crate) fn public_cflags(&self, context: &Beaver, out: &mut Vec<String>) -> crate::Result<()> {
         match self {
             Dependency::Library(dep) => {
