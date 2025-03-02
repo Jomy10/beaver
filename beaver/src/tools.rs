@@ -82,33 +82,3 @@ lazy_static! {
 
     pub static ref cmake: PathBuf = Tool { name: "cmake", ..Default::default() }.find();
 }
-
-#[cfg(target_os = "macos")]
-lazy_static! {
-    pub static ref objc_cflags: &'static [&'static str] = &["-x", "objective-c"];
-    pub static ref objcxx_cflags: &'static [&'static str] = &["-x", "objective-c++"];
-    pub static ref objc_linker_flags: &'static [&'static str] = &["-lobjc"];
-}
-
-#[cfg(not(target_os = "macos"))]
-lazy_static! {
-    pub static ref objc_cflags: &'static [&'static str] = {
-        let output = Command::new(gnustep_config)
-            .args(["--objc-flags"])
-            .output()
-            .expect("Failed to get objc-flags from gnustep-config")
-            .stdout;
-        shlex::bytes::split(output.as_slice())
-            .expect(&format!("Couldn't parse arguments `{}`", output))
-    };
-    pub static ref objcxx_cflags: &'static [&'static str] = objc_cflags;
-    pub static ref objc_linker_flags: &'static [&'static str] = {
-        let output = Command::new(gnustep_config)
-            .args(["--objc-libs", "--base-libs"])
-            .output()
-            .expect("Failed to get objc-libs from gnustep-config")
-            .stdout;
-        shlex::bytes::split(output.as_slice())
-            .expect(&format!("Couldn't parse arguments `{}`", output))
-    };
-}
