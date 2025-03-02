@@ -1,6 +1,5 @@
 use lazy_static::lazy_static;
 
-use crate::tools;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum Language {

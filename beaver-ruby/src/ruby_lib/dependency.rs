@@ -1,6 +1,5 @@
 use std::mem;
 
-use log::trace;
 use rutie::rubysys::class;
 use rutie::types::{Argc, Value, ValueType};
 use rutie::util::str_to_cstring;

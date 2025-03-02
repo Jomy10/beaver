@@ -9,7 +9,7 @@ use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep};
 use crate::platform::{dynlib_extension_for_os, dynlib_linker_flags_for_os, staticlib_extension_for_os};
 use crate::target::parameters::{DefaultArgument, Files, Flags, Headers};
 use crate::target::traits::{self, TargetType};
-use crate::target::{language, ArtifactType, Dependency, Language, LibraryArtifactType, Version};
+use crate::target::{ArtifactType, Dependency, Language, LibraryArtifactType, Version};
 use crate::{Beaver, BeaverError};
 
 use super::{CTarget, TargetDescriptor};
