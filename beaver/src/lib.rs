@@ -1,9 +1,10 @@
-#![feature(iter_intersperse)]
+#![feature(iter_intersperse, once_cell_try)]
 
 use utils::moduse;
 
 pub mod backend;
 pub(crate) mod platform;
+pub(crate) mod cache;
 pub mod project;
 pub mod target;
 pub mod tools;

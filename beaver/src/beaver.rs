@@ -5,13 +5,14 @@ use std::{env, fs, path};
 use std::io::Write as IOWrite;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard};
-use std::sync::atomic::{AtomicIsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
 
 use console::style;
 use target_lexicon::Triple;
 
 use crate::backend::ninja::{NinjaBuilder, NinjaRunner};
 use crate::backend::BackendBuilder;
+use crate::cache::Cache;
 use crate::traits::AnyProject;
 use crate::OptimizationMode;
 use crate::error::BeaverError;
@@ -30,8 +31,10 @@ pub struct Beaver {
     enable_color: bool,
     target_triple: Triple,
     verbose: bool,
+    cache: OnceLock<Cache>,
+    lock_builddir: AtomicBool,
     /// Create the build file once and store the result of the operation in this cell
-    build_file_create_result: OnceLock<crate::Result<()>>
+    build_file_create_result: OnceLock<crate::Result<()>>,
 }
 
 impl Beaver {
@@ -44,6 +47,8 @@ impl Beaver {
             enable_color: enable_color.unwrap_or(true), // TODO: derive from isatty or set instance var to optional
             target_triple: Triple::host(),
             verbose: false,
+            cache: OnceLock::new(),
+            lock_builddir: AtomicBool::new(false),
             build_file_create_result: OnceLock::new()
         })
     }
@@ -62,7 +67,8 @@ impl Beaver {
     }
 
     pub fn set_build_dir(&self, dir: PathBuf) -> crate::Result<()> {
-        if self.current_project_index() != None {
+        if self.lock_builddir.load(Ordering::SeqCst) {
+        // if self.current_project_index() != None {
             return Err(BeaverError::SetBuildDirAfterAddProject);
         }
 
@@ -79,6 +85,14 @@ impl Beaver {
         self.build_dir.read().map_err(|err| BeaverError::LockError(err.to_string()))
     }
 
+    pub fn cache(&self) -> Result<&Cache, BeaverError> {
+        self.cache.get_or_try_init(|| {
+            self.lock_builddir.store(true, Ordering::SeqCst);
+            let build_dir = self.build_dir.read().map_err(|err| BeaverError::LockError(err.to_string()))?;
+            Cache::new(&build_dir)
+        })
+    }
+
     pub fn projects(&self) -> crate::Result<RwLockReadGuard<'_, Vec<AnyProject>>> {
         self.projects.read().map_err(|err| {
             BeaverError::ProjectsReadError(err.to_string())
@@ -92,6 +106,7 @@ impl Beaver {
     }
 
     pub fn add_project(&self, project: impl Into<AnyProject>) -> crate::Result<usize> {
+        self.lock_builddir.store(true, Ordering::SeqCst);
         let mut project: AnyProject = project.into();
         let mut projects = self.projects_mut()?;
         let idx = projects.len();

@@ -1,3 +1,4 @@
+use std::ffi::OsString;
 use std::io;
 use std::path::PathBuf;
 use std::process::ExitStatus;
@@ -63,8 +64,14 @@ pub enum BeaverError {
     PkgconfigMalformedVersionRequirement(String),
 
     // Debug fmt //
-    #[error("")]
+    #[error("DebugBufferWriteError: {0}")]
     DebugBufferWriteError(std::fmt::Error),
+
+    // Cache //
+    #[error("SQL Error: {0}")]
+    SQLError(#[from] ormlite::SqlxError),
+    #[error("ORMLite Error: {0}")]
+    ORMLiteError(String),
 
     // General Errors //
     #[error("There are no projects defined")]
@@ -78,6 +85,8 @@ pub enum BeaverError {
     },
     #[error("No executable target found in project {0}")]
     NoExecutable(String),
+    #[error("OS String is not UTf-8")]
+    NonUTF8OsStr(OsString),
 
     #[error("Failed to lock: {0}")]
     LockError(String),
