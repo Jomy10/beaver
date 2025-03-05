@@ -17,9 +17,6 @@ pub fn importer(
     context: &Beaver
 ) -> crate::Result<()> {
     let build_dir = context.get_build_dir()?;
-    if !build_dir.exists() {
-        fs::create_dir(build_dir.as_path())?;
-    }
 
     let Some(file_context) = base_dir.as_os_str().to_str() else {
         return Err(BeaverError::NonUTF8OsStr(base_dir.as_os_str().to_os_string()));
@@ -27,7 +24,7 @@ pub fn importer(
     let file_context = context.optimize_mode.cmake_name().to_string() + ":" + file_context;
 
     let build_dir = build_dir
-        .join("cmake")
+        .join("__cmake")
         .join(base_dir);
 
     let build_dir_exists = build_dir.exists();
@@ -69,7 +66,7 @@ pub fn importer(
         let mut args = vec![
             base_dir_str,
             &build_type_arg,
-            "-G", "ninja"
+            "-G", "Ninja"
         ];
         args.extend_from_slice(cmake_flags);
 

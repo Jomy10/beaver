@@ -68,8 +68,15 @@ impl Beaver {
         }
     }
 
-    pub fn lock_build_dir(&self) {
-        self.lock_builddir.store(true, Ordering::SeqCst)
+    pub fn lock_build_dir(&self) -> crate::Result<()> {
+        if self.lock_builddir.load(Ordering::Relaxed) { return Ok(()); }
+        self.lock_builddir.store(true, Ordering::SeqCst);
+        let build_dir = self.build_dir.read().map_err(|err| BeaverError::LockError(err.to_string()))?;
+        if !build_dir.exists() {
+            fs::create_dir(&*build_dir)?;
+        }
+
+        Ok(())
     }
 
     pub fn set_build_dir(&self, dir: PathBuf) -> crate::Result<()> {
@@ -87,14 +94,14 @@ impl Beaver {
     }
 
     pub fn get_build_dir(&self) -> crate::Result<RwLockReadGuard<'_, PathBuf>> {
-        self.lock_build_dir();
+        self.lock_build_dir()?;
         self.build_dir.read().map_err(|err| BeaverError::LockError(err.to_string()))
     }
 
     pub fn cache(&self) -> Result<&Cache, BeaverError> {
         self.cache.get_or_try_init(|| {
             let build_dir = self.get_build_dir()?;
-            Cache::new(&build_dir)
+            Cache::new(&build_dir.join("cache"))
         })
     }
 
@@ -120,6 +127,10 @@ impl Beaver {
         drop(projects);
         self.set_current_project_index(idx);
         return Ok(idx);
+    }
+
+    pub fn find_project(&self, name: &str) -> crate::Result<Option<usize>> {
+        Ok(self.projects()?.iter().find(|project| project.name() == name).map(|project| project.id().unwrap()))
     }
 
     pub fn with_project_and_target<S>(
@@ -245,10 +256,11 @@ impl Beaver {
     }
 
     pub fn create_build_file(&self) -> crate::Result<()> {
-        let build_dir = self.build_dir.read().map_err(|err| BeaverError::LockError(err.to_string()))?;
-        if !build_dir.exists() {
-            fs::create_dir(build_dir.as_path())?;
-        }
+        let build_dir = self.get_build_dir()?;
+        // let build_dir = self.build_dir.read().map_err(|err| BeaverError::LockError(err.to_string()))?;
+        // if !build_dir.exists() {
+        //     fs::create_dir(build_dir.as_path())?;
+        // }
         let ninja_builder: Arc<RwLock<NinjaBuilder>> = Arc::new(RwLock::new(NinjaBuilder::new(&env::current_dir()?, &build_dir)));
         let error: RwLock<Option<BeaverError>> = RwLock::new(None);
         let projects = self.projects()?;

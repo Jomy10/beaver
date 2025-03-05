@@ -28,6 +28,7 @@ impl Cache {
         if !file.exists() {
             fs::File::create(file)?;
         }
+        dbg!(file);
 
         let Some(file) = file.as_os_str().to_str() else {
             return Err(BeaverError::NonUTF8OsStr(file.as_os_str().to_os_string()));

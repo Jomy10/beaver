@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::fs;
+use std::{fs, io};
 // TODO: support for Windows/Non-unix
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
@@ -11,6 +11,7 @@ use sqlx::{SqliteConnection, TypeInfo};
 use uuid::Uuid;
 
 use crate::cache::types::{Timespec, UInt};
+use crate::BeaverError;
 
 #[derive(Model, Debug, Clone)]
 pub struct File {
@@ -29,6 +30,7 @@ pub struct File {
 
 impl File {
     pub fn new(filename: &str) -> crate::Result<File> {
+        dbg!(filename);
         let f = fs::File::open(filename)?;
         let meta = f.metadata()?;
 
