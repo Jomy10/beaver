@@ -49,10 +49,9 @@ pub trait Target: Send + Sync + std::fmt::Debug {
 
     fn r#type(&self) -> TargetType;
 
-    /// Default artifact to link against
-    fn artifact_output_dir(&self, project_build_dir: &Path, triple: &Triple) -> PathBuf;
     fn artifact_file(&self, project_build_dir: &Path, artifact: ArtifactType, triple: &Triple) -> crate::Result<PathBuf>;
 
+    /// Returns the target name
     fn register<Builder: BackendBuilder<'static>>(&self,
         project_name: &str,
         project_base_dir: &Path,
@@ -60,7 +59,7 @@ pub trait Target: Send + Sync + std::fmt::Debug {
         triple: &Triple,
         builder: Arc<RwLock<Builder>>,
         context: &Beaver
-    ) -> crate::Result<()>;
+    ) -> crate::Result<String>;
 
     fn unique_dependencies_and_languages(&self, context: &Beaver) -> crate::Result<(std::collections::hash_set::IntoIter<Dependency>, std::collections::hash_set::IntoIter<Language>)> {
         let (set, lang) = self.unique_dependencies_and_languages_set(context)?;
@@ -94,7 +93,13 @@ pub trait Target: Send + Sync + std::fmt::Debug {
                         target.collect_unique_dependencies_and_languages(into_set, into_language_set, context)
                     })?;
                 },
-                Dependency::Flags { cflags: _, linker_flags: _ } => {}
+                Dependency::Flags { cflags: _, linker_flags: _ } => {},
+                Dependency::CMakeId(cmake_id) => {
+                    context.with_cmake_project_and_library(&cmake_id, |_, target| {
+                        into_language_set.insert(target.language());
+                        target.collect_unique_dependencies_and_languages(into_set, into_language_set, context)
+                    })?;
+                }
             }
         }
 

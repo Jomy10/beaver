@@ -1,9 +1,11 @@
+use std::fs::{self, DirEntry};
 use std::ops::Range;
+use std::path::{Path, PathBuf};
 
 use regex::Regex;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::GlobError;
+use crate::{GlobError, GlobIterationError};
 
 #[derive(Debug)]
 pub struct Glob {
@@ -96,6 +98,87 @@ impl Glob {
     }
 }
 
+impl Glob {
+    fn collect_matches_of_dir(&self, path: &Path, idx: usize, paths: &mut Vec<PathBuf>, include_dirs: bool) -> Result<(), GlobIterationError> {
+        for entry in fs::read_dir(path)? {
+            let entry = entry?;
+            self.collect_entry_matches(entry, idx, paths, include_dirs)?;
+        }
+
+        return Ok(());
+    }
+
+    fn collect_entry_matches(&self, entry: DirEntry, idx: usize, paths: &mut Vec<PathBuf>, include_dirs: bool) -> Result<(), GlobIterationError> {
+        let file_type = entry.file_type()?;
+        if !(file_type.is_dir() || file_type.is_file()) {
+            return Ok(());
+        }
+
+        let Some(segment) = self.segment(idx) else {
+            return Ok(());
+        };
+
+        match segment {
+            PathSegment::AnyPathSegment => {
+                if self.has_more_segments(idx) {
+                    if file_type.is_dir() {
+                        self.collect_matches_of_dir(&entry.path(), idx, paths, include_dirs)?;
+                        return self.collect_matches_of_dir(&entry.path(), idx + 1, paths, include_dirs);
+                    } else {
+                        return self.collect_entry_matches(entry, idx + 1, paths, include_dirs);
+                    }
+                } else {
+                    if include_dirs && file_type.is_dir() {
+                        paths.push(entry.path());
+                        return Ok(());
+                    } else if file_type.is_file() {
+                        paths.push(entry.path());
+                        return Ok(());
+                    } else {
+                        return Ok(());
+                    }
+                }
+            },
+            PathSegment::Segment(regex) => {
+                if regex.is_match(entry.file_name().to_str().unwrap()) {
+                    if self.has_more_segments(idx) {
+                        if file_type.is_dir() {
+                            return self.collect_matches_of_dir(&entry.path(), idx + 1, paths, include_dirs);
+                        } else {
+                            return Ok(());
+                        }
+                    } else {
+                        if include_dirs && file_type.is_dir() {
+                            paths.push(entry.path());
+                            return Ok(());
+                        } else if file_type.is_file() {
+                            paths.push(entry.path());
+                            return Ok(());
+                        } else {
+                            return Ok(());
+                        }
+                    }
+                } else {
+                    return Ok(());
+                }
+            }
+        }
+    }
+
+    /// Collect all matches for a single glob (only includes files, not directories)
+    pub fn files(&self, base_path: &Path) -> Result<Vec<PathBuf>, GlobIterationError> {
+        let mut paths: Vec<PathBuf> = Vec::new();
+
+        if !base_path.is_dir() {
+            return Err(GlobIterationError::BasePathNotDirectory);
+        }
+
+        self.collect_matches_of_dir(base_path, 0, &mut paths, false)?;
+
+        return Ok(paths);
+    }
+}
+
 struct SegmentIterator<'a> {
     storage: &'a str,
     segments: std::vec::IntoIter<std::ops::Range<usize>>
@@ -120,15 +203,6 @@ pub(crate) enum PathSegment {
     /// `**`: match any number of path segments, including none
     AnyPathSegment,
 }
-
-// impl PathSegment {
-//     pub(crate) fn matches(&self, str: &str) -> bool {
-//         match self {
-//             Self::Segment(regex) => regex.is_match(str),
-//             Self::AnyPathSegment => true,
-//         }
-//     }
-// }
 
 #[cfg(test)]
 mod test {

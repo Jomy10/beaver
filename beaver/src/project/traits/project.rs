@@ -1,12 +1,13 @@
+use std::ops::Deref;
 use std::path::Path;
-use std::sync::{Arc, RwLock, RwLockReadGuard};
+use std::sync::{Arc, RwLock};
 use enum_dispatch::enum_dispatch;
 use target_lexicon::Triple;
 
 use crate::backend::BackendBuilder;
 use crate::target::traits::AnyTarget;
 use crate::target::TargetRef;
-use crate::Beaver;
+use crate::{project, Beaver};
 
 #[enum_dispatch]
 pub trait Project: Send + Sync + std::fmt::Debug {
@@ -16,10 +17,9 @@ pub trait Project: Send + Sync + std::fmt::Debug {
     fn base_dir(&self) -> &Path;
     fn build_dir(&self) -> &Path;
     fn update_build_dir(&mut self, new_base_build_dir: &Path);
-    fn targets<'a>(&'a self) -> crate::Result<RwLockReadGuard<'a, Vec<AnyTarget>>>;
+    fn targets<'a>(&'a self) -> crate::Result<Box<dyn Deref<Target = Vec<AnyTarget>> + 'a>>;
     fn find_target(&self, name: &str) -> crate::Result<Option<usize>>;
     fn default_executable(&self) -> crate::Result<TargetRef>;
-
     fn register<Builder: BackendBuilder<'static>>(&self,
         scope: &rayon::Scope,
         triple: &Triple,
@@ -34,10 +34,9 @@ pub trait MutableProject {
     fn add_target(&self, target: AnyTarget) -> crate::Result<usize>;
 }
 
-use crate::project::beaver::Project as BeaverProject;
-
 #[enum_dispatch(Project)]
 #[derive(Debug)]
 pub enum AnyProject {
-    BeaverProject
+    Beaver(project::beaver::Project),
+    CMake(project::cmake::Project)
 }

@@ -13,12 +13,14 @@ use target_lexicon::Triple;
 use crate::backend::ninja::{NinjaBuilder, NinjaRunner};
 use crate::backend::BackendBuilder;
 use crate::cache::Cache;
-use crate::traits::AnyProject;
+use crate::traits::{AnyLibrary, AnyProject};
 use crate::OptimizationMode;
 use crate::error::BeaverError;
 use crate::project::traits::Project;
 use crate::target::traits::{AnyTarget, Target};
 use crate::target::{ArtifactType, ExecutableArtifactType, TargetRef};
+use crate::target::cmake::Library as CMakeLibrary;
+use crate::project::cmake::Project as CMakeProject;
 
 /// All methods of this struct are immutable because this struct ensures all calls to its
 /// methods are thread safe
@@ -66,6 +68,10 @@ impl Beaver {
         }
     }
 
+    pub fn lock_build_dir(&self) {
+        self.lock_builddir.store(true, Ordering::SeqCst)
+    }
+
     pub fn set_build_dir(&self, dir: PathBuf) -> crate::Result<()> {
         if self.lock_builddir.load(Ordering::SeqCst) {
         // if self.current_project_index() != None {
@@ -81,14 +87,13 @@ impl Beaver {
     }
 
     pub fn get_build_dir(&self) -> crate::Result<RwLockReadGuard<'_, PathBuf>> {
-        // TODO: freeze build dir
+        self.lock_build_dir();
         self.build_dir.read().map_err(|err| BeaverError::LockError(err.to_string()))
     }
 
     pub fn cache(&self) -> Result<&Cache, BeaverError> {
         self.cache.get_or_try_init(|| {
-            self.lock_builddir.store(true, Ordering::SeqCst);
-            let build_dir = self.build_dir.read().map_err(|err| BeaverError::LockError(err.to_string()))?;
+            let build_dir = self.get_build_dir()?;
             Cache::new(&build_dir)
         })
     }
@@ -127,6 +132,36 @@ impl Beaver {
         let targets = project.targets()?;
         let target = targets.get(target.target).expect("Invalid TargetRef");
         return cb(project, target).map_err(|err| err.into());
+    }
+
+    /// Access a CMakeProject and a library with the given `cmake_id`
+    pub fn with_cmake_project_and_library<S>(
+        &self,
+        cmake_id: &str,
+        cb: impl FnOnce(&CMakeProject, &CMakeLibrary) -> crate::Result<S>
+    ) -> crate::Result<S> {
+        let projects = self.projects()?;
+        for project in projects.iter() {
+            match project {
+                AnyProject::CMake(project) => {
+                    let targets = project.targets()?;
+                    for target in targets.iter() {
+                        match target {
+                            AnyTarget::Library(lib) => match lib {
+                                AnyLibrary::CMake(lib) => if lib.cmake_id() == cmake_id {
+                                    return cb(&project, &lib);
+                                },
+                                _ => continue,
+                            },
+                            _ => continue,
+                        }
+                    }
+                },
+                _ => continue,
+            }
+        }
+
+        return Err(BeaverError::NoCMakeTarget(cmake_id.to_string()));
     }
 
     pub fn with_project_named<S>(

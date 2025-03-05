@@ -1,17 +1,20 @@
 use std::collections::HashSet;
-use std::fs;
+use std::fs::{self};
+use std::iter::zip;
 use std::path::Path;
-use std::sync::{Mutex, RwLock};
+use std::sync::Mutex;
 
-use futures_lite::future;
 use log::trace;
-use ormlite::sqlite::{SqlitePool, SqliteConnection};
+use ormlite::sqlite::SqlitePool;
 use ormlite::model::*;
 use uuid::Uuid;
 
 use crate::cache::models;
 use crate::BeaverError;
 
+use super::models::ConcreteFile;
+
+/// Cache files and monitor changes
 #[derive(Debug)]
 pub struct Cache {
     pool: SqlitePool,
@@ -44,19 +47,13 @@ impl Cache {
         })
     }
 
-    /// Check if a file changed
-    #[tokio::main]
-    pub async fn file_changed(&mut self, file: &Path, context: &str) -> crate::Result<bool> {
-        let Some(filename) = file.as_os_str().to_str() else {
-            return Err(BeaverError::NonUTF8OsStr(file.as_os_str().to_os_string()));
-        };
-        let context = context.to_string() + filename;
-
-        let file_row = models::File::fetch_one(filename, &self.pool);
-        let cfile_row = models::ConcreteFile::fetch_one(&context, &self.pool);
+    /// Updates the `File` record based on the metadata, or inserts it when it does not exist
+    /// Returns the current/new check_id
+    async fn insert_or_update_file(&self, filename: &str) -> crate::Result<Uuid> {
+        let file_row = models::File::fetch_one(&filename, &self.pool);
 
         // Insert/update file record
-        let check_id: Uuid = match file_row.await {
+        match file_row.await {
             Ok(mut file_row) => {
                 let mut update_set = self.changed_set.lock().map_err(|err| BeaverError::LockError(err.to_string()))?;
                 let changed = file_row.changed(&mut update_set)?;
@@ -80,7 +77,7 @@ impl Cache {
                 match err {
                     ormlite::Error::SqlxError(error) => match error {
                         sqlx::Error::RowNotFound => {
-                            let file = models::File::new(filename)?;
+                            let file = models::File::new(&filename)?;
                             let check_id = file.check_id;
                             let mut changed_set = self.changed_set.lock().map_err(|err| BeaverError::LockError(err.to_string()))?;
                             changed_set.insert(filename.to_string());
@@ -98,15 +95,53 @@ impl Cache {
                     ormlite::Error::OrmliteError(err) => Err(BeaverError::ORMLiteError(err)),
                 }
             }
-        }?;
+        }
+    }
+
+    async fn concrete_file_changed(&self, cfile: &ConcreteFile) -> crate::Result<bool> {
+        let check_id = self.insert_or_update_file(&cfile.filename).await?;
+
+        if cfile.check_id != check_id {
+            trace!("{} -> changed", &cfile.filename);
+
+            cfile.update_partial()
+                .check_id(check_id)
+                .update(&self.pool).await
+                .map_err(|err| match err {
+                    ormlite::Error::SqlxError(error) => BeaverError::SQLError(error),
+                    ormlite::Error::TokenizationError(tokenizer_error) => panic!("Unexpected error (bug): {}", tokenizer_error),
+                    ormlite::Error::OrmliteError(err) => BeaverError::ORMLiteError(err),
+                    })?;
+            Ok(true)
+        } else {
+            trace!("{} -> unchanged", &cfile.filename);
+
+            Ok(false)
+        }
+    }
+
+    /// Check if a file changed
+    #[tokio::main]
+    pub async fn file_changed(&self, file: &Path, context: &str) -> crate::Result<bool> {
+        let Some(filename) = file.as_os_str().to_str() else {
+            return Err(BeaverError::NonUTF8OsStr(file.as_os_str().to_os_string()));
+        };
+        // let context = context.to_string() + filename;
+
+        // let cfile_row = models::ConcreteFile::fetch_one(&context, &self.pool);
+        let cfile_row = models::ConcreteFile::select()
+            .where_("context = ? and filename = ?")
+            .bind(context)
+            .bind(filename)
+            .fetch_one(&self.pool);
 
         // Insert/fetch ConcreteFile record
-        let (cfile, inserted) = match cfile_row.await {
-            Ok(cfile) => Ok((cfile, false)),
+        let cfile = match cfile_row.await {
+            Ok(cfile) => Ok(cfile),
             Err(err) => match err {
                 ormlite::Error::SqlxError(error) => match error {
                     sqlx::Error::RowNotFound => {
-                        let cfile = models::ConcreteFile::new(&context, filename, check_id)?;
+                        let cfile = models::ConcreteFile::new(&context, filename, Uuid::new_v4())?;
                         cfile.clone().insert(&self.pool).await.map_err(|err| {
                             match err {
                                 ormlite::Error::SqlxError(error) => BeaverError::SQLError(error),
@@ -114,7 +149,7 @@ impl Cache {
                                 ormlite::Error::OrmliteError(err) => BeaverError::ORMLiteError(err),
                             }
                         })?;
-                        Ok((cfile, true))
+                        Ok(cfile)
                     },
                     err => Err(BeaverError::SQLError(err))
                 },
@@ -123,26 +158,112 @@ impl Cache {
             }
         }?;
 
-        if inserted {
-            trace!("{} -> changed (new file)", &filename);
-            return Ok(true);
+        // if cfile.check_id != check_id {
+        //     trace!("{} -> changed", &filename);
+        //     Ok(true)
+        // } else {
+        //     trace!("{} -> unchanged", &filename);
+        //     Ok(false)
+        // }
+        self.concrete_file_changed(&cfile).await
+    }
+
+    #[tokio::main]
+    pub async fn files_changed_in_context(&self, context: &str) -> crate::Result<bool> {
+        let cfiles = match ConcreteFile::select()
+            .where_("context = ?")
+            .bind(context)
+            .fetch_all(&self.pool).await
+        {
+            Ok(cfile) => Ok(cfile),
+            Err(ormlite::Error::SqlxError(error)) => match error {
+                sqlx::Error::RowNotFound => { return Ok(true); },
+                error => Err(BeaverError::SQLError(error))
+            },
+            Err(ormlite::Error::TokenizationError(tokenizer_error)) => panic!("Unexpected error (bug): {}", tokenizer_error),
+            Err(ormlite::Error::OrmliteError(err)) => Err(BeaverError::ORMLiteError(err)),
+        }?;
+
+        let mut futures = Vec::with_capacity(cfiles.len());
+        for cfile in cfiles.iter() {
+            futures.push(self.concrete_file_changed(cfile));
         }
 
-        if cfile.check_id != check_id {
-            trace!("{} -> changed", &filename);
-            cfile.update_partial()
-                .check_id(check_id)
-                .update(&self.pool).await
-                .map_err(|err| match err {
-                    ormlite::Error::SqlxError(error) => BeaverError::SQLError(error),
-                    ormlite::Error::TokenizationError(tokenizer_error) => panic!("Unexpected error (bug): {}", tokenizer_error),
-                    ormlite::Error::OrmliteError(err) => BeaverError::ORMLiteError(err),
-                })?;
-            Ok(true)
-        } else {
-            trace!("{} -> unchanged", &filename);
-            Ok(false)
+        let mut any_changed = false;
+        for future in futures {
+            any_changed |= future.await?;
         }
+
+        return Ok(any_changed);
+    }
+
+    #[tokio::main]
+    pub async fn add_all_files<P: AsRef<Path>>(&self, files: impl Iterator<Item = P>, context: &str) -> crate::Result<()> {
+        let files = files.into_iter()
+            .map(|file| {
+                match std::path::absolute(file) {
+                    Ok(absfile) => match absfile.as_os_str().to_str() {
+                        Some(str) => Ok(str.to_string()),
+                        None => Err(BeaverError::NonUTF8OsStr(absfile.as_os_str().to_os_string()))
+                    },
+                    Err(err) => Err(err.into())
+                }
+            }).collect::<Result<Vec<String>, BeaverError>>()?;
+
+        let mut futures = Vec::with_capacity(files.len());
+        for file in files.iter() {
+            futures.push(self.insert_or_update_file(file))
+        }
+
+        let mut check_ids = Vec::with_capacity(files.len());
+        for future in futures {
+            check_ids.push(future.await?);
+        }
+
+        let to_check = zip(files.iter().map(|filename| {
+            (
+                filename,
+                models::ConcreteFile::select()
+                    .limit(1)
+                    .where_("filename = ? and context = ?")
+                    .bind(filename)
+                    .bind(context)
+                    .fetch_optional(&self.pool)
+            )
+        }), check_ids);
+        let mut to_insert = Vec::new();
+        for ((filename, row), check_id) in to_check {
+            let row = row.await.map_err(|err| match err {
+                ormlite::Error::SqlxError(error) => BeaverError::SQLError(error),
+                ormlite::Error::TokenizationError(tokenizer_error) => panic!("Unexpected error (bug): {}", tokenizer_error),
+                ormlite::Error::OrmliteError(err) => BeaverError::ORMLiteError(err),
+            })?;
+
+            if let Some(row) = row {
+                row.update_partial()
+                    .check_id(check_id)
+                    .update(&self.pool)
+                    .await.map_err(|err| {
+                        match err {
+                            ormlite::Error::SqlxError(error) => BeaverError::SQLError(error),
+                            ormlite::Error::TokenizationError(tokenizer_error) => panic!("Unexpected error (bug): {}", tokenizer_error),
+                            ormlite::Error::OrmliteError(err) => BeaverError::ORMLiteError(err),
+                        }
+                    })?;
+            } else {
+                to_insert.push(models::ConcreteFile::new(context, filename, check_id)?);
+            }
+        }
+
+        if to_insert.len() > 0 {
+            models::ConcreteFile::insert_many(to_insert, &self.pool).await.map_err(|err| match err {
+                ormlite::Error::SqlxError(error) => BeaverError::SQLError(error),
+                ormlite::Error::TokenizationError(tokenizer_error) => panic!("Unexpected error (bug): {}", tokenizer_error),
+                ormlite::Error::OrmliteError(err) => BeaverError::ORMLiteError(err),
+            })?;
+        }
+
+        Ok(())
     }
 }
 
@@ -150,10 +271,6 @@ impl Cache {
 mod tests {
     use std::fs::File;
     use std::io::Write;
-
-    use ormlite::Model;
-
-    use crate::cache::models;
 
     use super::Cache;
 
@@ -169,7 +286,7 @@ mod tests {
         let file_path = dir.path().join("file");
         let mut file = File::create(&file_path).unwrap();
 
-        let mut cache = Cache::new(&dir.path().join("cache")).unwrap();
+        let cache = Cache::new(&dir.path().join("cache")).unwrap();
 
         let ctx = "test";
 
@@ -177,12 +294,12 @@ mod tests {
         assert_eq!(cache.file_changed(&file_path, ctx).unwrap(), false);
         file.write("test".as_bytes()).unwrap();
         // file changes are only picked up the next time beaver is run
-        let mut cache = Cache::new(&dir.path().join("cache")).unwrap();
+        let cache = Cache::new(&dir.path().join("cache")).unwrap();
         assert_eq!(cache.file_changed(&file_path, ctx).unwrap(), true);
         assert_eq!(cache.file_changed(&file_path, ctx).unwrap(), false);
         file.write("test".as_bytes()).unwrap();
         assert_eq!(cache.file_changed(&file_path, ctx).unwrap(), false);
-        let mut cache = Cache::new(&dir.path().join("cache")).unwrap();
+        let cache = Cache::new(&dir.path().join("cache")).unwrap();
         assert_eq!(cache.file_changed(&file_path, ctx).unwrap(), true);
         assert_eq!(cache.file_changed(&file_path, ctx).unwrap(), false);
     }

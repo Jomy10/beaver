@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::{path::PathBuf, sync::RwLock};
 use target_lexicon::Triple;
 
-use crate::backend::BackendBuilder;
+use crate::backend::{BackendBuilder, BackendBuilderScope, BuildStep};
 use crate::target::traits::Target;
 use crate::target::TargetRef;
 use crate::traits::{AnyExecutable, AnyTarget, MutableProject};
@@ -19,7 +19,7 @@ pub struct Project {
     targets: RwLock<Vec<AnyTarget>>
 }
 
-unsafe impl Send for Project {}
+// unsafe impl Send for Project {}
 
 impl Project {
     pub fn new(
@@ -97,10 +97,11 @@ impl project::traits::Project for Project {
         }
     }
 
-    fn targets<'a>(&'a self) -> crate::Result<std::sync::RwLockReadGuard<'a, Vec<AnyTarget>>> {
-        self.targets.read().map_err(|err| {
-            BeaverError::TargetsReadError(err.to_string())
-        })
+    fn targets<'a>(&'a self) -> crate::Result<Box<dyn std::ops::Deref<Target = Vec<AnyTarget>> + 'a>> {
+        match self.targets.read() {
+            Ok(val) => Ok(Box::new(val)),
+            Err(err) => Err(BeaverError::TargetsReadError(err.to_string()))
+        }
     }
 
     fn find_target(&self, name: &str) -> crate::Result<Option<usize>> {
@@ -120,9 +121,20 @@ impl project::traits::Project for Project {
         context: &Beaver
     ) -> crate::Result<()> {
         _ = scope; // TODO
-        for target in self.targets()?.iter() {
-            target.register(&self.name, &self.base_dir, &self.build_dir, triple, builder.clone(), context)?;
-        }
+        let steps: Vec<String> = self.targets()?.iter().map(|target| {
+            target.register(&self.name, &self.base_dir, &self.build_dir, triple, builder.clone(), context)
+        }).collect::<crate::Result<Vec<String>>>()?;
+        let steps: Vec<&str> = steps.iter().map(|str| str.as_str()).collect();
+
+        let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
+        let mut scope = guard.new_scope();
+        scope.add_step(&BuildStep::Phony {
+            name: &self.name,
+            args: &steps,
+            dependencies: &[]
+        })?;
+        guard.apply_scope(scope);
+
         return Ok(());
     }
 

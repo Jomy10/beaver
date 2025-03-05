@@ -18,11 +18,14 @@ pathdiff = { workspace = true }
 shlex = { workspace = true }
 ormlite = { workspace = true, features = ["sqlite", "uuid"] }
 # TODO: add feature link-sqlite -> enables sqlite-unbundled (see https://docs.rs/sqlx/latest/sqlx/sqlite/index.html)
-sqlx = { workspace = true, features = ["sqlite", "derive", "uuid"] }
+sqlx = { workspace = true, features = ["sqlite", "derive", "uuid", "runtime-tokio"] }
 async-executor = { workspace = true }
 futures-lite = { workspace = true }
 uuid = { workspace = true, features = ["v4", "fast-rng", "macro-diagnostics"] }
 tokio = { workspace = true, features = ["rt", "macros"] }
+# serde = { workspace = true, features = ["derive"] }
+# serde_json = { workspace = true }
+cmake-file-api = { workspace = true }
 utils = { path = "../utils" }
 glob = { path = "../glob" }
 beaver-macros = { path = "../beaver-macros" }

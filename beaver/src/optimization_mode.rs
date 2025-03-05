@@ -9,7 +9,6 @@ pub enum OptimizationMode {
     Release
 }
 
-
 use OptimizationMode::*;
 
 impl OptimizationMode {
@@ -24,6 +23,13 @@ impl OptimizationMode {
         match self {
             Debug => &["-O0"],
             Release => &["-O3", "-flto"]
+        }
+    }
+
+    pub fn cmake_name(&self) -> &'static str {
+        match self {
+            Debug => "Debug",
+            Release => "Release",
         }
     }
 }

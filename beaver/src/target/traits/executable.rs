@@ -12,7 +12,7 @@ pub trait Executable: Target {
         todo!("run {:?} {:?}", artifact_file, args)
     }
 
-    fn executable_artifacts(&self) -> &[ExecutableArtifactType];
+    fn executable_artifacts(&self) -> Vec<ExecutableArtifactType>;
 
     fn default_executable_artifact(&self) -> Option<ExecutableArtifactType> {
         let artifacts = self.executable_artifacts();
@@ -30,5 +30,6 @@ pub trait Executable: Target {
 #[enum_dispatch(Executable)]
 #[derive(Debug)]
 pub enum AnyExecutable {
-    CExecutable(target::c::Executable)
+    C(target::c::Executable),
+    CMake(target::cmake::Executable)
 }

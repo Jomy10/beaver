@@ -4,13 +4,14 @@ use std::path::{Path, PathBuf};
 
 use pathdiff::diff_paths;
 
-use crate::backend::{BackendBuilder, BackendBuilderScope, BuildStep, Rule};
+use crate::backend::{BackendBuilder, BackendBuilderScope, BuildStep, Pool, Rule};
 use crate::BeaverError;
 
 #[derive(Debug)]
 pub struct NinjaBuilder<'a> {
     buffer: String,
     rules: HashMap<&'a str, &'a Rule>,
+    pools: HashMap<&'a str, &'a Pool>,
     rel_path: PathBuf,
 }
 
@@ -20,6 +21,7 @@ impl<'a> NinjaBuilder<'a> {
         NinjaBuilder {
             buffer: String::new(),
             rules: HashMap::new(),
+            pools: HashMap::new(),
             rel_path: rel_path.unwrap()
         }
     }
@@ -27,6 +29,13 @@ impl<'a> NinjaBuilder<'a> {
 
 impl<'a> BackendBuilder<'a> for NinjaBuilder<'a> {
     fn add_rule(&mut self, rule: &'a Rule) {
+        if let Some(pool) = rule.pool {
+            if !self.pools.contains_key(pool.name) {
+                self.pools.insert(pool.name, pool);
+                self.buffer.push_str(&format!("pool {}\n    depth = {}", pool.name, pool.depth));
+            }
+        }
+
         self.rules.insert(&rule.name, rule);
 
         self.buffer.push_str(&format!("rule {}\n", rule.name));
@@ -155,6 +164,12 @@ impl BackendBuilderScope for NinjaBuilderScope {
                 self.write_char('\n')?;
                 self.write_options(options)?;
             },
+            BuildStep::Cmd { rule, name, dependencies, options } => {
+                self.write_fmt(format_args!("build {}: {}", name, rule.name))?;
+                self.write_dependencies(dependencies)?;
+                self.write_char('\n')?;
+                self.write_options(options)?;
+            }
         }
 
         return Ok(());
