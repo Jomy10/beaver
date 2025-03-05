@@ -72,7 +72,7 @@ pub trait CTarget: traits::Target {
         builder: Arc<RwLock<Builder>>,
         rules: &[&'static Rule],
         context: &crate::Beaver
-    ) -> crate::Result<()> {
+    ) -> crate::Result<String> {
         let mut guard = builder.write()
             .map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
         for rule in rules {
@@ -134,7 +134,7 @@ pub trait CTarget: traits::Target {
             .map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
         builder_guard.apply_scope(scope);
 
-            return Ok(());
+        return Ok(target_step);
     }
 
     fn register_artifact<Scope: BackendBuilderScope>(

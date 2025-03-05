@@ -391,7 +391,7 @@ methods!(
 
         let ctarget_desc: c::TargetDescriptor<LibraryArtifactType> = c_target_parse_ruby_args(args, &context.context);
 
-        let library = AnyLibrary::CLibrary(c::Library::new_desc(ctarget_desc));
+        let library = AnyLibrary::C(c::Library::new_desc(ctarget_desc));
 
         match context.context.with_current_project_mut(|project| {
             match project.as_mutable() {
@@ -422,7 +422,7 @@ methods!(
 
         let ctarget_desc: c::TargetDescriptor<ExecutableArtifactType> = c_target_parse_ruby_args(args, &context.context);
 
-        let exe = AnyExecutable::CExecutable(c::Executable::new_desc(ctarget_desc));
+        let exe = AnyExecutable::C(c::Executable::new_desc(ctarget_desc));
 
         match context.context.with_current_project_mut(|project| {
             match project.as_mutable() {

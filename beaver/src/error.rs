@@ -2,6 +2,7 @@ use std::ffi::OsString;
 use std::io;
 use std::path::PathBuf;
 use std::process::ExitStatus;
+use std::time::SystemTimeError;
 
 use target_lexicon::OperatingSystem;
 
@@ -73,6 +74,22 @@ pub enum BeaverError {
     #[error("ORMLite Error: {0}")]
     ORMLiteError(String),
 
+    // CMake //
+    #[error("CMake failed")]
+    CMakeFailed,
+    // #[error("Failed to get reply from CMake")]
+    // CMakeNoReply,
+    #[error("Failed to read CMake reply: 0")]
+    CMakeReplyError(#[from] cmake_file_api::reply::ReaderError),
+    // #[error("Error deserializing CMake query reply json: {0}")]
+    // CMakeDeserializeError(serde_json::Error),
+    #[error("Missing CMake configuration {0}")]
+    CMakeMissingConfig(&'static str),
+    #[error("Unknown language from CLang: {0}")]
+    CMakeUnknownLanguage(String),
+    #[error("CMake target with id '{0}' not found")]
+    NoCMakeTarget(String),
+
     // General Errors //
     #[error("There are no projects defined")]
     NoProjects,
@@ -87,6 +104,8 @@ pub enum BeaverError {
     NoExecutable(String),
     #[error("OS String is not UTf-8")]
     NonUTF8OsStr(OsString),
+    #[error("{0}")]
+    SystemTimeError(#[from] SystemTimeError),
 
     #[error("Failed to lock: {0}")]
     LockError(String),

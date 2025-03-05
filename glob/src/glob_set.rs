@@ -107,6 +107,8 @@ impl GlobSet {
     }
 
     // TODO: AsyncStream
+    /// Collects all files that match the given set of globs in the base_path.
+    ///
     /// Will not match symlinks
     pub fn files(&self, base_path: &Path) -> Result<Vec<PathBuf>, GlobIterationError> {
         let mut paths: Vec<PathBuf> = Vec::new();

@@ -140,11 +140,6 @@ impl traits::Target for Executable {
         TargetType::Executable
     }
 
-    fn artifact_output_dir(&self,  project_build_dir: &Path, target_triple: &Triple) -> PathBuf {
-        _ = target_triple; // todo: support cross-compiling in the future
-        project_build_dir.join("artifacts")
-    }
-
     fn artifact_file(&self, project_build_dir: &Path, artifact: ArtifactType, target_triple: &Triple) -> crate::Result<PathBuf> {
         let dir = self.artifact_output_dir(project_build_dir, target_triple);
         return match artifact {
@@ -173,7 +168,7 @@ impl traits::Target for Executable {
         target_triple: &Triple,
         builder: Arc<RwLock<Builder>>,
         context: &crate::Beaver
-    ) -> crate::Result<()> {
+    ) -> crate::Result<String> {
         CTarget::register_impl(
             self,
             project_name,
@@ -293,7 +288,14 @@ impl CTarget for Executable {
 }
 
 impl traits::Executable for Executable {
-    fn executable_artifacts(&self) -> &[ExecutableArtifactType] {
-        &self.artifacts
+    fn executable_artifacts(&self) -> Vec<ExecutableArtifactType> {
+        self.artifacts.clone()
+    }
+}
+
+impl Executable {
+    fn artifact_output_dir(&self,  project_build_dir: &Path, target_triple: &Triple) -> PathBuf {
+        _ = target_triple; // todo: support cross-compiling in the future
+        project_build_dir.join("artifacts")
     }
 }

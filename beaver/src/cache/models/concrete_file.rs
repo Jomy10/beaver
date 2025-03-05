@@ -1,6 +1,6 @@
 use log::trace;
 use ormlite::Model;
-use sqlx::{SqliteConnection, Type, TypeInfo};
+use sqlx::{SqliteConnection, TypeInfo};
 use sqlx::sqlite::SqliteTypeInfo;
 use uuid::Uuid;
 
@@ -27,9 +27,11 @@ impl ConcreteFile {
 
         let res = sqlx::query(&format!("
 CREATE TABLE IF NOT EXISTS concrete_file (
-    context {} PRIMARY KEY,
+    context {},
     filename {},
-    check_id {}
+    check_id {},
+
+    PRIMARY KEY (context, filename)
 )
             ",
             str_typeinfo.name(),

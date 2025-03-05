@@ -10,6 +10,7 @@ use crate::platform::{dynlib_extension_for_os, dynlib_linker_flags_for_os, stati
 use crate::target::parameters::{DefaultArgument, Files, Flags, Headers};
 use crate::target::traits::{self, TargetType};
 use crate::target::{ArtifactType, Dependency, Language, LibraryArtifactType, Version};
+use crate::traits::Library as _;
 use crate::{Beaver, BeaverError};
 
 use super::{CTarget, TargetDescriptor};
@@ -145,11 +146,6 @@ impl traits::Target for Library {
         TargetType::Library
     }
 
-    fn artifact_output_dir(&self,  project_build_dir: &std::path::Path, target_triple: &Triple) -> std::path::PathBuf {
-        _ = target_triple; // todo: support cross-compiling in the future
-        project_build_dir.join("artifacts")
-    }
-
     fn artifact_file(&self, project_build_dir: &std::path::Path, artifact: ArtifactType, target_triple: &Triple) -> crate::Result<std::path::PathBuf> {
         let dir = self.artifact_output_dir(project_build_dir, target_triple);
         return match artifact {
@@ -183,7 +179,7 @@ impl traits::Target for Library {
         target_triple: &Triple,
         builder: Arc<RwLock<Builder>>,
         context: &Beaver
-    ) -> crate::Result<()> {
+    ) -> crate::Result<String> {
         CTarget::register_impl(
             self,
             project_name,
@@ -342,15 +338,22 @@ impl CTarget for Library {
 }
 
 impl traits::Library for Library {
-    fn public_cflags(&self, project_base_dir: &std::path::Path) -> Vec<String> {
-        let mut flags = self.cflags.public.clone();
-        for header in self.headers.public(project_base_dir) {
-            flags.push(format!("-I{}", header.display()));
-        }
-        return flags;
+    fn public_cflags(&self, project_base_dir: &std::path::Path, out: &mut Vec<String>) {
+        out.extend(self.cflags.public.iter().cloned());
+        out.extend(self.headers.public(project_base_dir)
+            .map(|h| format!("-I{}", h.display())));
     }
 
-    fn library_artifacts(&self) ->  &[LibraryArtifactType] {
-        &self.artifacts
+    fn library_artifacts(&self) -> Vec<LibraryArtifactType> {
+        self.artifacts.clone()
+    }
+
+    fn additional_linker_flags(&self) -> Option<&Vec<String>> {
+        Some(&self.linker_flags)
+    }
+
+    fn artifact_output_dir(&self,  project_build_dir: &std::path::Path, target_triple: &Triple) -> std::path::PathBuf {
+        _ = target_triple; // todo: support cross-compiling in the future
+        project_build_dir.join("artifacts")
     }
 }

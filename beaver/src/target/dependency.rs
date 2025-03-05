@@ -16,7 +16,9 @@ pub enum Dependency {
     Flags {
         cflags: Option<Vec<String>>,
         linker_flags: Option<Vec<String>>,
-    }
+    },
+    /// reference to a CMake id
+    CMakeId(String),
 }
 
 // Initializers //
@@ -164,6 +166,11 @@ impl Dependency {
             },
             Dependency::Flags { cflags: _, linker_flags: _ } => {
                 return Ok(None);
+            },
+            Dependency::CMakeId(cmake_id) => {
+                return context.with_cmake_project_and_library(&cmake_id, |project, target| {
+                    Ok(Some(format!("{}$:{}$:{}", project.name(), target.name(), target.artifact)))
+                });
             }
         }
     }
@@ -177,6 +184,11 @@ impl Dependency {
             },
             Dependency::Flags { cflags: _, linker_flags: _ } => {
                 return Ok(None);
+            },
+            Dependency::CMakeId(cmake_id) => {
+                return context.with_cmake_project_and_library(&cmake_id, |project, target| {
+                    Ok(Some(format!("{}:{}:{}", project.name(), target.name(), target.artifact)))
+                });
             }
         }
     }
@@ -185,7 +197,7 @@ impl Dependency {
         match self {
             Dependency::Library(dep) => {
                 context.with_project_and_target(&dep.target, |proj, target| {
-                    out.append(&mut target.as_library().unwrap().public_cflags(proj.base_dir()));
+                    target.as_library().unwrap().public_cflags(proj.base_dir(), out);
                     Ok(())
                 })
             },
@@ -194,6 +206,11 @@ impl Dependency {
                     out.extend_from_slice(cflags.as_slice());
                 }
                 Ok(())
+            },
+            Dependency::CMakeId(cmake_id) => {
+                return context.with_cmake_project_and_library(&cmake_id, |project, target| {
+                    Ok(target.public_cflags(project.base_dir(), out))
+                });
             }
         }
     }
@@ -202,7 +219,8 @@ impl Dependency {
         match self {
             Dependency::Library(dep) => {
                 context.with_project_and_target(&dep.target, |proj, target| {
-                    out.append(&mut target.as_library().unwrap().link_against_library(proj.build_dir(), dep.artifact, &triple)?);
+                    target.as_library().unwrap().link_against_library(proj.build_dir(), dep.artifact, &triple, out)?;
+                    // out.append(&mut target.as_library().unwrap().link_against_library(proj.build_dir(), dep.artifact, &triple)?);
                     Ok(())
                 })
             },
@@ -212,6 +230,11 @@ impl Dependency {
                 }
                 // return Ok(linker_flags.clone());
                 Ok(())
+            },
+            Dependency::CMakeId(cmake_id) => {
+                return context.with_cmake_project_and_library(&cmake_id, |project, target| {
+                    target.link_against_library(project.build_dir(), target.artifact, &triple, out)
+                });
             }
         }
     }

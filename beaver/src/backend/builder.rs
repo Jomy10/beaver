@@ -30,9 +30,16 @@ pub trait BackendBuilderScope: std::fmt::Debug {
 }
 
 #[derive(Debug)]
+pub struct Pool {
+    pub name: &'static str,
+    pub depth: u32
+}
+
+#[derive(Debug)]
 pub struct Rule {
     pub name: &'static str,
     pub options: Vec<(&'static str, &'static str)>,
+    pub pool: Option<&'static Pool>
 }
 
 #[derive(Debug)]
@@ -46,6 +53,12 @@ pub enum BuildStep<'a> {
         rule: &'a Rule,
         output: &'a Path,
         input: &'a [&'a Path],
+        dependencies: &'a [&'a str],
+        options: &'a [(&'a str, &'a str)],
+    },
+    Cmd {
+        rule: &'a Rule,
+        name: &'a str,
         dependencies: &'a [&'a str],
         options: &'a [(&'a str, &'a str)],
     }
