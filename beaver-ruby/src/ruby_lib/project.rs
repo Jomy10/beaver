@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use beaver::project::beaver::Project as BeaverProject;
+use beaver::project::cmake;
 use beaver::traits::{AnyProject, Project};
 use rutie::{class, methods, Class, Fixnum, NilClass, Object, RString, Symbol};
 use log::trace;
@@ -54,7 +55,32 @@ methods!(
     crate::GlobalModule,
     rtself,
 
-    // TODO replace unwraps with raise
+    fn project(name: RString) -> ProjectAccessor {
+        let name = match name {
+            Err(err) => {
+                trace!("{:?}", err);
+                raise!(Class::from_existing("ArgumentError"), "`project` requires a project name as argument");
+            },
+            Ok(arg) => arg,
+        };
+
+        let context = get_context();
+
+        let id = match context.context.find_project(name.to_str()) {
+            Err(err) => raise!(Class::from_existing("RuntimeError"), &err.to_string()),
+            Ok(id) => id,
+        };
+
+        let Some(id) = id else {
+            raise!(Class::from_existing("RuntimeError"), &format!("No project named `{}`", name.to_str()));
+        };
+
+        let mut project_accessor = Class::from_existing("ProjectAccessor").allocate();
+        project_accessor.instance_variable_set("@id", Fixnum::new(id as i64));
+
+        return unsafe { project_accessor.to() };
+    }
+
     fn def_project(args: rutie::Hash) -> ProjectAccessor {
         let args = match args {
             Err(err) => {
@@ -86,7 +112,22 @@ methods!(
         return unsafe { project_accessor.to() };
     }
 
-    fn test() -> NilClass {
+    fn import_cmake(base_dir: RString) -> NilClass {
+        let base_dir = match base_dir {
+            Err(err) => {
+                trace!("{:?}", err);
+                raise!(Class::from_existing("ArgumentError"), "`import_cmake` requires the path to the CMake project as an argument")
+            },
+            Ok(arg) => arg
+        };
+
+        let context = get_context();
+
+        let base_path = PathBuf::from(base_dir.to_str());
+        if let Err(err) = cmake::importer(&base_path, &[], &context.context) {
+            raise!(Class::from_existing("RuntimeError"), &format!("{}", err));
+        };
+
         return NilClass::new();
     }
 );
@@ -96,6 +137,9 @@ pub fn load(module: &mut rutie::Class) -> crate::Result<()> {
     project_acc_klass.def("target", target);
 
     module.define_method("Project", def_project);
+    module.define_method("import_cmake", import_cmake);
+
+    module.define_method("project", project);
 
     return Ok(());
 }
