@@ -138,6 +138,10 @@ impl Dependency {
 
         Ok(Dependency::Flags { cflags: Some(cflags), linker_flags: Some(linker_flags) })
     }
+
+    pub fn system(name: &str) -> Dependency {
+        Dependency::Flags { cflags: None, linker_flags: Some(vec![format!("-l{}", name)]) }
+    }
 }
 
 // LibraryTarget //
