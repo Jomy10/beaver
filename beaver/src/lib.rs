@@ -1,4 +1,4 @@
-#![feature(iter_intersperse, once_cell_try)]
+#![feature(iter_intersperse, once_cell_try, error_generic_member_access, )]
 
 use utils::moduse;
 

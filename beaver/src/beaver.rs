@@ -351,8 +351,15 @@ impl Beaver {
         }
         self.build(target)?;
         let artifact_file = self.with_project_and_target(&target, |project, target| {
-            target.artifact_file(project.build_dir(), ArtifactType::Executable(ExecutableArtifactType::Executable), &self.target_triple)
+            let artifact_type = ArtifactType::Executable(ExecutableArtifactType::Executable);
+            if !target.artifacts().contains(&artifact_type) {
+                return Err(BeaverError::NoExecutableArtifact(target.name().to_string()));
+            }
+            target.artifact_file(project.build_dir(), artifact_type, &self.target_triple)
         })?;
+
+        dbg!(&artifact_file);
+        assert!(artifact_file.exists());
 
         let mut process = Command::new(artifact_file.as_path())
             .args(args)

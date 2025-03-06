@@ -113,12 +113,12 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
                 let flags = if value.is_kind_of(ruby.class_string()) || value.is_kind_of(ruby.class_array()) {
                     Flags::new(parse_to_string_vec(value)?, Vec::new())
                 } else if let Some(hash) = magnus::RHash::from_value(value) {
-                    let public_flags = if let Some(value) = hash.get("public") {
+                    let public_flags = if let Some(value) = hash.get(magnus::Symbol::new("public")) {
                         parse_to_string_vec(value)?
                     } else {
                         Vec::new()
                     };
-                    let private_flags = if let Some(value) = hash.get("private") {
+                    let private_flags = if let Some(value) = hash.get(magnus::Symbol::new("private")) {
                         parse_to_string_vec(value)?
                     } else {
                         Vec::new()

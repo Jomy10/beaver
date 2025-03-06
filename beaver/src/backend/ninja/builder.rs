@@ -32,7 +32,7 @@ impl<'a> BackendBuilder<'a> for NinjaBuilder<'a> {
         if let Some(pool) = rule.pool {
             if !self.pools.contains_key(pool.name) {
                 self.pools.insert(pool.name, pool);
-                self.buffer.push_str(&format!("pool {}\n    depth = {}", pool.name, pool.depth));
+                self.buffer.push_str(&format!("pool {}\n    depth = {}\n", pool.name, pool.depth));
             }
         }
 

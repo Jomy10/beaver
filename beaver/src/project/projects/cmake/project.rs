@@ -116,11 +116,15 @@ impl traits::Project for Project {
 
         let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
         let mut scope = guard.new_scope();
+        drop(guard);
         scope.add_step(&BuildStep::Phony {
            name: &self.name,
            args: &steps,
            dependencies: &[],
         })?;
+
+        let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
+        guard.apply_scope(scope);
 
         return Ok(());
     }
