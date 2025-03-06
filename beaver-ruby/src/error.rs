@@ -1,46 +1,81 @@
-use std::io;
+use std::rc::Rc;
 
-use beaver::BeaverError;
-use rutie::{Exception, Object, RString};
+use magnus::error::RubyUnavailableError;
+use magnus::value::ReprValue;
 
-#[derive(thiserror::Error, Debug)]
+use crate::{BeaverRubyContext, CTX_RC};
+
+#[derive(Debug, thiserror::Error)]
 pub enum BeaverRubyError {
-    #[error("{0}")]
-    BeaverError(#[from] BeaverError),
-
-    #[error("Couldn't open script file: {0}")]
-    ScriptFileOpenError(io::Error),
-    #[error("Couldn't read script file: {0}")]
-    ScriptFileReadError(io::Error),
-
-    // TODO: show code where exception occurred
-    #[error("Exception occured: {}\n{}", .0.to_s(), .0.backtrace().unwrap().into_iter().map(|val| unsafe { val.send("to_s", &[]).to::<RString>().to_string() }).collect::<Vec<String>>().join("\n"))]
-    RubyException(rutie::AnyException),
-
-    #[error("{0:?}")]
-    OsStrConversionError(#[from] OsStrConversionError),
-
-    // General IO Error
+    #[error(transparent)]
+    RubyUnavailableError(#[from] RubyUnavailableError),
+    #[error("{}{}",
+        .0,
+        // include a backtrace
+        .0.value().map_or("".to_string(), |value| value.funcall("backtrace", ())
+            .map_or("".to_string(), |value: magnus::Value| {
+                value.funcall("join", ("\n",))
+                    .map_or("".to_string(), |value: magnus::RString| {
+                        match unsafe { value.as_str() } {
+                            Ok(val) => "\n".to_string() + val,
+                            Err(_) => "".to_string()
+                        }
+                    })
+                })
+        )
+    )]
+    MagnusError(magnus::Error, Rc<BeaverRubyContext>), // The BeaverRubyContext should be kept alive so we can construct the backtrace
     #[error("IO Error: {0}")]
-    IOError(#[from] io::Error)
+    IOError(#[from] std::io::Error),
+    #[error(transparent)]
+    BeaverError(#[from] beaver::BeaverError),
+    #[error("Cannot convert {0} to {1}", )]
+    IncompatibleType(magnus::Value, &'static str),
+    #[error("{0}")]
+    ArgumentError(String),
+    #[error("Found invalid key {0}")]
+    InvalidKey(String),
+    #[error("Couldn't parse URL: {0}")]
+    URLParseError(#[from] url::ParseError)
 }
 
-pub type Result<S> = std::result::Result<S, BeaverRubyError>;
+impl From<magnus::Error> for BeaverRubyError {
+    fn from(value: magnus::Error) -> Self {
+        // let backtrace = value.value().map_or("".to_string(), |value| value.funcall("backtrace", ())
+        //     .map_or("".to_string(), |value: magnus::Value| {
+        //         value.funcall("join", ("\n",))
+        //             .map_or("".to_string(), |value: magnus::RString| {
+        //                 match unsafe { value.as_str() } {
+        //                     Ok(val) => "\n".to_string() + val,
+        //                     Err(_) => "".to_string()
+        //                 }
+        //             })
+        //     })
+        // );
 
-macro_rules! raise {
-    ($exc: expr) => {
-        {
-            rutie::VM::raise_ex($exc);
-            unreachable!();
-        }
-    };
-    ($klass: expr, $msg: expr) => {
-        {
-            rutie::VM::raise($klass, $msg);
-            unreachable!();
-        }
-    };
+        BeaverRubyError::MagnusError(
+            value,
+            #[allow(static_mut_refs)]
+            unsafe { CTX_RC.assume_init_ref().upgrade().expect("Rc was dropped") }
+        )
+    }
 }
 
-pub(crate) use raise;
-use utils::str::OsStrConversionError;
+impl From<BeaverRubyError> for magnus::Error {
+    fn from(value: BeaverRubyError) -> magnus::Error {
+        let ruby = magnus::Ruby::get().unwrap();
+        match value {
+            BeaverRubyError::MagnusError(error, _) => error,
+            BeaverRubyError::ArgumentError(argerrstr) => {
+                let exc_class = ruby.exception_arg_error();
+                magnus::Error::new(exc_class, argerrstr)
+            },
+            _ => {
+                let exc_class = ruby.exception_runtime_error();
+                magnus::Error::new(exc_class, value.to_string())
+            }
+        }
+    }
+}
+
+pub type Result<T> = std::result::Result<T, BeaverRubyError>;

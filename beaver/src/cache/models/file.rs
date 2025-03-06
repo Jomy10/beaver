@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::{fs, io};
+use std::fs;
 // TODO: support for Windows/Non-unix
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
@@ -11,7 +11,6 @@ use sqlx::{SqliteConnection, TypeInfo};
 use uuid::Uuid;
 
 use crate::cache::types::{Timespec, UInt};
-use crate::BeaverError;
 
 #[derive(Model, Debug, Clone)]
 pub struct File {

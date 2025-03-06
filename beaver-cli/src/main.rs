@@ -107,8 +107,8 @@ When the argument is provided, but without a value, then the optimization mode i
 
     let debug = matches.get_one::<bool>("debug").unwrap();
 
-    let beaver = Beaver::new(color, opt)?;
-    let ctx = beaver_ruby::execute(beaver, script_file)?;
+    let beaver = Box::new(Beaver::new(color, opt)?);
+    let ctx = unsafe { beaver_ruby::execute_script(script_file, beaver)? };
 
     if *debug {
         let mut str = String::new();

@@ -2,6 +2,7 @@ build_dir "build"
 
 if !Dir.exist? "flatbuffers"
   puts "Cloning flatbuffers..."
+  # sh "git clone https://github.com/google/flatbuffers"
   if system("git clone https://github.com/google/flatbuffers") != true
     exit(1)
   end
@@ -19,7 +20,7 @@ puts flatbuffers
 # Run an executable defined in the FlatBuffers CMake project.
 # This will build and run the executable
 # TODO: pre "clean" do -> remove .fbs file OR: cleanup(file)
-# flatbuffers.run("flatc", "--cpp", "MyFileFormat.fbs")
+flatbuffers.target("flatc").run(["--cpp", "MyFileFormat.fbs"])
 
 Project(name: "MyFileFormat")
 

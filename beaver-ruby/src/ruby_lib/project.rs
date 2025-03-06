@@ -1,145 +1,64 @@
 use std::path::PathBuf;
 
-use beaver::project::beaver::Project as BeaverProject;
-use beaver::project::cmake;
-use beaver::traits::{AnyProject, Project};
-use rutie::{class, methods, Class, Fixnum, NilClass, Object, RString, Symbol};
-use log::trace;
+use beaver::project;
+use beaver::traits::AnyProject;
 
-use crate::{get_context, raise};
+use crate::{BeaverRubyError, RBCONTEXT};
 
-use super::target::TargetAccessor;
+use super::project_accessor::ProjectAccessor;
+use super::Arg;
 
-class!(ProjectAccessor);
+fn define_project(args: magnus::RHash) -> Result<ProjectAccessor, magnus::Error> {
+    let context = unsafe { &*RBCONTEXT.assume_init() };
 
-methods!(
-    ProjectAccessor,
-    rtself,
+    let mut name: Arg<String> = Arg::new("name");
+    let mut base_dir: Arg<PathBuf> = Arg::new("base_dir");
 
-    // TODO
-    fn target(name: RString) -> TargetAccessor {
-        let rerr = Class::from_existing("RuntimeError");
-
-        let name = match name {
-            Err(err) => raise!(err),
-            Ok(val) => val,
-        };
-
-        let project_id = rtself.instance_variable_get("@id");
-        let project_id = project_id.try_convert_to::<Fixnum>().unwrap();
-        let project_id = project_id.to_i64() as usize;
-
-        let context = get_context();
-        let projects = match context.context.projects() {
-            Err(err) => raise!(rerr, &err.to_string()),
-            Ok(val) => val,
-        };
-        let project = &projects[project_id];
-
-        let name = name.to_str();
-        let Some(target_id) = (match project.find_target(name) {
-            Err(err) => raise!(rerr, &err.to_string()),
-            Ok(val) => val,
-        }) else {
-            raise!(rerr, &format!("Target {} not found in project {}", name, project.name()));
-        };
-
-        let mut target_accessor = Class::from_existing("TargetAccessor").allocate();
-        target_accessor.instance_variable_set("@id", Fixnum::new(target_id as i64));
-
-        return unsafe { target_accessor.to() };
-    }
-);
-
-methods!(
-    crate::GlobalModule,
-    rtself,
-
-    fn project(name: RString) -> ProjectAccessor {
-        let name = match name {
-            Err(err) => {
-                trace!("{:?}", err);
-                raise!(Class::from_existing("ArgumentError"), "`project` requires a project name as argument");
+    args.foreach(|key: magnus::Symbol, value: magnus::Value| {
+        match key.name()?.as_ref() {
+            "name" => {
+                let name_value = magnus::RString::from_value(value);
+                let value = if let Some(str) = name_value {
+                    str.to_string()
+                } else {
+                    if let Some(symbol) = magnus::Symbol::from_value(value) {
+                        Ok(symbol.to_string())
+                    } else {
+                        Err(BeaverRubyError::IncompatibleType(value, "String or Symbol").into())
+                    }
+                }?;
+                name.set(value)?;
             },
-            Ok(arg) => arg,
-        };
-
-        let context = get_context();
-
-        let id = match context.context.find_project(name.to_str()) {
-            Err(err) => raise!(Class::from_existing("RuntimeError"), &err.to_string()),
-            Ok(id) => id,
-        };
-
-        let Some(id) = id else {
-            raise!(Class::from_existing("RuntimeError"), &format!("No project named `{}`", name.to_str()));
-        };
-
-        let mut project_accessor = Class::from_existing("ProjectAccessor").allocate();
-        project_accessor.instance_variable_set("@id", Fixnum::new(id as i64));
-
-        return unsafe { project_accessor.to() };
-    }
-
-    fn def_project(args: rutie::Hash) -> ProjectAccessor {
-        let args = match args {
-            Err(err) => {
-                trace!("{:?}", err);
-                raise!(Class::from_existing("ArgumentError"), "`Project` requires at least a `name` argument")
+            "base_dir" => {
+                let value = match magnus::RString::from_value(value){
+                    Some(str) => str.to_string(),
+                    None => Err(BeaverRubyError::IncompatibleType(value, "String").into())
+                }?;
+                base_dir.set(PathBuf::from(value))?;
             },
-            Ok(args) => args
-        };
-        let context = crate::get_context();
+            _ => {return Err(BeaverRubyError::InvalidKey(key.to_string()).into());}
+        }
 
-        let base_dir = args.at(&Symbol::new("base_dir"));
-        let base_dir = if base_dir.is_nil() { std::env::current_dir().unwrap() } else { PathBuf::from(base_dir.try_convert_to::<RString>().unwrap().to_string()) };
-        let build_dir = match context.context.get_build_dir() {
-            Ok(val) => val,
-            Err(err) => raise!(Class::from_existing("RuntimeError"), &format!("{}", err))
-        };
-        let build_dir = build_dir.as_path();
+        Ok(magnus::r_hash::ForEach::Continue)
+    })?;
 
-        let project: AnyProject = BeaverProject::new(
-            args.at(&Symbol::new("name")).try_convert_to::<RString>().unwrap().to_string(),
-            base_dir,
-            build_dir
-        ).unwrap().into();
-        let project_id = context.context.add_project(project).unwrap();
+    let curdir = std::env::current_dir().map_err(|err| BeaverRubyError::from(err))?;
 
-        let mut project_accessor = Class::from_existing("ProjectAccessor").allocate();
-        project_accessor.instance_variable_set("@id", Fixnum::new(project_id as i64));
+    let project: AnyProject = AnyProject::Beaver(project::beaver::Project::new(
+        name.get()?,
+        base_dir.get_opt().unwrap_or(curdir),
+        &context.get_build_dir().map_err(|err| BeaverRubyError::from(err))?
+    ).map_err(|err| BeaverRubyError::from(err))?);
 
-        return unsafe { project_accessor.to() };
-    }
+    let project_index = context.add_project(project).map_err(|err| BeaverRubyError::from(err))?;
 
-    fn import_cmake(base_dir: RString) -> NilClass {
-        let base_dir = match base_dir {
-            Err(err) => {
-                trace!("{:?}", err);
-                raise!(Class::from_existing("ArgumentError"), "`import_cmake` requires the path to the CMake project as an argument")
-            },
-            Ok(arg) => arg
-        };
+    let project_accessor = ProjectAccessor { id: project_index };
 
-        let context = get_context();
+    Ok(project_accessor)
+}
 
-        let base_path = PathBuf::from(base_dir.to_str());
-        if let Err(err) = cmake::importer(&base_path, &[], &context.context) {
-            raise!(Class::from_existing("RuntimeError"), &format!("{}", err));
-        };
+pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
+    ruby.define_global_function("Project", magnus::function!(define_project, 1));
 
-        return NilClass::new();
-    }
-);
-
-pub fn load(module: &mut rutie::Class) -> crate::Result<()> {
-    let mut project_acc_klass = Class::new("ProjectAccessor", None);
-    project_acc_klass.def("target", target);
-
-    module.define_method("Project", def_project);
-    module.define_method("import_cmake", import_cmake);
-
-    module.define_method("project", project);
-
-    return Ok(());
+    Ok(())
 }

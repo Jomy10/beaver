@@ -20,6 +20,6 @@ C::Executable(
     # Link to a library that can be found with pkg-config
     pkgconfig("uuid"),
     # Link to a system library, equal to `-lpthread`
-    system("pthread")
+    system_lib("pthread")
   ]
 )

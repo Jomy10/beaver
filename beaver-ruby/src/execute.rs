@@ -1,88 +1,52 @@
-use core::ffi;
-use std::ffi::CString;
-use std::io::Read;
-use std::{fs, mem};
+use std::mem::MaybeUninit;
 use std::path::Path;
+use std::rc::{self, Rc};
 
-use log::trace;
-use rutie::types::Value;
-use rutie::{module, AnyObject, Class, Fixnum, Module, Object};
-use utils::str::osstr_to_cstr;
+use beaver::Beaver;
 
-use crate::{ruby_lib, BeaverRubyError};
+use crate::ruby_lib;
 
-/// State shared for the duration of the ruby program
-#[derive(Debug)]
-pub struct RubyContext {
-    pub status: i32,
-    pub context: beaver::Beaver,
+pub struct BeaverRubyContext {
+    pub context: Box<Beaver>,
+    #[allow(unused)]
+    cleanup: magnus::embed::Cleanup,
+    #[allow(unused)]
+    ruby: magnus::Ruby,
 }
 
-module!(GlobalModule);
-
-const INTERNAL_NAME: &str = "BeaverInternal";
-const CTXPTR_NAME: &str = "INTERNAL_CTXPTR";
-
-pub(crate) fn get_context<'a>() -> &'a mut RubyContext {
-    let module = Module::from_existing(INTERNAL_NAME);
-    let ptr_fixnum = module.const_get(CTXPTR_NAME).try_convert_to::<Fixnum>().unwrap();
-    let ptr_int = ptr_fixnum.to_i64() as isize;
-    let ptr: *mut RubyContext = unsafe { mem::transmute(ptr_int) };
-    return unsafe { ptr.as_mut().unwrap() };
+impl std::fmt::Debug for BeaverRubyContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("BeaverRubyContext { ... }")
+    }
 }
 
-extern "C" {
-    fn ruby_script(str: *const ffi::c_char);
-}
+/// Used to access context from ruby
+pub(crate) static mut RBCONTEXT: MaybeUninit<*const Beaver> = MaybeUninit::uninit();
+/// Used in BeaverRubyError to ensure a Ruby value doesn't outlive BeaverRubyContext
+pub(crate) static mut CTX_RC: MaybeUninit<rc::Weak<BeaverRubyContext>> = MaybeUninit::uninit();
 
-pub fn execute(context: beaver::Beaver, script_file: &Path) -> crate::Result<Box<RubyContext>> {
-    rutie::VM::init();
-    rutie::VM::init_loadpath();
+/// This function is not thread safe and should only be called once
+pub unsafe fn execute_script<P: AsRef<Path>>(script_file: P, context: Box<Beaver>) -> crate::Result<Rc<BeaverRubyContext>> {
+    let cleanup = unsafe { magnus::embed::init() };
+    let ruby = magnus::Ruby::get()?;
 
-    let c_obj_value: Value = unsafe { rutie::rubysys::rb_cObject.into() };
-    let c_obj: AnyObject = c_obj_value.into();
-    let mut c_class = c_obj.try_convert_to::<Class>().unwrap();
-
-    // set script name
-    let script_name: CString = script_file.file_name()
-        .map(|osstr| {
-            osstr_to_cstr(osstr)
-                .unwrap_or(CString::new("beaver").expect("string `beaver` contains nil"))
-        })
-        .unwrap_or(CString::new("beaver").expect("string `beaver` contains nil"));
-    unsafe { ruby_script(script_name.as_ptr()) };
-
-
-    let mut context = Box::new(RubyContext {
-        status: 0,
+    let context = Rc::new(BeaverRubyContext {
         context,
+        cleanup,
+        ruby
     });
+    unsafe { CTX_RC = MaybeUninit::new(Rc::downgrade(&context)) }
 
-    // this pointer needs to live as long as the VM
-    let context_ptr = Box::as_mut_ptr(&mut context);
-    let context_ptr_int: isize = unsafe { mem::transmute(context_ptr) };
+    context.ruby.script(script_file.as_ref().file_name().map_or("beaver", |str| str.to_str().unwrap_or("beaver")));
 
-    let mut module = Module::new(INTERNAL_NAME);
-    module.const_set(CTXPTR_NAME, &Fixnum::new(context_ptr_int as i64));
+    // We want to be able to access the context from ruby. `context` is thread safe, so this should be fine
+    unsafe { RBCONTEXT = MaybeUninit::new(Box::as_ptr(&context.context)); }
 
-    ruby_lib::project::load(&mut c_class)?;
-    ruby_lib::target::load(&mut c_class)?;
-    ruby_lib::global::load(&mut c_class)?;
-    ruby_lib::dependency::load(&mut c_class)?;
+    ruby_lib::register(&context.ruby)?;
 
-    // Read & execute file
-    let mut script_file_p = fs::File::open(script_file).map_err(|err| BeaverRubyError::ScriptFileOpenError(err))?;
-    let mut script_contents = String::new();
-    script_file_p.read_to_string(&mut script_contents).map_err(|err| BeaverRubyError::ScriptFileReadError(err))?;
-    trace!("{}", script_contents);
+    context.ruby.require(std::path::absolute(script_file.as_ref())?)?;
 
-    rutie::VM::eval(&script_contents).map_err(|err| BeaverRubyError::RubyException(err))?;
-    // segfaults when an exception occurs!
-    // let script_file_abs = std::path::absolute(script_file)?;
-    // let cstr = Pin::new(osstr_to_cstr(script_file_abs.as_os_str())?);
-    // dbg!(&cstr);
-    // unsafe { rutie::rubysys::vm::rb_require(cstr.as_ptr()); }
-    // rutie::VM::require(script_file_abs.to_str().unwrap());
-
+    // By constructing this, we assure that `context` and `cleanup` live equally long. `context`
+    // uses ruby and ruby uses `context`
     return Ok(context);
 }

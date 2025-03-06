@@ -4,5 +4,5 @@ use utils::moduse;
 
 moduse!(error);
 moduse!(execute);
-mod ruby_lib;
-mod rutie_ext;
+
+pub(crate) mod ruby_lib;

@@ -5,12 +5,15 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
-beaver = { path = "../beaver" }
-utils = { path = "../utils" }
-rutie = { workspace = true, features = ["no-link"] }
+magnus = { workspace = true, features = ["embed" ]}
+
 thiserror = { workspace = true }
 log = { workspace = true }
 url = { workspace = true }
+target-lexicon = { workspace = true }
 
-[build-dependencies]
-pkg-config = "0.3.31"
+beaver = { path = "../beaver" }
+utils = { path = "../utils" }
+
+# [build-dependencies]
+# pkg-config = "0.3"
