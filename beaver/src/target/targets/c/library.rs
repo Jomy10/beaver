@@ -70,6 +70,8 @@ impl Library {
         artifacts: DefaultArgument<Vec<LibraryArtifactType>>,
         dependencies: Vec<Dependency>,
     ) -> Library {
+        dbg!(&name, &headers);
+
         Library {
             id: None,
             project_id: None,

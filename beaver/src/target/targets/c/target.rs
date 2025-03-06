@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
+use log::trace;
 use target_lexicon::Triple;
 
 use crate::backend::{BackendBuilder, BackendBuilderScope, BuildStep, Rule};
@@ -32,7 +33,7 @@ pub trait CTarget: traits::Target {
 
     fn target_artifacts(&self) -> &[Self::TargetArtifactType];
 
-    // TODO: return iter?
+    // TODO: for libraries -> cache cflags and linker_flags
     fn cflags<'a>(
         &self,
         project_base_dir: &Path,
