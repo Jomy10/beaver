@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use beaver::project;
 use beaver::traits::AnyProject;
@@ -57,8 +58,16 @@ fn define_project(args: magnus::RHash) -> Result<ProjectAccessor, magnus::Error>
     Ok(project_accessor)
 }
 
+// TODO: optional splat -> cmake flags
+fn import_cmake(dir: String) -> Result<(), magnus::Error> {
+    let context = unsafe { &*RBCONTEXT.assume_init() };
+    project::cmake::import(&PathBuf::from(dir), &[], &context)
+        .map_err(|err| BeaverRubyError::from(err).into())
+}
+
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     ruby.define_global_function("Project", magnus::function!(define_project, 1));
+    ruby.define_global_function("import_cmake", magnus::function!(import_cmake, 1));
 
     Ok(())
 }

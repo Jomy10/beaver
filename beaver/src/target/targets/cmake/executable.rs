@@ -148,6 +148,9 @@ impl traits::Target for Executable {
             dependencies: &[]
         })?;
 
+        let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
+        guard.apply_scope(scope);
+
         Ok(target_cmd_name)
     }
 

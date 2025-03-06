@@ -11,7 +11,7 @@ use crate::target::{Dependency, ExecutableArtifactType, Language, LibraryArtifac
 use crate::traits::{AnyExecutable, AnyLibrary, AnyTarget};
 use crate::{tools, Beaver, BeaverError};
 
-pub fn importer(
+pub fn import(
     base_dir: &Path,
     cmake_flags: &[&str],
     context: &Beaver
@@ -107,13 +107,13 @@ pub fn importer(
 
             match target.type_name.as_str() {
                 "STATIC_LIBRARY" => {
-                    add_library(target, LibraryArtifactType::Staticlib, &mut targets)?;
+                    add_library(target, LibraryArtifactType::Staticlib, &mut targets, &build_dir)?;
                 },
                 "SHARED_LIBRARY" => {
-                    add_library(target, LibraryArtifactType::Dynlib, &mut targets)?;
+                    add_library(target, LibraryArtifactType::Dynlib, &mut targets, &build_dir)?;
                 },
                 "EXECUTABLE" => {
-                    add_executable(target, &mut targets)?;
+                    add_executable(target, &mut targets, &build_dir)?;
                 },
                 name => {
                     if reconfigure {
@@ -136,7 +136,7 @@ pub fn importer(
     Ok(())
 }
 
-fn add_library(target: &codemodel_v2::Target, artifact_type: LibraryArtifactType, targets: &mut Vec<AnyTarget>) -> crate::Result<()> {
+fn add_library(target: &codemodel_v2::Target, artifact_type: LibraryArtifactType, targets: &mut Vec<AnyTarget>, build_dir: &Path) -> crate::Result<()> {
     if target.artifacts.len() != 1 {
         if target.artifacts.len() == 0 {
             warn!("{} is not supported because it has no artifacts", target.name);
@@ -145,7 +145,7 @@ fn add_library(target: &codemodel_v2::Target, artifact_type: LibraryArtifactType
         }
     }
 
-    let artifact_path = &target.artifacts[0].path;
+    let artifact_path = build_dir.join(&target.paths.build).join(&target.artifacts[0].path);
 
     if target.compile_groups.len() > 1 {
         warn!("Multiple compile groups found for {}", target.name);
@@ -201,7 +201,7 @@ fn add_library(target: &codemodel_v2::Target, artifact_type: LibraryArtifactType
     Ok(())
 }
 
-fn add_executable(target: &codemodel_v2::Target, targets: &mut Vec<AnyTarget>) -> crate::Result<()> {
+fn add_executable(target: &codemodel_v2::Target, targets: &mut Vec<AnyTarget>, build_dir: &Path) -> crate::Result<()> {
     if target.artifacts.len() != 1 {
         if target.artifacts.len() == 0 {
             warn!("{} is not supported because it has not artifacts", target.name);
@@ -210,7 +210,7 @@ fn add_executable(target: &codemodel_v2::Target, targets: &mut Vec<AnyTarget>) -
         }
     }
 
-    let artifact_path = &target.artifacts[0].path;
+    let artifact_path = build_dir.join(&target.paths.build).join(&target.artifacts[0].path);
 
     let language = target.compile_groups.first().map(|g| &g.language);
     let language = if let Some(language) = language {

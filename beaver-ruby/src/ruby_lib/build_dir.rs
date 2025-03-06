@@ -2,13 +2,13 @@ use std::path::PathBuf;
 
 use crate::{BeaverRubyError, RBCONTEXT};
 
-fn build_dir(str: String) -> Result<Option<()>, magnus::Error> {
+fn build_dir(str: String) -> Result<(), magnus::Error> {
     let context = unsafe { &*RBCONTEXT.assume_init() };
     let path = PathBuf::from(str);
 
     context.set_build_dir(path).map_err(|err| BeaverRubyError::from(err))?;
 
-    return Ok(None);
+    return Ok(());
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {

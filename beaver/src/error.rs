@@ -1,3 +1,4 @@
+use std::backtrace::BacktraceStatus;
 use std::ffi::OsString;
 use std::io;
 use std::path::PathBuf;
@@ -23,6 +24,10 @@ pub enum BeaverError {
     TargetsWriteError(String),
     #[error("Couldn't lock targets for reading: {0}")]
     TargetsReadError(String),
+
+    // Run error //
+    #[error("No executable artifact found in target '{0}'")]
+    NoExecutableArtifact(String),
 
     // Target Triple //
     #[error("Unknown target OS `{0}`")]
@@ -109,8 +114,8 @@ pub enum BeaverError {
 
     #[error("Failed to lock: {0}")]
     LockError(String),
-    #[error("IO Error: {0}")]
-    IOError(#[from] std::io::Error),
+    #[error("IO Error: {}{}", .0, if .1.status() == BacktraceStatus::Captured { format!("\n{}", .1) } else { String::from("") })]
+    IOError(#[from] std::io::Error, std::backtrace::Backtrace),
     #[error("{0}")]
     AnyError(String),
     #[error("A child process exited with a non-zero exit code: {0}")]
