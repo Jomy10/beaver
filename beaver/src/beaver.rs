@@ -4,7 +4,7 @@ use std::process::Command;
 use std::{env, fs, path};
 use std::io::Write as IOWrite;
 use std::path::PathBuf;
-use std::sync::{Arc, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::sync::{Arc, Mutex, MutexGuard, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::sync::atomic::{AtomicIsize, AtomicU8, Ordering};
 
 use console::style;
@@ -49,6 +49,36 @@ impl TryFrom<u8> for BeaverState {
 
 type AtomicState = AtomicU8;
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum Phase {
+    Build,
+    Run,
+    Clean,
+}
+
+impl TryFrom<&str> for Phase {
+    type Error = BeaverError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "build" => Ok(Phase::Build),
+            "run" => Ok(Phase::Run),
+            "clean" => Ok(Phase::Clean),
+            _ => Err(BeaverError::InvalidPhase(value.to_string()))
+        }
+    }
+}
+
+pub type PhaseHook = Box<dyn FnOnce() -> Result<(), Box<dyn std::error::Error>> + Send>;
+
+struct PhaseHooks(Vec<PhaseHook>);
+
+impl std::fmt::Debug for PhaseHooks {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("PhaseHooks(hooks: {})", self.0.len()))
+    }
+}
+
 /// All methods of this struct are immutable because this struct ensures all calls to its
 /// methods are thread safe
 #[derive(Debug)]
@@ -62,6 +92,9 @@ pub struct Beaver {
     verbose: bool,
     cache: OnceLock<Cache>,
     status: AtomicState,
+    phase_hook_build: Mutex<PhaseHooks>,
+    phase_hook_run: Mutex<PhaseHooks>,
+    phase_hook_clean: Mutex<PhaseHooks>,
     // lock_builddir: AtomicBool,
     // /// Create the build file once and store the result of the operation in this cell
     // build_file_create_result: OnceLock<crate::Result<()>>,
@@ -79,6 +112,9 @@ impl Beaver {
             verbose: false,
             cache: OnceLock::new(),
             status: AtomicState::new(BeaverState::Initialized as u8),
+            phase_hook_build: Mutex::new(PhaseHooks(Vec::new())),
+            phase_hook_run: Mutex::new(PhaseHooks(Vec::new())),
+            phase_hook_clean: Mutex::new(PhaseHooks(Vec::new())),
             // lock_builddir: AtomicBool::new(false),
             // build_file_create_result: OnceLock::new()
         })
@@ -319,7 +355,7 @@ impl Beaver {
         let projects = self.projects()?;
         rayon::scope(|s| {
             for project in projects.iter() {
-                trace!("registering {:?}", project.name());
+                trace!("registering  project {:?}", project.name());
                 s.spawn(|s| match project.register(s, &self.target_triple, ninja_builder.clone(), &self) {
                     Err(err) => {
                         match error.set(err) {
@@ -392,6 +428,10 @@ impl Beaver {
             BeaverState::Build => {},
         }
 
+        trace!("Running pre build hook for building {:?}", target_names);
+        self.run_phase_hook(Phase::Build)?;
+
+        trace!("Done");
         let build_file = self.build_file()?;
         let ninja_runner = NinjaRunner::new(&build_file, self.verbose);
         let build_dir = self.get_build_dir()?;
@@ -411,10 +451,16 @@ impl Beaver {
     }
 
     pub fn run<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(&self, target: TargetRef, args: I) -> crate::Result<()> {
+        trace!("Building {:?}", target);
         if self.target_triple != Triple::host() {
             panic!("Running targets in a triple that is not the current host is currently unsupported");
         }
         self.build(target)?;
+
+        trace!("Running pre phase hook for run");
+        self.run_phase_hook(Phase::Run)?;
+
+        trace!("Retrieving artifact file");
         let artifact_file = self.with_project_and_target(&target, |project, target| {
             let artifact_type = ArtifactType::Executable(ExecutableArtifactType::Executable);
             if !target.artifacts().contains(&artifact_type) {
@@ -425,12 +471,15 @@ impl Beaver {
 
         assert!(artifact_file.exists()); // should always be the case, otherwise it's a bug
 
+        trace!("Starting process...");
         let mut process = Command::new(artifact_file.as_path())
             .args(args)
             .current_dir(env::current_dir()?)
             .spawn()?;
 
+        trace!("{:?}", &process);
         let exit_status = process.wait()?;
+        trace!("{:?}", exit_status);
         if !exit_status.success() {
             return Err(BeaverError::NonZeroExitStatus(exit_status));
         } else {
@@ -443,6 +492,79 @@ impl Beaver {
             project.default_executable()
         })?;
         self.run(exe, args)
+    }
+
+    pub fn clean(&self) -> crate::Result<()> {
+        self.run_phase_hook(Phase::Clean)?;
+        unimplemented!()
+    }
+
+    /// Adding a phase hook or "pre-phase hook" is a function that will run before the user
+    /// requests the given phase. e.g. when a user requests a build, then the functions stored in
+    /// the build hooks will be ran first
+    pub fn add_phase_hook(&self, phase: Phase, hook: PhaseHook) -> crate::Result<()> {
+        if self.status.load(Ordering::SeqCst) != BeaverState::Initialized as u8 {
+            return Err(BeaverError::AlreadyFinalized);
+        }
+        trace!("Adding phase hook {:?}", phase);
+        // let mut hooks = self.phase_hooks.lock().map_err(|err| BeaverError::LockError(err.to_string()))?;
+        match phase {
+            Phase::Build => self.phase_hook_build.lock()
+                .map_err(|err| BeaverError::LockError(err.to_string()))?
+                .0.push(hook),
+            Phase::Run => self.phase_hook_run.lock()
+                .map_err(|err| BeaverError::LockError(err.to_string()))?
+                .0.push(hook),
+            Phase::Clean => self.phase_hook_clean.lock()
+                .map_err(|err| BeaverError::LockError(err.to_string()))?
+                .0.push(hook),
+        }
+        trace!("Done adding phase hook");
+        Ok(())
+    }
+
+    fn get_hook_ignore_block(hooks: &Mutex<PhaseHooks>) -> crate::Result<Option<MutexGuard<'_, PhaseHooks>>> {
+        match hooks.try_lock() {
+            Ok(val) => Ok(Some(val)),
+            Err(err) => match err {
+                std::sync::TryLockError::Poisoned(poison_error) => Err(BeaverError::LockError(poison_error.to_string())),
+                std::sync::TryLockError::WouldBlock => Ok(None),
+            },
+        }
+    }
+
+    /// Run all the registered hooks for a particular phase. When this function is called multiple times for the
+    /// same phase, the hooks will only run on the first invocation
+    fn run_phase_hook(&self, phase: Phase) -> crate::Result<()> {
+        match BeaverState::try_from(self.status.load(Ordering::SeqCst))? {
+            BeaverState::Initialized => self.create_build_file()?, // finalize beaver
+            BeaverState::Invalid => return Err(BeaverError::UnrecoverableError),
+            BeaverState::Build => {},
+        }
+
+        trace!("-> Running pre {:?} hook", phase);
+        let hooks = match phase {
+            // We can ignore would block because we have checked that the state is Build
+            // This means no new hooks will be added and if the mutex is locked, we are
+            // already draining the hooks. This function is being called from inside of
+            // a hook
+            Phase::Build => Self::get_hook_ignore_block(&self.phase_hook_build),
+            Phase::Run => Self::get_hook_ignore_block(&self.phase_hook_run),
+            Phase::Clean => Self::get_hook_ignore_block(&self.phase_hook_clean),
+        }?;
+
+        let mut hooks = match hooks {
+            Some(hooks) => hooks,
+            None => {
+                trace!("Ignoring phase hook {:?}", phase);
+                return Ok(());
+            }
+        };
+
+        hooks.0.drain(0..)
+            .map(|fun| fun())
+            .collect::<Result<(), Box<dyn std::error::Error>>>()
+            .map_err(|err| BeaverError::AnyError(err.to_string()))
     }
 
     /// Used by the CLI

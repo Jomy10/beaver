@@ -6,6 +6,7 @@ mod project;
 mod target;
 mod dependency;
 mod build_dir;
+mod pre;
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     project_accessor::register(ruby)?;
@@ -14,6 +15,7 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     target::register(ruby)?;
     dependency::register(ruby)?;
     build_dir::register(ruby)?;
+    pre::register(ruby)?;
 
     Ok(())
 }

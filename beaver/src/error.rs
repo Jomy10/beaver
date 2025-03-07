@@ -16,6 +16,8 @@ pub enum BeaverError {
     AlreadyFinalized,
     #[error("Invalid status {0}")]
     InvalidState(u8),
+    #[error("Invalid phase `{0}`")]
+    InvalidPhase(String),
     #[error("An unrecoverable error occurred earlier and `Beaver` cannot be used further")]
     UnrecoverableError,
 

@@ -2,6 +2,7 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
+use log::trace;
 use target_lexicon::Triple;
 
 use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep};
@@ -110,6 +111,7 @@ impl traits::Project for Project {
         _ = scope; // TODO
 
         let steps: Vec<_> = self.targets.iter().map(|target| {
+            trace!("Registering {}", target.name());
             target.register(&self.name, &self.base_dir, &self.build_dir, triple, builder.clone(), context)
         }).collect::<crate::Result<Vec<_>>>()?;
         let steps: Vec<&str> = steps.iter().map(|str| str.as_str()).collect();
@@ -121,7 +123,9 @@ impl traits::Project for Project {
 
         let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
         let mut scope = guard.new_scope();
-        drop(guard);
+        #[cfg(debug_assertions)] {
+            scope.add_comment(&format!("CMake Project: {}", self.name()))?;
+        }
         scope.add_step(&BuildStep::Cmd {
             rule: &rules::NINJA,
             name: &self.name,
@@ -132,13 +136,7 @@ impl traits::Project for Project {
                 ("targets", "all")
             ],
         })?;
-        // scope.add_step(&BuildStep::Phony {
-        //    name: &self.name,
-        //    args: &steps,
-        //    dependencies: &[],
-        // })?;
 
-        let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
         guard.apply_scope(scope);
 
         return Ok(());

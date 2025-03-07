@@ -13,8 +13,8 @@ use super::dependency::DependencyWrapper;
 use super::target_accessor::TargetAccessor;
 use super::Arg;
 
-fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, context: &Beaver) -> crate::Result<target::c::TargetDescriptor<ArtifactType>> {
-    let ruby = magnus::Ruby::get().map_err(|err| BeaverRubyError::from(err))?;
+fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(ruby: &magnus::Ruby, args: magnus::RHash, context: &Beaver) -> crate::Result<target::c::TargetDescriptor<ArtifactType>> {
+    // let ruby = magnus::Ruby::get().map_err(|err| BeaverRubyError::from(err))?;
 
     let mut name = Arg::<String>::new("name");
     let mut desc = Arg::<String>::new("description");
@@ -258,10 +258,10 @@ fn parse_lib_dependency_from_str(dep: &str, artifact: Option<LibraryArtifactType
     })
 }
 
-fn def_c_library(args: magnus::RHash) -> Result<TargetAccessor, magnus::Error> {
+fn def_c_library(ruby: &magnus::Ruby, args: magnus::RHash) -> Result<TargetAccessor, magnus::Error> {
     let context = unsafe { &*RBCONTEXT.assume_init() };
 
-    let ctarget_desc: target::c::TargetDescriptor<LibraryArtifactType> = c_target_parse_ruby_args(args, &context)?;
+    let ctarget_desc: target::c::TargetDescriptor<LibraryArtifactType> = c_target_parse_ruby_args(ruby, args, &context)?;
     let library = AnyLibrary::C(target::c::Library::new_desc(ctarget_desc));
 
     context.with_current_project_mut(|project| {
@@ -279,10 +279,10 @@ fn def_c_library(args: magnus::RHash) -> Result<TargetAccessor, magnus::Error> {
     }).map_err(|err| BeaverRubyError::from(err).into())
 }
 
-fn def_c_executable(args: magnus::RHash) -> Result<TargetAccessor, magnus::Error> {
+fn def_c_executable(ruby: &magnus::Ruby, args: magnus::RHash) -> Result<TargetAccessor, magnus::Error> {
     let context = unsafe { &*RBCONTEXT.assume_init() };
 
-    let ctarget_desc: target::c::TargetDescriptor<ExecutableArtifactType> = c_target_parse_ruby_args(args, &context)?;
+    let ctarget_desc: target::c::TargetDescriptor<ExecutableArtifactType> = c_target_parse_ruby_args(ruby, args, &context)?;
     let exe = AnyExecutable::C(target::c::Executable::new_desc(ctarget_desc));
 
     context.with_current_project_mut(|project| {

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt::Write;
 use std::path::{Path, PathBuf};
 
+use log::trace;
 use pathdiff::diff_paths;
 
 use crate::backend::{BackendBuilder, BackendBuilderScope, BuildStep, Pool, Rule};
@@ -74,6 +75,7 @@ impl<'a> BackendBuilder<'a> for NinjaBuilder<'a> {
     }
 
     fn apply_scope(&mut self, scope: NinjaBuilderScope) {
+        trace!("Applying scope {:?}", scope);
         // let scope = Box::into_raw(scope);
         // let scope = Box::from_raw(scope as *mut NinjaBuilderScope);
         self.buffer.push_str(&scope.buffer);

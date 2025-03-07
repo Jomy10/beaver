@@ -36,7 +36,7 @@ pub enum BeaverRubyError {
     #[error("Found invalid key {0}")]
     InvalidKey(String),
     #[error("Couldn't parse URL: {0}")]
-    URLParseError(#[from] url::ParseError)
+    URLParseError(#[from] url::ParseError),
 }
 
 impl From<magnus::Error> for BeaverRubyError {
