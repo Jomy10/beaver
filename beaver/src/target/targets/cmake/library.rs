@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
-use log::trace;
 use target_lexicon::Triple;
 use url::Url;
 
@@ -123,7 +122,6 @@ impl traits::Target for Library {
         builder: Arc<RwLock<Builder>>,
         context: &Beaver
     ) -> crate::Result<String> {
-        trace!("Register CMake Lib: {}", self.name);
         _ = triple; // TODO
         _ = context;
         _ = project_base_dir;

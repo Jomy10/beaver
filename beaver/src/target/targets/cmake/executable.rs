@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
-use log::trace;
 use target_lexicon::Triple;
 use url::Url;
 
@@ -114,7 +113,6 @@ impl traits::Target for Executable {
         builder: Arc<RwLock<Builder>>,
         _context: &Beaver
     ) -> crate::Result<String> {
-        trace!("Register CMake Exe: {}", self.name);
         _ = triple; // TODO
         let mut guard = builder.write()
             .map_err(|err| BeaverError::BackendLockError(err.to_string()))?;

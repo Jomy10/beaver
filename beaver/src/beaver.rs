@@ -138,7 +138,6 @@ impl Beaver {
             let dir = std::env::current_dir().map_err(BeaverError::from)?.join("build");
             if !dir.exists() {
                 fs::create_dir(dir.as_path()).map_err(BeaverError::from)?;
-                trace!("Created build dir {:?}", dir);
             }
             Ok(dir)
         });
@@ -202,7 +201,6 @@ impl Beaver {
         }
         _ = self.lock_build_dir()?;
         let mut project: AnyProject = project.into();
-        trace!("Adding project {}", project.name());
         let mut projects = self.projects_mut()?;
         let idx = projects.len();
         project.set_id(idx)?;
@@ -361,7 +359,6 @@ impl Beaver {
         let projects = self.projects()?;
         rayon::scope(|s| {
             for project in projects.iter() {
-                trace!("registering  project {:?}", project.name());
                 s.spawn(|s| match project.register(s, &self.target_triple, ninja_builder.clone(), &self) {
                     Err(err) => {
                         match error.set(err) {
@@ -434,10 +431,8 @@ impl Beaver {
             BeaverState::Build => {},
         }
 
-        trace!("Running pre build hook for building {:?}", target_names);
         self.run_phase_hook(Phase::Build)?;
 
-        trace!("Done");
         let build_file = self.build_file()?;
         let ninja_runner = NinjaRunner::new(&build_file, self.verbose);
         let build_dir = self.get_build_dir()?;
@@ -457,16 +452,13 @@ impl Beaver {
     }
 
     pub fn run<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(&self, target: TargetRef, args: I) -> crate::Result<()> {
-        trace!("Building {:?}", target);
         if self.target_triple != Triple::host() {
             panic!("Running targets in a triple that is not the current host is currently unsupported");
         }
         self.build(target)?;
 
-        trace!("Running pre phase hook for run");
         self.run_phase_hook(Phase::Run)?;
 
-        trace!("Retrieving artifact file");
         let artifact_file = self.with_project_and_target(&target, |project, target| {
             let artifact_type = ArtifactType::Executable(ExecutableArtifactType::Executable);
             if !target.artifacts().contains(&artifact_type) {
@@ -477,15 +469,12 @@ impl Beaver {
 
         assert!(artifact_file.exists()); // should always be the case, otherwise it's a bug
 
-        trace!("Starting process...");
         let mut process = Command::new(artifact_file.as_path())
             .args(args)
             .current_dir(env::current_dir()?)
             .spawn()?;
 
-        trace!("{:?}", &process);
         let exit_status = process.wait()?;
-        trace!("{:?}", exit_status);
         if !exit_status.success() {
             return Err(BeaverError::NonZeroExitStatus(exit_status));
         } else {
@@ -512,7 +501,6 @@ impl Beaver {
         if self.status.load(Ordering::SeqCst) != BeaverState::Initialized as u8 {
             return Err(BeaverError::AlreadyFinalized);
         }
-        trace!("Adding phase hook {:?}", phase);
         // let mut hooks = self.phase_hooks.lock().map_err(|err| BeaverError::LockError(err.to_string()))?;
         match phase {
             Phase::Build => self.phase_hook_build.lock()
@@ -525,7 +513,6 @@ impl Beaver {
                 .map_err(|err| BeaverError::LockError(err.to_string()))?
                 .0.push(hook),
         }
-        trace!("Done adding phase hook");
         Ok(())
     }
 
@@ -548,7 +535,6 @@ impl Beaver {
             BeaverState::Build => {},
         }
 
-        trace!("-> Running pre {:?} hook", phase);
         let hooks = match phase {
             // We can ignore would block because we have checked that the state is Build
             // This means no new hooks will be added and if the mutex is locked, we are
