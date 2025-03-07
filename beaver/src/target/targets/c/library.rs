@@ -189,7 +189,7 @@ impl traits::Target for Library {
             project_build_dir,
             target_triple,
             builder,
-            &[&rules::CC, &rules::LINK, &rules::AR],
+            &[self.cc_rule(), self.link_rule(), &rules::AR],
             context
         )
     }
@@ -201,30 +201,6 @@ impl traits::Target for Library {
             ("linker_flags", self.linker_flags.join(", ")),
         ]
     }
-}
-
-impl Library {
-
-    // /// All cflags used by this library when building
-    // fn cflags<'a>(&self, project_base_dir: &Path, dependencies: impl Iterator<Item = &'a Dependency>, context: &Beaver) -> crate::Result<Vec<String>> {
-    //     let mut cflags: Vec<String> = vec!["-c".to_string()];
-    //     cflags.append(&mut self.cflags.public.clone());
-    //     cflags.append(&mut self.cflags.private.clone());
-    //     cflags.extend(self.headers.public(project_base_dir).map(|path| format!("-I{}", path.display())));
-    //     cflags.extend(self.headers.private(project_base_dir).map(|path| format!("-I{}", path.display())));
-
-    //     for dependency in dependencies {
-    //         let Some(mut flags) = dependency.public_cflags(context)? else {
-    //             continue;
-    //         };
-    //         cflags.append(&mut flags);
-    //     }
-
-    //     cflags.extend(context.optimize_mode.cflags().iter().map(|str| str.to_string()));
-
-    //     return Ok(cflags);
-    // }
-
 }
 
 impl CTarget for Library {
@@ -274,6 +250,9 @@ impl CTarget for Library {
         linker_flags: &str,
         builder: &mut Scope
     ) -> crate::Result<String> {
+        let cc_rule = self.cc_rule();
+        let link_rule = self.link_rule();
+
         let object_file_path = project_build_dir.join("objects");
         match artifact {
             LibraryArtifactType::Dynlib | LibraryArtifactType::Staticlib => {
@@ -293,7 +272,7 @@ impl CTarget for Library {
                     object_files.push(object_path);
 
                     builder.add_step(&BuildStep::Build {
-                        rule: &rules::CC,
+                        rule: cc_rule,
                         output: &object_files[object_files.len() - 1],
                         input: &[source.as_path()],
                         dependencies: &[],
@@ -304,7 +283,7 @@ impl CTarget for Library {
                 let artifact_file = traits::Target::artifact_file(self, project_build_dir, ArtifactType::Library(*artifact), target_triple)?;
                 if *artifact == LibraryArtifactType::Dynlib {
                     builder.add_step(&BuildStep::Build {
-                        rule: &rules::LINK,
+                        rule: link_rule,
                         output: &artifact_file,
                         input: &object_files.iter().map(|path| path.as_path()).collect::<Vec<&Path>>(),
                         dependencies: &[],

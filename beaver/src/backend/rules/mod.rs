@@ -6,13 +6,55 @@ use crate::tools;
 use super::{Pool, Rule};
 
 lazy_static! {
-    static ref CC_CMD: String = format!("{} $cflags -MD -MF $out.d -c $in -o $out", tools::cc.display());
+    static ref CC_CMD: String = format!("{} {} $cflags -MD -MF $out.d -c $in -o $out", tools::cc.display(), tools::cc_extra_args.map(|a| a.join(" ")).unwrap_or("".to_string()));
     pub static ref CC: Rule = {
         Rule {
             name: "cc",
             options: vec![
                 ("description", "cc $in > $out"),
                 ("command", &CC_CMD),
+                ("deps", "gcc"),
+                ("depfile", "$out.d")
+            ],
+            pool: None
+        }
+    };
+
+    static ref CXX_CMD: String = format!("{} {} $cflags -MD -MF $out.d -c $in -o $out", tools::cxx.display(), tools::cxx_extra_args.map(|a| a.join(" ")).unwrap_or("".to_string()));
+    pub static ref CXX: Rule = {
+        Rule {
+            name: "cxx",
+            options: vec![
+                ("description", "cxx $in > $out"),
+                ("command", &CXX_CMD),
+                ("deps", "gcc"),
+                ("depfile", "$out.d")
+            ],
+            pool: None
+        }
+    };
+
+    static ref OBJC_CMD: String = format!("{} $cflags -MD -MF $out.d -c $in -o $out", tools::objc.display());
+    pub static ref OBJC: Rule = {
+        Rule {
+            name: "objc",
+            options: vec![
+                ("description", "objc $in > $out"),
+                ("command", &OBJC_CMD),
+                ("deps", "gcc"),
+                ("depfile", "$out.d")
+            ],
+            pool: None
+        }
+    };
+
+    static ref OBJCXX_CMD: String = format!("{} $cflags -MD -MF $out.d -c $in -o $out", tools::objcxx.display());
+    pub static ref OBJCXX: Rule = {
+        Rule {
+            name: "objcxx",
+            options: vec![
+                ("description", "objcxx $in > $out"),
+                ("command", &OBJCXX_CMD),
                 ("deps", "gcc"),
                 ("depfile", "$out.d")
             ],
@@ -27,6 +69,18 @@ lazy_static! {
             options: vec![
                 ("description", "linking $out"),
                 ("command", &LINK_CMD),
+            ],
+            pool: None
+        }
+    };
+
+    static ref LINKXX_CMD: String = format!("{} $linkerFlags $in -o $out", tools::cxx.display());
+    pub static ref LINKXX: Rule = {
+        Rule {
+            name: "linkxx",
+            options: vec![
+                ("description", "linking $out"),
+                ("command", &LINKXX_CMD),
             ],
             pool: None
         }

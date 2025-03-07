@@ -176,7 +176,7 @@ impl traits::Target for Executable {
             project_build_dir,
             target_triple,
             builder,
-            &[&rules::CC as &Rule, &rules::LINK as &Rule],
+            &[self.cc_rule(), self.link_rule()],
             context
         )
     }
@@ -236,6 +236,9 @@ impl CTarget for Executable {
         linker_flags: &str,
         builder: &mut Scope
     ) -> crate::Result<String> {
+        let cc_rule = self.cc_rule();
+        let link_rule = self.link_rule();
+
         let object_file_path = project_build_dir.join("objects");
         match artifact {
             ExecutableArtifactType::Executable => {
@@ -253,7 +256,7 @@ impl CTarget for Executable {
                     object_files.push(object_path);
 
                     builder.add_step(&BuildStep::Build {
-                        rule: &rules::CC,
+                        rule: cc_rule,
                         output: &object_files[object_files.len() - 1],
                         input: &[source.as_path()],
                         dependencies: &[],
@@ -263,7 +266,7 @@ impl CTarget for Executable {
 
                 let artifact_file = traits::Target::artifact_file(self, project_build_dir, ArtifactType::Executable(*artifact), target_triple)?;
                 builder.add_step(&BuildStep::Build {
-                    rule: &rules::LINK,
+                    rule: link_rule,
                     output: &artifact_file,
                     input: &object_files.iter().map(|path| path.as_path()).collect::<Vec<&Path>>(),
                     dependencies: &[],
