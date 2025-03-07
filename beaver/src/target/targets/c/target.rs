@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 
 use target_lexicon::Triple;
 
-use crate::backend::{BackendBuilder, BackendBuilderScope, BuildStep, Rule};
+use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep, Rule};
 use crate::target::parameters::{DefaultArgument, Files, Flags, Headers};
 use crate::target::{Dependency, Language, TArtifactType, Version};
 use crate::{traits, Beaver, BeaverError};
@@ -23,7 +23,7 @@ pub struct TargetDescriptor<ArtifactType> {
     pub dependencies: Vec<Dependency>
 }
 
-pub trait CTarget: traits::Target {
+pub(crate) trait CTarget: traits::Target {
     type TargetArtifactType: TArtifactType;
 
     fn user_cflags(&self) -> impl Iterator<Item = &String>;
@@ -149,4 +149,23 @@ pub trait CTarget: traits::Target {
         linker_flags: &str,
         builder: &mut Scope
     ) -> crate::Result<String>;
+
+    fn cc_rule(&self) -> &'static Rule {
+        match self.language() {
+            Language::C => &rules::CC,
+            Language::CXX => &rules::CXX,
+            Language::OBJC => &rules::OBJC,
+            Language::OBJCXX => &rules::OBJCXX,
+        }
+    }
+
+    fn link_rule(&self) -> &'static Rule {
+        match self.language() {
+            Language::C => &rules::LINK,
+            Language::CXX => &rules::LINKXX,
+            Language::OBJC => &rules::LINK,
+            Language::OBJCXX => &rules::LINKXX,
+        }
+    }
+
 }
