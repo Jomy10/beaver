@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::str::FromStr;
 
 use beaver::project;
 use beaver::traits::AnyProject;

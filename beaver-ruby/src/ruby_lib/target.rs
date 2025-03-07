@@ -4,7 +4,6 @@ use beaver::target::parameters::{DefaultArgument, Files, Flags, Headers};
 use beaver::target::{self, Dependency, ExecutableArtifactType, Language, LibraryArtifactType, LibraryTargetDependency, TArtifactType, Version};
 use beaver::traits::{AnyExecutable, AnyLibrary, AnyTarget, Library, Project};
 use beaver::{Beaver, BeaverError};
-use log::trace;
 use magnus::value::ReprValue;
 use magnus::Object;
 

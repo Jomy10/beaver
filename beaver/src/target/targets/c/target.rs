@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
-use log::trace;
 use target_lexicon::Triple;
 
 use crate::backend::{BackendBuilder, BackendBuilderScope, BuildStep, Rule};
