@@ -26,7 +26,7 @@ C::Library(
   include: "include/renderer",
   dependencies: [
     pkgconfig("SDL2"),
-    system("pthread")
+    system_lib("pthread")
   ]
 )
 
