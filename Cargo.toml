@@ -1,8 +1,48 @@
 [workspace]
 resolver = "2"
 members = [
-  "Sources/ProgressIndicators"
+  "beaver-cli",
+  "beaver",
+  "glob",
+  "utils",
+  "beaver-macros",
+  "beaver-ruby",
 ]
 
 [workspace.package]
+edition = "2021"
 authors = ["Jonas Everaert"]
+
+[workspace.dependencies]
+colog = "1.3"
+console = "0.15"
+clap = "4.5"
+shlex = "1.3"
+globset = "0.4"
+log = "0.4"
+semver = "1.0"
+target-lexicon = "0.13"
+thiserror = "2.0"
+url = "2.5"
+unicode-segmentation = "1.12"
+regex = "1.11"
+lazy_static = "1.5"
+rayon = "1.10"
+magnus = "0.7"
+# rutie = { git = "https://github.com/danielpclark/rutie" }
+# rutie = { path = "/tmp/rutie" }
+enum_dispatch = "0.3"
+const-gen = "1.6"
+pathdiff = "0.2"
+serde = "1.0"
+toml = "0.8"
+# serde_json = "1.0"
+# clap_mangen = "0.2"
+ormlite = "0.23"
+sqlx = "0.8"
+async-executor = "1.13"
+futures-lite = "2.6"
+uuid = "1.15"
+tempdir = "0.3"
+tokio = "1.43"
+cmake-file-api = "0.1"

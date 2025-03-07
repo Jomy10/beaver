@@ -1,3 +1,2 @@
-./Tests/resources linguist-documentation
-./Examples linguist-documentation
+./examples linguist-documentation
 *.m linguist-language=Objective-C
