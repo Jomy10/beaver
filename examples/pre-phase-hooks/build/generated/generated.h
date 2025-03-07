@@ -1,0 +1,1 @@
+#define TEXT_MACRO "I AM GENERATED"

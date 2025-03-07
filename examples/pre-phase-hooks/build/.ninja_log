@@ -1,0 +1,7 @@
+# ninja log v6
+0	70	1741350584798220577	/Users/jonaseveraert/Documents/projects/Beaver4/examples/pre-phase-hooks/build/MyProject/objects/main.c.o	5d00e986b288803a
+70	173	1741350584868527765	/Users/jonaseveraert/Documents/projects/Beaver4/examples/pre-phase-hooks/build/MyProject/artifacts/ExeUsingGeneretedFile	ca682378a9c0827b
+1	85	1741350657594495098	/Users/jonaseveraert/Documents/projects/Beaver4/examples/pre-phase-hooks/build/MyProject/objects/main.c.o	5d00e986b288803a
+85	128	1741350657678495539	/Users/jonaseveraert/Documents/projects/Beaver4/examples/pre-phase-hooks/build/MyProject/artifacts/ExeUsingGeneretedFile	ca682378a9c0827b
+0	42	1741350664313582585	/Users/jonaseveraert/Documents/projects/Beaver4/examples/pre-phase-hooks/build/MyProject/objects/main.c.o	5d00e986b288803a
+42	86	1741350664355094054	/Users/jonaseveraert/Documents/projects/Beaver4/examples/pre-phase-hooks/build/MyProject/artifacts/ExeUsingGeneretedFile	ca682378a9c0827b

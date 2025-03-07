@@ -138,6 +138,7 @@ impl Beaver {
             let dir = std::env::current_dir().map_err(BeaverError::from)?.join("build");
             if !dir.exists() {
                 fs::create_dir(dir.as_path()).map_err(BeaverError::from)?;
+                trace!("Created build dir {:?}", dir);
             }
             Ok(dir)
         });
@@ -146,7 +147,11 @@ impl Beaver {
     }
 
     pub fn set_build_dir(&self, dir: PathBuf) -> crate::Result<()> {
-        self.build_dir.set(path::absolute(dir)?).map_err(|_| {
+        let dir = path::absolute(dir)?;
+        if !dir.exists() {
+            fs::create_dir(&dir)?;
+        }
+        self.build_dir.set(dir).map_err(|_| {
             BeaverError::SetBuildDirAfterAddProject // or build_dir called multiple times
         })
         // if self.lock_builddir.load(Ordering::SeqCst) {
@@ -162,6 +167,7 @@ impl Beaver {
         // return Ok(());
     }
 
+    #[inline]
     pub fn get_build_dir(&self) -> crate::Result<&PathBuf> {
         self.lock_build_dir()
         // self.lock_build_dir()?;
