@@ -49,7 +49,10 @@ cargo build -p beaver-cli
 
 ## Installing
 
-TODO
+**from source**
+```sh
+cargo install --git https://github.com/jomy10/beaver
+```
 
 ## Documentation
 
