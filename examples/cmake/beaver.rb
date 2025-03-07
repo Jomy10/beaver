@@ -10,20 +10,19 @@ end
 
 import_cmake "flatbuffers"
 
-puts "Imported flatbuffers"
-
 # Execute this code before a build (only executed once per invocation)
 pre "build" do
   flatbuffers = project("FlatBuffers")
-
-  puts flatbuffers
 
   # Run an executable defined in the FlatBuffers CMake project.
   # This will build and run the executable
   # TODO: pre "clean" do -> remove .fbs file OR: cleanup(file)
   flatc = flatbuffers.target("flatc")
-  puts flatc
   flatc.run(["--cpp", "MyFileFormat.fbs"])
+end
+
+pre "clean" do
+  File.delete("MyFileFormat.fbs")
 end
 
 Project(name: "MyFileFormat")

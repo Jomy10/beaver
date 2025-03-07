@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 use log::warn;
 use target_lexicon::Triple;
 
-use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep, Rule};
+use crate::backend::{BackendBuilder, BackendBuilderScope, BuildStep};
 use crate::platform::executable_extension_for_os;
 use crate::target::parameters::{DefaultArgument, Files, Flags, Headers};
 use crate::target::{traits, ArtifactType, Dependency, ExecutableArtifactType, Language, Version};

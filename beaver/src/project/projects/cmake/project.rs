@@ -2,7 +2,6 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
-use log::trace;
 use target_lexicon::Triple;
 
 use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep};
@@ -111,7 +110,6 @@ impl traits::Project for Project {
         _ = scope; // TODO
 
         let steps: Vec<_> = self.targets.iter().map(|target| {
-            trace!("Registering {}", target.name());
             target.register(&self.name, &self.base_dir, &self.build_dir, triple, builder.clone(), context)
         }).collect::<crate::Result<Vec<_>>>()?;
         let steps: Vec<&str> = steps.iter().map(|str| str.as_str()).collect();

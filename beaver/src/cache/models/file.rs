@@ -29,7 +29,6 @@ pub struct File {
 
 impl File {
     pub fn new(filename: &str) -> crate::Result<File> {
-        dbg!(filename);
         let f = fs::File::open(filename)?;
         let meta = f.metadata()?;
 
@@ -89,10 +88,8 @@ CREATE TABLE IF NOT EXISTS file (
     /// has changed. It updates those fields in the `File` object
     pub fn changed(&mut self, changed_set: &mut HashSet<String>) -> crate::Result<bool> {
         if !changed_set.insert(self.filename.clone()) {
-            trace!("{:?} already inserted", self);
             return Ok(false);
         }
-        trace!("Inserting {:?}", self);
 
         let f = fs::File::open(&self.filename)?;
         let meta = f.metadata()?;

@@ -41,7 +41,6 @@ CREATE TABLE IF NOT EXISTS concrete_file (
 
         res.map(|val| {
             trace!("{:?}", val);
-
             ()
         })
     }

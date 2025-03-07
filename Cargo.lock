@@ -190,6 +190,7 @@ dependencies = [
  "const-gen",
  "lazy_static",
  "log",
+ "regex",
  "serde",
  "toml",
 ]
