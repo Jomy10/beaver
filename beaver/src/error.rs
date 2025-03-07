@@ -12,6 +12,12 @@ pub enum BeaverError {
     // Set Build Dir //
     #[error("Can't set the build directory when a project is alreadt defined")]
     SetBuildDirAfterAddProject,
+    #[error("Beaver was already finalized and cannot be mutated")]
+    AlreadyFinalized,
+    #[error("Invalid status {0}")]
+    InvalidState(u8),
+    #[error("An unrecoverable error occurred earlier and `Beaver` cannot be used further")]
+    UnrecoverableError,
 
     // Project access //
     #[error("Couldn't lock projects for writing: {0}")]

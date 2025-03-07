@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 
 use target_lexicon::Triple;
 
-use crate::backend::{BackendBuilder, BackendBuilderScope, BuildStep};
+use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep};
 use crate::target::TargetRef;
 use crate::traits::{self, AnyTarget, Target, TargetType};
 use crate::{Beaver, BeaverError};
@@ -113,15 +113,30 @@ impl traits::Project for Project {
             target.register(&self.name, &self.base_dir, &self.build_dir, triple, builder.clone(), context)
         }).collect::<crate::Result<Vec<_>>>()?;
         let steps: Vec<&str> = steps.iter().map(|str| str.as_str()).collect();
+        _ = steps; // TODO: remove
+
+        let Some(project_build_dir_str) = self.build_dir.as_os_str().to_str() else {
+            return Err(BeaverError::NonUTF8OsStr(self.build_dir.as_os_str().to_os_string()));
+        };
 
         let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
         let mut scope = guard.new_scope();
         drop(guard);
-        scope.add_step(&BuildStep::Phony {
-           name: &self.name,
-           args: &steps,
-           dependencies: &[],
+        scope.add_step(&BuildStep::Cmd {
+            rule: &rules::NINJA,
+            name: &self.name,
+            dependencies: &[],
+            options: &[
+                ("ninjaBaseDir", project_build_dir_str),
+                ("ninjaFile", "build.ninja"),
+                ("targets", "all")
+            ],
         })?;
+        // scope.add_step(&BuildStep::Phony {
+        //    name: &self.name,
+        //    args: &steps,
+        //    dependencies: &[],
+        // })?;
 
         let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
         guard.apply_scope(scope);

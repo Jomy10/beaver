@@ -5,9 +5,10 @@ use std::{env, fs, path};
 use std::io::Write as IOWrite;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard};
-use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
+use std::sync::atomic::{AtomicIsize, AtomicU8, Ordering};
 
 use console::style;
+use log::{error, trace};
 use target_lexicon::Triple;
 
 use crate::backend::ninja::{NinjaBuilder, NinjaRunner};
@@ -22,6 +23,32 @@ use crate::target::{ArtifactType, ExecutableArtifactType, TargetRef};
 use crate::target::cmake::Library as CMakeLibrary;
 use crate::project::cmake::Project as CMakeProject;
 
+#[derive(PartialEq, Eq, Debug)]
+#[repr(u8)]
+enum BeaverState {
+    /// Beaver has been initialized and projects can be added to it
+    Initialized = 0,
+    /// An unrecoverable error occurred
+    Invalid     = 1,
+    /// Beaver is ready to start building
+    Build       = 2,
+}
+
+impl TryFrom<u8> for BeaverState {
+    type Error = BeaverError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(BeaverState::Initialized),
+            1 => Ok(BeaverState::Invalid),
+            2 => Ok(BeaverState::Build),
+            _ => Err(BeaverError::InvalidState(value)),
+        }
+    }
+}
+
+type AtomicState = AtomicU8;
+
 /// All methods of this struct are immutable because this struct ensures all calls to its
 /// methods are thread safe
 #[derive(Debug)]
@@ -29,14 +56,15 @@ pub struct Beaver {
     projects: RwLock<Vec<AnyProject>>,
     project_index: AtomicIsize,
     pub(crate) optimize_mode: OptimizationMode,
-    build_dir: RwLock<PathBuf>,
+    build_dir: OnceLock<PathBuf>,
     enable_color: bool,
     target_triple: Triple,
     verbose: bool,
     cache: OnceLock<Cache>,
-    lock_builddir: AtomicBool,
-    /// Create the build file once and store the result of the operation in this cell
-    build_file_create_result: OnceLock<crate::Result<()>>,
+    status: AtomicState,
+    // lock_builddir: AtomicBool,
+    // /// Create the build file once and store the result of the operation in this cell
+    // build_file_create_result: OnceLock<crate::Result<()>>,
 }
 
 impl Beaver {
@@ -45,13 +73,14 @@ impl Beaver {
             projects: RwLock::new(Vec::new()),
             project_index: AtomicIsize::new(-1),
             optimize_mode,
-            build_dir: RwLock::new(path::absolute(std::env::current_dir().unwrap().join("build"))?),
+            build_dir: OnceLock::new(), //OnceLock::new(path::absolute(std::env::current_dir().unwrap().join("build"))?),
             enable_color: enable_color.unwrap_or(true), // TODO: derive from isatty or set instance var to optional
             target_triple: Triple::host(),
             verbose: false,
             cache: OnceLock::new(),
-            lock_builddir: AtomicBool::new(false),
-            build_file_create_result: OnceLock::new()
+            status: AtomicState::new(BeaverState::Initialized as u8),
+            // lock_builddir: AtomicBool::new(false),
+            // build_file_create_result: OnceLock::new()
         })
     }
 
@@ -68,34 +97,39 @@ impl Beaver {
         }
     }
 
-    pub fn lock_build_dir(&self) -> crate::Result<()> {
-        if self.lock_builddir.load(Ordering::Relaxed) { return Ok(()); }
-        self.lock_builddir.store(true, Ordering::SeqCst);
-        let build_dir = self.build_dir.read().map_err(|err| BeaverError::LockError(err.to_string()))?;
-        if !build_dir.exists() {
-            fs::create_dir(&*build_dir)?;
-        }
+    pub fn lock_build_dir(&self) -> crate::Result<&PathBuf> {
+        let res: Result<&PathBuf, BeaverError> = self.build_dir.get_or_try_init(|| {
+            let dir = std::env::current_dir().map_err(BeaverError::from)?.join("build");
+            if !dir.exists() {
+                fs::create_dir(dir.as_path()).map_err(BeaverError::from)?;
+            }
+            Ok(dir)
+        });
 
-        Ok(())
+        return res;
     }
 
     pub fn set_build_dir(&self, dir: PathBuf) -> crate::Result<()> {
-        if self.lock_builddir.load(Ordering::SeqCst) {
-        // if self.current_project_index() != None {
-            return Err(BeaverError::SetBuildDirAfterAddProject);
-        }
+        self.build_dir.set(path::absolute(dir)?).map_err(|_| {
+            BeaverError::SetBuildDirAfterAddProject // or build_dir called multiple times
+        })
+        // if self.lock_builddir.load(Ordering::SeqCst) {
+        // // if self.current_project_index() != None {
+        //     return Err(BeaverError::SetBuildDirAfterAddProject);
+        // }
 
-        *self.build_dir.write().map_err(|err| BeaverError::LockError(err.to_string()))? = path::absolute(dir)?;
+        // *self.build_dir.write().map_err(|err| BeaverError::LockError(err.to_string()))? = path::absolute(dir)?;
         // Not needed because of check
         // for project in self.projects_mut()?.iter_mut() {
         //     project.update_build_dir(&self.build_dir);
         // }
-        return Ok(());
+        // return Ok(());
     }
 
-    pub fn get_build_dir(&self) -> crate::Result<RwLockReadGuard<'_, PathBuf>> {
-        self.lock_build_dir()?;
-        self.build_dir.read().map_err(|err| BeaverError::LockError(err.to_string()))
+    pub fn get_build_dir(&self) -> crate::Result<&PathBuf> {
+        self.lock_build_dir()
+        // self.lock_build_dir()?;
+        // self.build_dir.read().map_err(|err| BeaverError::LockError(err.to_string()))
     }
 
     pub fn cache(&self) -> Result<&Cache, BeaverError> {
@@ -112,14 +146,21 @@ impl Beaver {
     }
 
     fn projects_mut(&self) -> crate::Result<RwLockWriteGuard<'_, Vec<AnyProject>>> {
+        if self.status.load(Ordering::SeqCst) != BeaverState::Initialized as u8 {
+            return Err(BeaverError::AlreadyFinalized);
+        }
         self.projects.write().map_err(|err| {
             BeaverError::ProjectsWriteError(err.to_string())
         })
     }
 
     pub fn add_project(&self, project: impl Into<AnyProject>) -> crate::Result<usize> {
-        self.lock_builddir.store(true, Ordering::SeqCst);
+        if self.status.load(Ordering::SeqCst) != BeaverState::Initialized as u8 {
+            return Err(BeaverError::AlreadyFinalized);
+        }
+        _ = self.lock_build_dir()?;
         let mut project: AnyProject = project.into();
+        trace!("Adding project {}", project.name());
         let mut projects = self.projects_mut()?;
         let idx = projects.len();
         project.set_id(idx)?;
@@ -192,6 +233,9 @@ impl Beaver {
         project_id: usize,
         cb: impl FnOnce(&mut AnyProject) -> crate::Result<S>
     ) -> crate::Result<S> {
+        if self.status.load(Ordering::SeqCst) != BeaverState::Initialized as u8 {
+            return Err(BeaverError::AlreadyFinalized);
+        }
         let mut projects = self.projects_mut()?;
         return cb(&mut projects[project_id]);
     }
@@ -200,6 +244,9 @@ impl Beaver {
         &self,
         cb: impl FnOnce(&mut AnyProject) -> crate::Result<S>
     ) -> crate::Result<S> {
+        if self.status.load(Ordering::SeqCst) != BeaverState::Initialized as u8 {
+            return Err(BeaverError::AlreadyFinalized);
+        }
         let Some(idx) = self.current_project_index() else {
             return Err(BeaverError::NoProjects);
         };
@@ -220,16 +267,20 @@ impl Beaver {
 
     pub fn parse_target_ref(&self, dep: &str) -> crate::Result<TargetRef> {
         if dep.contains(":") {
-            let mut components = dep.splitn(2, ":");
-            let project_name = components.next().unwrap();
-            let target_name = components.next().unwrap();
+            if dep.starts_with(":") {
+                todo!("Allow :{{project_name}} syntax for building a whole project");
+            } else {
+                let mut components = dep.splitn(2, ":");
+                let project_name = components.next().unwrap();
+                let target_name = components.next().unwrap();
 
-            self.with_project_named(project_name, |project| {
-                match project.find_target(target_name) {
-                    Err(err) => Err(err),
-                    Ok(target_idx) => Ok(TargetRef { project: project.id().unwrap(), target: target_idx.unwrap() })
-                }
-            })
+                self.with_project_named(project_name, |project| {
+                    match project.find_target(target_name) {
+                        Err(err) => Err(err),
+                        Ok(target_idx) => Ok(TargetRef { project: project.id().unwrap(), target: target_idx.unwrap() })
+                    }
+                })
+            }
         } else {
             let idx = match self.current_project_index() {
                 None => Err(BeaverError::NoProjects),
@@ -251,32 +302,40 @@ impl Beaver {
     }
 
     fn build_file(&self) -> crate::Result<PathBuf> {
+        // TODO: build/triple/optimize mode & symlink current triple
         self.get_build_dir()
             .map(|path| path.join(format!("build.{}.{}.ninja", self.optimize_mode, self.target_triple)))
     }
 
     pub fn create_build_file(&self) -> crate::Result<()> {
+        if self.status.load(Ordering::SeqCst) != BeaverState::Initialized as u8 {
+            return Err(BeaverError::AlreadyFinalized);
+        }
+        self.status.store(BeaverState::Build as u8, Ordering::SeqCst);
+
         let build_dir = self.get_build_dir()?;
-        // let build_dir = self.build_dir.read().map_err(|err| BeaverError::LockError(err.to_string()))?;
-        // if !build_dir.exists() {
-        //     fs::create_dir(build_dir.as_path())?;
-        // }
-        let ninja_builder: Arc<RwLock<NinjaBuilder>> = Arc::new(RwLock::new(NinjaBuilder::new(&env::current_dir()?, &build_dir)));
-        let error: RwLock<Option<BeaverError>> = RwLock::new(None);
+        let ninja_builder: Arc<RwLock<NinjaBuilder>> = Arc::new(RwLock::new(NinjaBuilder::new(&env::current_dir()?, &build_dir))); // TODO: Mutex
+        let mut error: OnceLock<BeaverError> = OnceLock::new();
         let projects = self.projects()?;
         rayon::scope(|s| {
             for project in projects.iter() {
+                trace!("registering {:?}", project.name());
                 s.spawn(|s| match project.register(s, &self.target_triple, ninja_builder.clone(), &self) {
-                    Err(err) => *error.write().expect("Error accessing buffer for storing error") = Some(err),
+                    Err(err) => {
+                        match error.set(err) {
+                            Ok(_) => {},
+                            Err(err) => error!("{:?}", err)
+                        }
+                    },
                     Ok(()) => {}
                 });
-                if error.read().expect("Error accessing buffer for storing error").is_some() {
+                if error.get().is_some() {
                     break;
                 }
             }
         });
 
-        if let Some(err) = error.write().expect("Error accessing buffer for storing error").take() {
+        if let Some(err) = error.take() {
             return Err(err);
         }
 
@@ -321,27 +380,33 @@ impl Beaver {
     }
 
     pub fn build_all(&self, targets: &[TargetRef]) -> crate::Result<()> {
-        if let Err(err) = self.build_file_create_result.get_or_init(|| {
-            self.create_build_file()
-        }) {
-            return Err(BeaverError::AnyError(err.to_string()));
+        let target_names = self.qualified_names(targets)?;
+        let target_names: Vec<&str> = target_names.iter().map(|str| str.as_str()).collect();
+        self.build_all_named(target_names.as_slice())
+    }
+
+    pub fn build_all_named(&self, target_names: &[&str]) -> crate::Result<()> {
+        match BeaverState::try_from(self.status.load(Ordering::SeqCst))? {
+            BeaverState::Initialized => self.create_build_file()?,
+            BeaverState::Invalid => return Err(BeaverError::UnrecoverableError),
+            BeaverState::Build => {},
         }
 
         let build_file = self.build_file()?;
         let ninja_runner = NinjaRunner::new(&build_file, self.verbose);
-        let target_names = self.qualified_names(targets)?;
         let build_dir = self.get_build_dir()?;
-        ninja_runner.build(target_names.as_slice(), &env::current_dir()?, &build_dir)
+        ninja_runner.build(target_names, &env::current_dir()?, &build_dir)
     }
 
     pub fn build_current_project(&self) -> crate::Result<()> {
         self.with_current_project(|project| {
-            match project.targets() {
-                Ok(targets) => {
-                    self.build_all(targets.iter().map(|target| target.tref().unwrap()).collect::<Vec<TargetRef>>().as_slice())
-                },
-                Err(err) => Err(err)
-            }
+            self.build_all_named(&[project.name()])
+            // match project.targets() {
+            //     Ok(targets) => {
+            //         self.build_all(targets.iter().map(|target| target.tref().unwrap()).collect::<Vec<TargetRef>>().as_slice())
+            //     },
+            //     Err(err) => Err(err)
+            // }
         })
     }
 
@@ -358,8 +423,7 @@ impl Beaver {
             target.artifact_file(project.build_dir(), artifact_type, &self.target_triple)
         })?;
 
-        dbg!(&artifact_file);
-        assert!(artifact_file.exists());
+        assert!(artifact_file.exists()); // should always be the case, otherwise it's a bug
 
         let mut process = Command::new(artifact_file.as_path())
             .args(args)

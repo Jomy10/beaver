@@ -1,6 +1,7 @@
 use std::path::{self, Path};
 use std::sync::Arc;
 use std::{path::PathBuf, sync::RwLock};
+use log::trace;
 use target_lexicon::Triple;
 
 use crate::backend::{BackendBuilder, BackendBuilderScope, BuildStep};
@@ -120,6 +121,7 @@ impl project::traits::Project for Project {
         builder: Arc<RwLock<Builder>>,
         context: &Beaver
     ) -> crate::Result<()> {
+        trace!("register {}", self.name);
         _ = scope; // TODO
         let steps: Vec<String> = self.targets()?.iter().map(|target| {
             target.register(&self.name, &self.base_dir, &self.build_dir, triple, builder.clone(), context)
