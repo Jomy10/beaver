@@ -121,7 +121,6 @@ impl project::traits::Project for Project {
         builder: Arc<RwLock<Builder>>,
         context: &Beaver
     ) -> crate::Result<()> {
-        trace!("register {}", self.name);
         _ = scope; // TODO
         let steps: Vec<String> = self.targets()?.iter().map(|target| {
             target.register(&self.name, &self.base_dir, &self.build_dir, triple, builder.clone(), context)
@@ -130,6 +129,9 @@ impl project::traits::Project for Project {
 
         let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
         let mut scope = guard.new_scope();
+        #[cfg(debug_assertions)] {
+            scope.add_comment(&format!("Project: {}", self.name()))?;
+        }
         scope.add_step(&BuildStep::Phony {
             name: &self.name,
             args: &steps,

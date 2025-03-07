@@ -26,6 +26,7 @@ pub trait BackendBuilderScope: std::fmt::Debug {
 
     fn add_comment(&mut self, comment: &str) -> crate::Result<()>;
 
+    // TODO: still needed or are we using absolute path everywhere?
     fn format_path(&self, path: PathBuf) -> PathBuf;
 }
 

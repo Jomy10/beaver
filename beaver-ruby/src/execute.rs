@@ -44,6 +44,7 @@ pub unsafe fn execute_script<P: AsRef<Path>>(script_file: P, context: Box<Beaver
 
     ruby_lib::register(&context.ruby)?;
 
+
     context.ruby.require(std::path::absolute(script_file.as_ref())?)?;
 
     // By constructing this, we assure that `context` and `cleanup` live equally long. `context`
