@@ -1,0 +1,19 @@
+[package]
+name = "beaver-ruby"
+version = "5.0.0"
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+magnus = { workspace = true, features = ["embed" ]}
+
+thiserror = { workspace = true }
+log = { workspace = true }
+url = { workspace = true }
+target-lexicon = { workspace = true }
+
+beaver = { path = "../beaver" }
+utils = { path = "../utils" }
+
+# [build-dependencies]
+# pkg-config = "0.3"

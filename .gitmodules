@@ -1,3 +1,0 @@
-[submodule "deps/timespec"]
-	path = deps/timespec
-	url = https://github.com/solemnwarning/timespec

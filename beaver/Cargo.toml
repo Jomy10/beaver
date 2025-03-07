@@ -1,0 +1,38 @@
+[package]
+name = "beaver"
+version = "5.0.0"
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+console = { workspace = true }
+log = { workspace = true }
+semver = { workspace = true }
+target-lexicon = { workspace = true }
+thiserror = { workspace = true }
+url = { workspace = true }
+lazy_static = { workspace = true }
+rayon = { workspace = true }
+enum_dispatch = { workspace = true }
+pathdiff = { workspace = true }
+shlex = { workspace = true }
+ormlite = { workspace = true, features = ["sqlite", "uuid"] }
+# TODO: add feature link-sqlite -> enables sqlite-unbundled (see https://docs.rs/sqlx/latest/sqlx/sqlite/index.html)
+sqlx = { workspace = true, features = ["sqlite", "derive", "uuid", "runtime-tokio"] }
+async-executor = { workspace = true }
+futures-lite = { workspace = true }
+uuid = { workspace = true, features = ["v4", "fast-rng", "macro-diagnostics"] }
+tokio = { workspace = true, features = ["rt", "macros"] }
+# serde = { workspace = true, features = ["derive"] }
+# serde_json = { workspace = true }
+cmake-file-api = { workspace = true }
+utils = { path = "../utils" }
+glob = { path = "../glob" }
+beaver-macros = { path = "../beaver-macros" }
+
+[dev-dependencies]
+tempdir = { workspace = true }
+colog = { workspace = true }
+
+[profile.dev.package.sqlx-macros]
+opt-level = 3
