@@ -19,8 +19,6 @@ pub struct Project {
     targets: RwLock<Vec<AnyTarget>>
 }
 
-// unsafe impl Send for Project {}
-
 impl Project {
     pub fn new(
         name: String,
@@ -121,12 +119,25 @@ impl project::traits::Project for Project {
         context: &Beaver
     ) -> crate::Result<()> {
         _ = scope; // TODO
-        let steps: Vec<String> = self.targets()?.iter().map(|target| {
-            target.register(&self.name, &self.base_dir, &self.build_dir, triple, builder.clone(), context)
-        }).collect::<crate::Result<Vec<String>>>()?;
-        let steps: Vec<&str> = steps.iter().map(|str| str.as_str()).collect();
 
-        let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
+        let (mut guard, steps) = self.register_targets(triple, &builder, context)?;
+        let steps: Vec<&str> = steps.iter().map(|str| str.as_str()).collect();
+        // let targets = self.targets()?;
+
+        // let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
+        // let mut scopes: Vec<Builder::Scope> = (0..(*targets).len()).map(|_| guard.new_scope()).collect();
+        // drop(guard);
+
+        // let steps: Vec<String> = zip(targets.iter(), scopes.iter_mut()).map(|(target, scope)| {
+        //     target.register(&self.name, &self.base_dir, &self.build_dir, triple, builder.clone(), scope, context)
+        // }).collect::<crate::Result<Vec<String>>>()?;
+        // let steps: Vec<&str> = steps.iter().map(|str| str.as_str()).collect();
+
+        // let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
+        // for scope in scopes {
+        //     guard.apply_scope(scope);
+        // }
+
         let mut scope = guard.new_scope();
         #[cfg(debug_assertions)] {
             scope.add_comment(&format!("Project: {}", self.name()))?;

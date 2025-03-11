@@ -5,7 +5,7 @@ use target_lexicon::Triple;
 use crate::target;
 use crate::target::{ArtifactType, ExecutableArtifactType, traits::Target};
 
-#[enum_dispatch] // TODO
+#[enum_dispatch]
 pub trait Executable: Target {
     fn run(&self, project_build_dir: &Path, args: &[String]) -> crate::Result<()> {
         let artifact_file = self.artifact_file(project_build_dir, ArtifactType::Executable(ExecutableArtifactType::Executable), &Triple::host())?;
@@ -31,5 +31,6 @@ pub trait Executable: Target {
 #[derive(Debug)]
 pub enum AnyExecutable {
     C(target::c::Executable),
-    CMake(target::cmake::Executable)
+    CMake(target::cmake::Executable),
+    Cargo(target::cargo::Executable),
 }

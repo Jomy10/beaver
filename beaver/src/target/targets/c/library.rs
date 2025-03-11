@@ -167,6 +167,7 @@ impl traits::Target for Library {
                         Ok(dir.join(format!("{}.xcframework", self.name)))
                     }
                 },
+                _ => unreachable!("Unsupported artifact for C") // TODO: validate in `new`
             },
             ArtifactType::Executable(_) => panic!("bug")
         };
@@ -178,6 +179,7 @@ impl traits::Target for Library {
         project_build_dir: &Path,
         target_triple: &Triple,
         builder: Arc<RwLock<Builder>>,
+        scope: &mut Builder::Scope,
         context: &Beaver
     ) -> crate::Result<String> {
         CTarget::register_impl(
@@ -187,6 +189,7 @@ impl traits::Target for Library {
             project_build_dir,
             target_triple,
             builder,
+            scope,
             &[self.cc_rule(), self.link_rule(), &rules::AR],
             context
         )
@@ -311,7 +314,8 @@ impl CTarget for Library {
                 todo!()
             },
             LibraryArtifactType::Framework => todo!(),
-            LibraryArtifactType::XCFramework => todo!()
+            LibraryArtifactType::XCFramework => todo!(),
+            _ => unreachable!("Invalid artifact")
         }
     }
 }

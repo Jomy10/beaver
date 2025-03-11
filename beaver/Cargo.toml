@@ -26,6 +26,7 @@ tokio = { workspace = true, features = ["rt", "macros"] }
 # serde = { workspace = true, features = ["derive"] }
 # serde_json = { workspace = true }
 cmake-file-api = { workspace = true }
+cargo-manifest = { workspace = true }
 utils = { path = "../utils" }
 glob = { path = "../glob" }
 beaver-macros = { path = "../beaver-macros" }

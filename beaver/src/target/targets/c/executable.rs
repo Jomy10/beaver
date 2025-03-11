@@ -167,6 +167,7 @@ impl traits::Target for Executable {
         project_build_dir: &Path,
         target_triple: &Triple,
         builder: Arc<RwLock<Builder>>,
+        scope: &mut Builder::Scope,
         context: &crate::Beaver
     ) -> crate::Result<String> {
         CTarget::register_impl(
@@ -176,6 +177,7 @@ impl traits::Target for Executable {
             project_build_dir,
             target_triple,
             builder,
+            scope,
             &[self.cc_rule(), self.link_rule()],
             context
         )

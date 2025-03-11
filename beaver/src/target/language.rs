@@ -6,7 +6,9 @@ pub enum Language {
     C,
     CXX,
     OBJC,
-    OBJCXX
+    OBJCXX,
+
+    Rust,
 }
 
 lazy_static! {
@@ -67,6 +69,7 @@ impl Language {
             (OBJCXX, _) => Some(*objcxx_cflags),
             (C, _) => None,
             (CXX, _) => None,
+            (Rust, _) => None,
         }
     }
 
@@ -78,11 +81,15 @@ impl Language {
 
             (CXX, C | OBJC) | (OBJCXX, OBJC) => Some(&["-lstdc++"]),
             (CXX, CXX | OBJCXX) => None,
+            (CXX, Rust) => None,
 
             (OBJCXX | OBJC, CXX) | (OBJC, C) => Some(*objc_linker_flags),
             (OBJCXX, C) => Some(&OBJCXX_TO_C_LINKER_FLAGS),
             (OBJC, OBJC | OBJCXX) |
             (OBJCXX, OBJCXX) => None,
+            (OBJCXX | OBJC, Rust) => None,
+
+            (Rust, _) => None,
         }
     }
 }

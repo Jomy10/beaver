@@ -109,17 +109,12 @@ impl traits::Project for Project {
     ) -> crate::Result<()> {
         _ = scope; // TODO
 
-        let steps: Vec<_> = self.targets.iter().map(|target| {
-            target.register(&self.name, &self.base_dir, &self.build_dir, triple, builder.clone(), context)
-        }).collect::<crate::Result<Vec<_>>>()?;
-        let steps: Vec<&str> = steps.iter().map(|str| str.as_str()).collect();
-        _ = steps; // TODO: remove
+        let (mut guard, _) = self.register_targets(triple, &builder, context)?;
 
         let Some(project_build_dir_str) = self.build_dir.as_os_str().to_str() else {
             return Err(BeaverError::NonUTF8OsStr(self.build_dir.as_os_str().to_os_string()));
         };
 
-        let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
         let mut scope = guard.new_scope();
         #[cfg(debug_assertions)] {
             scope.add_comment(&format!("CMake Project: {}", self.name()))?;

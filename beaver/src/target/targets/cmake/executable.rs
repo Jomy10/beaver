@@ -111,13 +111,14 @@ impl traits::Target for Executable {
         project_build_dir: &Path,
         triple: &Triple,
         builder: Arc<RwLock<Builder>>,
+        scope: &mut Builder::Scope,
         _context: &Beaver
     ) -> crate::Result<String> {
         _ = triple; // TODO
         let mut guard = builder.write()
             .map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
         guard.add_rule_if_not_exists(&rules::NINJA);
-        let mut scope = guard.new_scope();
+        // let mut scope = guard.new_scope();
         drop(guard);
 
         #[cfg(debug_assertions)] {
@@ -148,8 +149,8 @@ impl traits::Target for Executable {
             dependencies: &[]
         })?;
 
-        let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
-        guard.apply_scope(scope);
+        // let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
+        // guard.apply_scope(scope);
 
         Ok(target_cmd_name)
     }

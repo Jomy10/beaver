@@ -70,6 +70,7 @@ pub(crate) trait CTarget: traits::Target {
         project_build_dir: &Path,
         target_triple: &Triple,
         builder: Arc<RwLock<Builder>>,
+        scope: &mut Builder::Scope,
         rules: &[&'static Rule],
         context: &crate::Beaver
     ) -> crate::Result<String> {
@@ -78,8 +79,6 @@ pub(crate) trait CTarget: traits::Target {
         for rule in rules {
             guard.add_rule_if_not_exists(rule);
         }
-
-        let mut scope = guard.new_scope();
         drop(guard);
 
         let dependency_steps = self.dependencies().iter()
@@ -119,7 +118,7 @@ pub(crate) trait CTarget: traits::Target {
                 &dependency_steps,
                 &cflags_str,
                 &linker_flags_str,
-                &mut scope
+                scope
             )?);
         }
 
@@ -129,10 +128,6 @@ pub(crate) trait CTarget: traits::Target {
             args: &artifact_steps.iter().map(|str| str.as_str()).collect::<Vec<&str>>(),
             dependencies: &[]
         })?;
-
-        let mut builder_guard = builder.write()
-            .map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
-        builder_guard.apply_scope(scope);
 
         return Ok(target_step);
     }
@@ -156,6 +151,7 @@ pub(crate) trait CTarget: traits::Target {
             Language::CXX => &rules::CXX,
             Language::OBJC => &rules::OBJC,
             Language::OBJCXX => &rules::OBJCXX,
+            _ => unreachable!()
         }
     }
 
@@ -165,6 +161,7 @@ pub(crate) trait CTarget: traits::Target {
             Language::CXX => &rules::LINKXX,
             Language::OBJC => &rules::LINK,
             Language::OBJCXX => &rules::LINKXX,
+            _ => unreachable!()
         }
     }
 

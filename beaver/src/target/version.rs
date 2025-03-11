@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Version {
     Any(String),
     Semver(semver::Version),

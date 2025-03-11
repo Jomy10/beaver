@@ -103,6 +103,10 @@ pub enum BeaverError {
     #[error("CMake target with id '{0}' not found")]
     NoCMakeTarget(String),
 
+    // Cargo //
+    #[error("CargoManifestError: {0}")]
+    CargoManifestError(#[from] cargo_manifest::Error),
+
     // General Errors //
     #[error("There are no projects defined")]
     NoProjects,

@@ -38,6 +38,12 @@ pub enum LibraryArtifactType {
     /// macOS framework
     Framework,
     XCFramework,
+
+    // Rust //
+    /// rlib: A static rust library
+    RustLib,
+    /// dylib: A dynamic rust library
+    RustDynlib,
 }
 
 impl TArtifactType for LibraryArtifactType {
@@ -61,6 +67,8 @@ impl std::fmt::Display for LibraryArtifactType {
             LibraryArtifactType::PkgConfig => f.write_str("pkgconfig"),
             LibraryArtifactType::Framework => f.write_str("framework"),
             LibraryArtifactType::XCFramework => f.write_str("xcframework"),
+            LibraryArtifactType::RustLib => f.write_str("rlib"),
+            LibraryArtifactType::RustDynlib => f.write_str("rust_dynlib"),
         }
     }
 }

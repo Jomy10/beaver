@@ -58,6 +58,7 @@ pub trait Target: Send + Sync + std::fmt::Debug {
         project_build_dir: &Path,
         triple: &Triple,
         builder: Arc<RwLock<Builder>>,
+        scope: &mut Builder::Scope,
         context: &Beaver
     ) -> crate::Result<String>;
 
@@ -164,58 +165,3 @@ impl AnyTarget {
         }
     }
 }
-
-// impl Target for AnyTarget {
-//     target_fn!(name -> &str);
-//     target_fn!(description ->Option<&str>);
-//     target_fn!(homepage -> Option<&Url>);
-//     target_fn!(version -> Option<&Version>);
-//     target_fn!(license -> Option<&str>);
-//     target_fn!(language -> Language);
-//     target_fn!(id -> Option<usize>);
-//     target_fn_mut!(set_id, new_id: usize);
-//     target_fn!(project_id -> Option<usize>);
-//     target_fn_mut!(set_project_id, new_id: usize);
-//     target_fn!(artifacts -> Vec<ArtifactType>);
-//     target_fn!(dependencies -> &Vec<Dependency>);
-//     target_fn!(r#type -> TargetType);
-
-//     fn artifact_output_dir(&self, project_build_dir: &Path, triple: &Triple) -> PathBuf {
-//         target_fn_impl!(self, artifact_output_dir, project_build_dir, triple)
-//     }
-
-//     fn artifact_file(&self, project_build_dir: &Path, artifact: ArtifactType, triple: &Triple) -> crate::Result<PathBuf> {
-//         target_fn_impl!(self, artifact_file, project_build_dir, artifact, triple)
-//     }
-
-//     fn register(&self,
-//         project_name: &str,
-//         project_base_dir: &Path,
-//         project_build_dir: &Path,
-//         triple: &Triple,
-//         builder: Arc<RwLock<Box<dyn BackendBuilder>>>,
-//         context: &Beaver
-//     ) -> crate::Result<()> {
-//         target_fn_impl!(self, register, project_name, project_base_dir, project_build_dir, triple, builder, context)
-//     }
-// }
-
-// impl AnyTarget {
-//     pub(crate) fn as_library(&self) -> Option<&Box<dyn Library>> {
-//         match self {
-//             Self::Library(lib) => Some(lib),
-//             _ => None
-//         }
-//     }
-
-//     #[allow(unused)]
-//     pub(crate) fn as_executable(&self) -> Option<&Box<dyn Executable>> {
-//         match self {
-//             Self::Executable(exe) => Some(exe),
-//             _ => None
-//         }
-//     }
-// }
-
-// unsafe impl Send for AnyTarget {}
-// unsafe impl Sync for AnyTarget {}

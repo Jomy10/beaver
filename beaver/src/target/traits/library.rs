@@ -9,6 +9,7 @@ use crate::target::{traits::Target, ArtifactType, LibraryArtifactType};
 pub trait Library: Target {
     fn artifact_output_dir(&self, project_build_dir: &Path, triple: &Triple) -> PathBuf;
 
+    /// Writes C-style linker flags to `out`
     fn link_against_library(&self, project_build_dir: &Path, artifact: LibraryArtifactType, target_triple: &Triple, out: &mut Vec<String>) -> crate::Result<()> {
         use LibraryArtifactType::*;
         match artifact {
@@ -28,7 +29,10 @@ pub trait Library: Target {
                 out.push(self.name().to_string());
             },
             XCFramework => todo!("XCFramework is unimplemented"),
-            PkgConfig => panic!("Can't link against pkgconfig (bug)")
+            PkgConfig => panic!("Can't link against pkgconfig (bug)"),
+            // TODO: make this function generic for linking against a target language
+            RustLib => panic!("TODO: can't be linked"),
+            RustDynlib => panic!("TODO: can't be linked")
         }
 
         if let Some(linker_flags) = self.additional_linker_flags() {
@@ -47,13 +51,14 @@ pub trait Library: Target {
     fn default_library_artifact(&self) -> Option<LibraryArtifactType> {
         let artifacts = self.library_artifacts();
 
-        if artifacts.contains(&LibraryArtifactType::Staticlib) {
-            return Some(LibraryArtifactType::Staticlib);
-        } else if artifacts.contains(&LibraryArtifactType::Dynlib) {
-            return Some(LibraryArtifactType::Dynlib)
-        } else {
-            return None;
+        let order = [LibraryArtifactType::Staticlib, LibraryArtifactType::Dynlib, LibraryArtifactType::RustLib, LibraryArtifactType::RustDynlib];
+        for artifact in &order {
+            if artifacts.contains(artifact) {
+                return Some(*artifact);
+            }
         }
+
+        return None;
     }
 }
 
@@ -62,5 +67,6 @@ pub trait Library: Target {
 #[derive(Debug)]
 pub enum AnyLibrary {
     C(targets::c::Library),
-    CMake(targets::cmake::Library)
+    CMake(targets::cmake::Library),
+    Cargo(targets::cargo::Library),
 }
