@@ -43,6 +43,9 @@ pub(crate) trait CTarget: traits::Target {
         let mut cflags: Vec<String> = context.optimize_mode.cflags().iter().map(|s| *s).map(String::from).collect();
         cflags.extend(self.user_cflags().map(|string| string.clone()));
         cflags.extend(self.all_headers(project_base_dir).map(|path| format!("-I{}", path.display())));
+        if let Some(langflags) = Language::cflags(self.language(), self.language()) {
+            cflags.extend(langflags.iter().map(|str| str.to_string()));
+        }
 
         for dependency in dependencies {
             dependency.public_cflags(context, &mut cflags)?;
@@ -163,7 +166,7 @@ pub(crate) trait CTarget: traits::Target {
             Language::CXX => &rules::CXX,
             Language::OBJC => &rules::OBJC,
             Language::OBJCXX => &rules::OBJCXX,
-            _ => unreachable!()
+            _ => unreachable!("Invalid language for C target")
         }
     }
 
@@ -171,9 +174,9 @@ pub(crate) trait CTarget: traits::Target {
         match self.language() {
             Language::C => &rules::LINK,
             Language::CXX => &rules::LINKXX,
-            Language::OBJC => &rules::LINK,
-            Language::OBJCXX => &rules::LINKXX,
-            _ => unreachable!()
+            Language::OBJC => &rules::LINKOBJC,
+            Language::OBJCXX => &rules::LINKOBJCXX,
+            _ => unreachable!("Invalid language for C target")
         }
     }
 

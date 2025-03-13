@@ -1,6 +1,7 @@
 
 use lazy_static::lazy_static;
 
+use crate::target::{OBJCXX_CFLAGS, OBJCXX_LINKER_FLAGS, OBJC_CFLAGS, OBJC_LINKER_FLAGS};
 use crate::tools;
 
 use super::{Pool, Rule};
@@ -30,7 +31,7 @@ lazy_static! {
         pool: None
     };
 
-    static ref OBJC_CMD: String = format!("{} $cflags -MD -MF $out.d -c $in -o $out", tools::objc.display());
+    static ref OBJC_CMD: String = format!("{} {} $cflags -MD -MF $out.d -c $in -o $out", tools::objc.display(), OBJC_CFLAGS.join(" "));
     pub static ref OBJC: Rule = Rule {
         name: "objc",
         options: vec![
@@ -42,7 +43,7 @@ lazy_static! {
         pool: None
     };
 
-    static ref OBJCXX_CMD: String = format!("{} $cflags -MD -MF $out.d -c $in -o $out", tools::objcxx.display());
+    static ref OBJCXX_CMD: String = format!("{} {} $cflags -MD -MF $out.d -c $in -o $out", tools::objcxx.display(), OBJCXX_CFLAGS.join(" "));
     pub static ref OBJCXX: Rule = Rule {
         name: "objcxx",
         options: vec![
@@ -70,6 +71,26 @@ lazy_static! {
         options: vec![
             ("description", "linking $out"),
             ("command", &LINKXX_CMD),
+        ],
+        pool: None
+    };
+
+    static ref LINKOBJC_CMD: String = format!("{} {} $linkerFlags $in -o $out", tools::objc.display(), OBJC_LINKER_FLAGS.join(" "));
+    pub static ref LINKOBJC: Rule = Rule {
+        name: "link_objc",
+        options: vec![
+            ("description", "linking $out"),
+            ("command", &LINKOBJC_CMD),
+        ],
+        pool: None
+    };
+
+    static ref LINKOBJCXX_CMD: String = format!("{} {} $linkerFlags $in -o $out", tools::objcxx.display(), OBJCXX_LINKER_FLAGS.join(" "));
+    pub static ref LINKOBJCXX: Rule = Rule {
+        name: "link_objcxx",
+        options: vec![
+            ("description", "linking $out"),
+            ("command", &LINKOBJCXX_CMD),
         ],
         pool: None
     };
