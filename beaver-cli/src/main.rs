@@ -3,7 +3,7 @@ use std::path::Path;
 
 use beaver::target::TargetRef;
 use beaver::{Beaver, BeaverError, OptimizationMode};
-use clap::{arg, Arg, ArgAction, ArgMatches, Command, ValueHint};
+use clap::{arg, Arg, ArgAction, ArgGroup, ArgMatches, Command, ValueHint};
 use lazy_static::lazy_static;
 use log::warn;
 
@@ -42,38 +42,48 @@ fn main() -> Result<(), MainError> {
     #[cfg(debug_assertions)] { clog.filter(None, log::LevelFilter::Trace); }
     #[cfg(not(debug_assertions))] { clog.filter(None, log::LevelFilter::Warn); }
 
+    let script_file_arg = Arg::new("script-file")
+        .short('f')
+        .long("script-file")
+        .value_name("FILE")
+        .value_hint(ValueHint::FilePath)
+            .help("The path to the script file");
+    let opt_mode_arg = arg!(-o --opt [OPT] "Optimization mode")
+        .default_value(default_opt_mode.as_os_str())
+        .default_missing_value(release_opt_mode.as_os_str())
+        .value_hint(ValueHint::Other)
+        .long_help("Optimization mode
+        When the argument is provided, but without a value, then the optimization mode is set to release")
+        .value_parser(["debug", "release"])
+        .ignore_case(true);
+    let color_arg = arg!(--color "Enable color output (default: automatic)");
+    let no_color_arg = Arg::new("no-color").long("no-color").action(ArgAction::SetTrue).hide(true);
+    let debug_arg = arg!(--debug "Print debug information").hide_short_help(true);
+    let verbose_arg = Arg::new("verbosity")
+        .short('v')
+        .action(clap::ArgAction::Count)
+        .help("Sets the level of verbosity");
+
     let matches = Command::new("beaver")
         .author("Jonas Everaert")
         .version(VERSION)
         .long_version(LONG_VERSION) // TODO: ninja version
         .propagate_version(true)
         .about("Reliable, powerful build system")
-        .arg(Arg::new("script-file")
-            .short('f')
-            .value_name("FILE")
-            .value_hint(ValueHint::FilePath)
-            .long("script-file")
-            .help("The path to the script file"))
-        .arg(arg!(-o --opt [OPT] "Optimization mode")
-            .default_value(default_opt_mode.as_os_str())
-            .default_missing_value(release_opt_mode.as_os_str())
-            .value_hint(ValueHint::Other)
-            .long_help("Optimization mode
-When the argument is provided, but without a value, then the optimization mode is set to release")
-            .value_parser(["debug", "release"])
-            .ignore_case(true))
-        .arg(arg!(--color "Enable color output (default: automatic)"))
-        .arg(Arg::new("no-color").long("no-color").action(ArgAction::SetTrue).hide(true))
-        // .arg(arg!(--debug))
+
+        .arg(script_file_arg.clone())
+        .arg(opt_mode_arg.clone())
+        .arg(color_arg.clone())
+        .arg(no_color_arg.clone())
+        .arg(debug_arg.clone())
+        .arg(verbose_arg.clone())
+
         .arg(arg!([targets]... "Target(s) to build")
             .long_help("Target(s) to build\nWhen no targets are passed, all targets in the current project are built."))
         .arg(arg!([args]... "Arguments passed to the build script")
             .required(false)
             .last(true))
-        .arg(Arg::new("verbosity")
-            .short('v')
-            .action(clap::ArgAction::Count)
-            .help("Sets the level of verbosity"))
+
         .subcommand(Command::new("list")
             .about("List projects and targets from the script file"))
         .subcommand(Command::new("clean")
@@ -81,7 +91,16 @@ When the argument is provided, but without a value, then the optimization mode i
         .subcommand(Command::new("run")
             .about("Build and run an executable target")
             .arg(arg!([target] "The target to run. Format: [project:]target"))
-            .arg(arg!([args]... "Arguments to pass to the executable").trailing_var_arg(true)))
+            .arg(arg!([args]... "Arguments to pass to the executable").trailing_var_arg(true))
+
+            .arg(script_file_arg)
+            .arg(opt_mode_arg)
+            .arg(color_arg)
+            .arg(no_color_arg)
+            .arg(debug_arg)
+            .arg(verbose_arg)
+        )
+        // TODO: doctor: list all tools available with their version
         .get_matches();
 
     let debug = matches.get_one::<bool>("debug").unwrap();
@@ -151,7 +170,7 @@ When the argument is provided, but without a value, then the optimization mode i
             }
         },
         Some(("list", _)) => {
-            println!("{}", ctx.context);
+            print!("{}", ctx.context);
         },
         Some(("clean", _)) => {
             unimplemented!("clean")
