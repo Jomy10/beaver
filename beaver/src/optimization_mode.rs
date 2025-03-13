@@ -15,7 +15,7 @@ impl OptimizationMode {
     pub fn cflags(&self) -> &[&str] {
         match self {
             Debug => &["-g", "-O0"],
-            Release => &["-O3", "-flto"],
+            Release => &["-O3", "-flto", "-DNDEBUG"],
         }
     }
 
