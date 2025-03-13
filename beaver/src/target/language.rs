@@ -87,6 +87,7 @@ impl Language {
             (OBJCXX, C) => Some(&OBJCXX_TO_C_LINKER_FLAGS),
             (OBJC, OBJC | OBJCXX) |
             (OBJCXX, OBJCXX) => None,
+
             (OBJCXX | OBJC, Rust) => None,
 
             (Rust, _) => None,

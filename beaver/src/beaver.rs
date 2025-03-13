@@ -110,6 +110,7 @@ impl Beaver {
             enable_color: enable_color.unwrap_or(true), // TODO: derive from isatty or set instance var to optional
             target_triple: Triple::host(),
             verbose: false, // TODO
+            verbose: false,
             cache: OnceLock::new(),
             status: AtomicState::new(BeaverState::Initialized as u8),
             phase_hook_build: Mutex::new(PhaseHooks(Vec::new())),

@@ -16,7 +16,6 @@ impl<'a> NinjaRunner<'a> {
         }
     }
 
-    // TODO: cleandead
     pub fn build<S: AsRef<str>>(&self, targets: &[S], base_dir: &Path, build_dir: &Path) -> crate::Result<()> {
         let mut args = vec![
             "-C", build_dir.to_str().expect("build dir path is not UTF-8 encoded"),
@@ -27,8 +26,6 @@ impl<'a> NinjaRunner<'a> {
         if self.verbose {
             args.push("-v");
         }
-
-        dbg!(&args);
 
         let mut process = Command::new(tools::ninja.as_os_str())
             .args(args)

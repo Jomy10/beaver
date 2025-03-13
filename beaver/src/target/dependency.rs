@@ -232,6 +232,7 @@ impl Dependency {
                 if let Some(linker_flags) = linker_flags {
                     out.extend_from_slice(linker_flags.as_slice());
                 }
+                // return Ok(linker_flags.clone());
                 Ok(())
             },
             Dependency::CMakeId(cmake_id) => {

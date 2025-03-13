@@ -151,11 +151,18 @@ checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
 
 [[package]]
 name = "beaver"
+<<<<<<< HEAD
 version = "4.0.0"
 dependencies = [
  "async-executor",
  "beaver-macros",
  "cargo-manifest",
+=======
+version = "5.0.0"
+dependencies = [
+ "async-executor",
+ "beaver-macros",
+>>>>>>> 7b611e747900235bb43e9c2241bd94f0d4443c0f
  "cmake-file-api",
  "colog",
  "console",
@@ -207,7 +214,11 @@ dependencies = [
 
 [[package]]
 name = "beaver-ruby"
+<<<<<<< HEAD
 version = "4.0.0"
+=======
+version = "5.0.0"
+>>>>>>> 7b611e747900235bb43e9c2241bd94f0d4443c0f
 dependencies = [
  "beaver",
  "log",
@@ -279,6 +290,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f61dac84819c6588b558454b194026eb1f09c293b9036ae9b159e74e73ab6cf9"
 
 [[package]]
+<<<<<<< HEAD
 name = "cargo-manifest"
 version = "0.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -290,6 +302,8 @@ dependencies = [
 ]
 
 [[package]]
+=======
+>>>>>>> 7b611e747900235bb43e9c2241bd94f0d4443c0f
 name = "cc"
 version = "1.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2448,7 +2462,10 @@ version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd87a5cdd6ffab733b2f74bc4fd7ee5fff6634124999ac278c35fc78c6120148"
 dependencies = [
+<<<<<<< HEAD
  "indexmap",
+=======
+>>>>>>> 7b611e747900235bb43e9c2241bd94f0d4443c0f
  "serde",
  "serde_spanned",
  "toml_datetime",

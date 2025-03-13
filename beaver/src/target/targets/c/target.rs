@@ -83,6 +83,8 @@ pub(crate) trait CTarget: traits::Target {
         for rule in rules {
             guard.add_rule_if_not_exists(rule);
         }
+
+        let mut scope = guard.new_scope();
         drop(guard);
 
         let dependency_steps = self.dependencies().iter()
@@ -133,6 +135,10 @@ pub(crate) trait CTarget: traits::Target {
             args: &artifact_steps.iter().map(|str| str.as_str()).collect::<Vec<&str>>(),
             dependencies: &[]
         })?;
+
+        let mut builder_guard = builder.write()
+            .map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
+        builder_guard.apply_scope(scope);
 
         return Ok(target_step);
     }

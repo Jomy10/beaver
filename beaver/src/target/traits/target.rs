@@ -111,37 +111,6 @@ pub trait Target: Send + Sync + std::fmt::Debug {
     fn debug_attributes(&self) -> Vec<(&'static str, String)>;
 }
 
-// macro_rules! target_fn_impl {
-//     ($self: expr, $fn: ident) => {
-//         match $self {
-//             Self::Library(lib) => lib.$fn(),
-//             Self::Executable(exe) => exe.$fn()
-//         }
-//     };
-//     ($self: expr, $fn: ident, $($arg: expr),+) => {
-//         match $self {
-//             Self::Library(lib) => lib.$fn($($arg,)*),
-//             Self::Executable(exe) => exe.$fn($($arg,)*)
-//         }
-//     };
-// }
-
-// macro_rules! target_fn {
-//     ($fn: ident -> $ret: ty) => {
-//         fn $fn(&self) -> $ret {
-//             target_fn_impl!(self, $fn)
-//         }
-//     };
-// }
-
-// macro_rules! target_fn_mut {
-//     ($fn: ident, $($arg: ident: $arg_ty: ty),+) => {
-//         fn $fn(&mut self, $($arg: $arg_ty)*) {
-//             target_fn_impl!(self, $fn, $($arg)*)
-//         }
-//     }
-// }
-
 #[enum_dispatch(Target)]
 #[derive(Debug)]
 pub enum AnyTarget {
