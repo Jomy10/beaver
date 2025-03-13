@@ -9,11 +9,17 @@ use beaver::{Beaver, OptimizationMode, target::c};
 /// Test adding a project and a target
 #[test]
 fn adding() {
+    let tmpdir = tempdir::TempDir::new("be.jonaseveraert.beaver.tests.beaver.adding").unwrap();
+    let tmpdir = tmpdir.into_path();
+
+    dbg!(&tmpdir);
+
     let beaver = Beaver::new(Some(true), OptimizationMode::Debug).unwrap();
+    beaver.set_build_dir(tmpdir.join("build")).unwrap();
     let project = BeaverProject::new(
         String::from("MyProject"),
-        PathBuf::from("."),
-        &PathBuf::from("build")
+        tmpdir.clone(),
+        beaver.get_build_dir().unwrap()
     ).unwrap();
     let target = c::Library::new_desc(c::TargetDescriptor {
         name: "HelloWorld".to_string(),
