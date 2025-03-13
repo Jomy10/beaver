@@ -64,7 +64,7 @@ When the argument is provided, but without a value, then the optimization mode i
             .ignore_case(true))
         .arg(arg!(--color "Enable color output (default: automatic)"))
         .arg(Arg::new("no-color").long("no-color").action(ArgAction::SetTrue).hide(true))
-        .arg(arg!(--debug))
+        // .arg(arg!(--debug))
         .arg(arg!([targets]... "Target(s) to build")
             .long_help("Target(s) to build\nWhen no targets are passed, all targets in the current project are built."))
         .arg(arg!([args]... "Arguments passed to the build script")
@@ -84,8 +84,10 @@ When the argument is provided, but without a value, then the optimization mode i
             .arg(arg!([args]... "Arguments to pass to the executable").trailing_var_arg(true)))
         .get_matches();
 
+    let debug = matches.get_one::<bool>("debug").unwrap();
+
     #[cfg(not(debug_assertions))] {
-        let verbosity = matches.get_count("verbosity");
+        let verbosity = if *debug { 3 } else { matches.get_count("verbosity") };
         match verbosity {
             0 => {},
             1 => clog.filter(None, log::LevelFilter::Info),
@@ -100,9 +102,13 @@ When the argument is provided, but without a value, then the optimization mode i
     let flag_no_color = matches.get_flag("no-color");
     if flag_color == true && flag_no_color == true { warn!("Both --color and --no-color are specified. --color will get priority") };
     let color = if flag_color == false && flag_no_color == false { None } else { Some(flag_color || !flag_no_color) };
-    if let Some(color) = color {
+    let color = if let Some(color) = color {
         console::set_colors_enabled(color);
-    }
+        console::set_colors_enabled_stderr(color);
+        color
+    } else {
+        console::colors_enabled()
+    };
 
     let opt = OptimizationMode::try_from(matches.get_one::<String>("opt").unwrap().as_str())?;
 
@@ -121,9 +127,7 @@ When the argument is provided, but without a value, then the optimization mode i
         }
     };
 
-    let debug = matches.get_one::<bool>("debug").unwrap();
-
-    let beaver = Box::new(Beaver::new(color, opt)?);
+    let beaver = Box::new(Beaver::new(Some(color), opt)?);
     let ctx = unsafe { beaver_ruby::execute_script(script_file, beaver)? };
 
     if *debug {
