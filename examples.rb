@@ -7,7 +7,7 @@ if $? != 0
   exit($?.to_i)
 end
 
-beaver = "../../target/debug/beaver-cli"
+beaver = "../../target/debug/beaver"
 
 Dir.chdir(File.join("examples", ARGV[0])) do
   exec "#{beaver} #{ARGV[1...].join(" ")}"
