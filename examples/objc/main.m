@@ -1,6 +1,6 @@
 #import <Foundation/Foundation.h>
 #include <assert.h>
-#import <class_def.h>
+#import <greeter.h>
 
 @implementation Greeter
   - (id)initWithName:(NSString*)name {

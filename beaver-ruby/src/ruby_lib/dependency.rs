@@ -94,6 +94,11 @@ impl DependencyWrapper {
         let name = Self::get_name(name)?;
         return Ok(DependencyWrapper(Dependency::system(&name)));
     }
+
+    fn new_framework(name: magnus::Value) -> Result<DependencyWrapper, magnus::Error> {
+        let name = Self::get_name(name)?;
+        return Ok(DependencyWrapper(Dependency::framework(&name)));
+    }
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
@@ -103,6 +108,7 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     ruby.define_global_function("dynamic", magnus::function!(DependencyWrapper::new_dynamic, 1));
     ruby.define_global_function("pkgconfig", magnus::function!(DependencyWrapper::new_pkgconfig, -1));
     ruby.define_global_function("system_lib", magnus::function!(DependencyWrapper::new_system, 1));
+    ruby.define_global_function("framework", magnus::function!(DependencyWrapper::new_framework, 1));
 
     Ok(())
 }

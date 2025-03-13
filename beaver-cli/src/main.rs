@@ -39,8 +39,8 @@ impl std::fmt::Debug for MainError {
 
 fn main() -> Result<(), MainError> {
     let mut clog = colog::default_builder();
-    clog.filter(None, log::LevelFilter::Trace);
-    clog.init();
+    #[cfg(debug_assertions)] { clog.filter(None, log::LevelFilter::Trace); }
+    #[cfg(not(debug_assertions))] { clog.filter(None, log::LevelFilter::Warn); }
 
     let matches = Command::new("beaver")
         .author("Jonas Everaert")
@@ -70,6 +70,10 @@ When the argument is provided, but without a value, then the optimization mode i
         .arg(arg!([args]... "Arguments passed to the build script")
             .required(false)
             .last(true))
+        .arg(Arg::new("verbosity")
+            .short('v')
+            .action(clap::ArgAction::Count)
+            .help("Sets the level of verbosity"))
         .subcommand(Command::new("list")
             .about("List projects and targets from the script file"))
         .subcommand(Command::new("clean")
@@ -79,6 +83,18 @@ When the argument is provided, but without a value, then the optimization mode i
             .arg(arg!([target] "The target to run. Format: [project:]target"))
             .arg(arg!([args]... "Arguments to pass to the executable").trailing_var_arg(true)))
         .get_matches();
+
+    #[cfg(not(debug_assertions))] {
+        let verbosity = matches.get_count("verbosity");
+        match verbosity {
+            0 => {},
+            1 => clog.filter(None, log::LevelFilter::Info),
+            2 => clog.filter(None, log::LevelFilter::Debug),
+            3.. => clog.filter(None, log::LevelFilter::Trace),
+        }
+    }
+
+    clog.init();
 
     let flag_color = matches.get_flag("color");
     let flag_no_color = matches.get_flag("no-color");
