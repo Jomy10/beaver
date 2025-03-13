@@ -16,7 +16,7 @@ pub(crate) fn beaver() -> std::path::PathBuf {
     {
         path = path.join("release");
     }
-    path.join("beaver-cli")
+    path.join("beaver")
 }
 
 pub(crate) fn run<'a>(dir: &Path, stdout: &'a mut String) -> (impl Iterator<Item = &'a str>, Option<i32>) {

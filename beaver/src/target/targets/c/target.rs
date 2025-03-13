@@ -74,7 +74,7 @@ pub(crate) trait CTarget: traits::Target {
         project_build_dir: &Path,
         target_triple: &Triple,
         builder: Arc<RwLock<Builder>>,
-        scope: &mut Builder::Scope,
+        _scope: &mut Builder::Scope,
         rules: &[&'static Rule],
         context: &crate::Beaver
     ) -> crate::Result<String> {
@@ -125,7 +125,7 @@ pub(crate) trait CTarget: traits::Target {
                 &cflags_str,
                 &linker_flags_str,
                 &additional_files,
-                scope
+                &mut scope
             )?);
         }
 
