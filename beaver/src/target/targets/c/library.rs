@@ -222,13 +222,14 @@ impl CTarget for Library {
     }
 
     /// All linker flags used by this library when linking
-    fn linker_flags<'a>(&self, dependencies: impl Iterator<Item = &'a Dependency>, languages: impl Iterator<Item = &'a Language>, triple: &Triple, context: &Beaver) -> crate::Result<Vec<String>> {
+    fn linker_flags<'a>(&self, dependencies: impl Iterator<Item = &'a Dependency>, languages: impl Iterator<Item = &'a Language>, triple: &Triple, context: &Beaver) -> crate::Result<(Vec<String>, Vec<PathBuf>)> {
         let mut flags: Vec<String> = dynlib_linker_flags_for_os(&triple.operating_system)?.iter().map(|s| s.to_string()).collect();
 
         flags.append(&mut self.linker_flags.clone());
 
+        let mut additional_files = Vec::new();
         for dependency in dependencies {
-            dependency.linker_flags(triple, context, &mut flags)?;
+            dependency.linker_flags(triple, context, &mut flags, &mut additional_files)?;
         }
         for lang in languages {
             let Some(lang_flags) = Language::linker_flags(*lang, self.language) else { continue };
@@ -237,7 +238,7 @@ impl CTarget for Library {
 
         flags.extend(context.optimize_mode.linker_flags().iter().map(|str| str.to_string()));
 
-        return Ok(flags);
+        return Ok((flags, additional_files));
     }
 
     fn register_artifact<Scope: BackendBuilderScope>(&self,
@@ -249,6 +250,7 @@ impl CTarget for Library {
         dependency_steps: &[&str],
         cflags: &str,
         linker_flags: &str,
+        additional_files: &[PathBuf],
         builder: &mut Scope
     ) -> crate::Result<String> {
         let cc_rule = self.cc_rule();
@@ -259,7 +261,7 @@ impl CTarget for Library {
             LibraryArtifactType::Dynlib | LibraryArtifactType::Staticlib => {
                 let obj_ext = OsString::from(if *artifact == LibraryArtifactType::Dynlib { ".dyn.o" } else { ".o" });
 
-                let mut object_files: Vec<PathBuf> = Vec::new();
+                let mut object_files: Vec<PathBuf> = additional_files.to_vec();
                 let sources = self.sources.resolve(project_base_dir)?;
                 if sources.len() == 0 { warn!("No sources in C::Library {}", self.name); }
                 for source in sources {

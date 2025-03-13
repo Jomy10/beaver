@@ -52,6 +52,10 @@ pub(crate) trait CTarget: traits::Target {
             cflags.extend(lang_cflags.iter().map(|str| str.to_string()));
         }
 
+        if context.color_enabled() {
+            cflags.push("-fdiagnostics-color=always".to_string());
+        }
+
         return Ok(cflags);
     }
 
@@ -62,7 +66,7 @@ pub(crate) trait CTarget: traits::Target {
         languages: impl Iterator<Item = &'a Language>,
         triple: &Triple,
         context: &Beaver
-    ) -> crate::Result<Vec<String>>;
+    ) -> crate::Result<(Vec<String>, Vec<PathBuf>)>;
 
     fn register_impl<Builder: BackendBuilder<'static>>(&self,
         project_name: &str,
@@ -100,7 +104,7 @@ pub(crate) trait CTarget: traits::Target {
         let cflags = self.cflags(project_base_dir, dependencies.iter(), languages.iter(), context)?;
         let cflags_str = utils::flags::concat_quoted(cflags.into_iter());
 
-        let linker_flags = self.linker_flags(dependencies.iter(), languages.iter(), target_triple, context)?;
+        let (linker_flags, additional_files) = self.linker_flags(dependencies.iter(), languages.iter(), target_triple, context)?;
         let linker_flags_str = utils::flags::concat_quoted(linker_flags.into_iter());
 
         let mut artifact_steps: Vec<String> = Vec::new();
@@ -118,6 +122,7 @@ pub(crate) trait CTarget: traits::Target {
                 &dependency_steps,
                 &cflags_str,
                 &linker_flags_str,
+                &additional_files,
                 scope
             )?);
         }
@@ -142,6 +147,7 @@ pub(crate) trait CTarget: traits::Target {
         dependency_steps: &[&str],
         cflags: &str,
         linker_flags: &str,
+        additional_files: &[PathBuf],
         builder: &mut Scope
     ) -> crate::Result<String>;
 

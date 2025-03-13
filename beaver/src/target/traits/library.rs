@@ -9,9 +9,14 @@ use crate::target::{traits::Target, ArtifactType, LibraryArtifactType};
 pub trait Library: Target {
     fn artifact_output_dir(&self, project_build_dir: &Path, triple: &Triple) -> PathBuf;
 
-    /// Writes C-style linker flags to `out`
-    fn link_against_library(&self, project_build_dir: &Path, artifact: LibraryArtifactType, target_triple: &Triple, out: &mut Vec<String>) -> crate::Result<()> {
+    /// Writes C-style linker flags to `out`. If a static library or object file should be linked, the file is returned
+    fn link_against_library(&self, project_build_dir: &Path, artifact: LibraryArtifactType, target_triple: &Triple, out: &mut Vec<String>, additional_files: &mut Vec<PathBuf>) -> crate::Result<()> {
         use LibraryArtifactType::*;
+
+        if let Some(linker_flags) = self.additional_linker_flags() {
+            out.extend(linker_flags.iter().cloned());
+        }
+
         match artifact {
             Dynlib => {
                 // TODO: do we need path::canonicalize?
@@ -20,7 +25,7 @@ pub trait Library: Target {
                 out.push(format!("-l{}", self.name()));
             },
             Staticlib => {
-                out.push(path::absolute(self.artifact_file(project_build_dir, ArtifactType::Library(artifact), target_triple)?)?.to_str().unwrap().to_string());
+                additional_files.push(path::absolute(self.artifact_file(project_build_dir, ArtifactType::Library(artifact), target_triple)?)?);
             }
             Framework => {
                 let outdir = path::absolute(self.artifact_output_dir(project_build_dir, target_triple))?;
@@ -33,10 +38,6 @@ pub trait Library: Target {
             // TODO: make this function generic for linking against a target language
             RustLib => panic!("TODO: can't be linked"),
             RustDynlib => panic!("TODO: can't be linked")
-        }
-
-        if let Some(linker_flags) = self.additional_linker_flags() {
-            out.extend(linker_flags.iter().cloned());
         }
 
         Ok(())

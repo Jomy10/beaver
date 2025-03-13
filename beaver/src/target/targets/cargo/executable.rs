@@ -15,6 +15,7 @@ pub struct Executable {
     project_id: Option<usize>,
     id: Option<usize>,
 
+    package_name: Arc<String>,
     name: String,
     description: Option<String>,
     homepage: Option<Url>,
@@ -27,6 +28,7 @@ pub struct Executable {
 
 impl Executable {
     pub fn new(
+        package_name: Arc<String>,
         name: String,
         description: Option<String>,
         homepage: Option<Url>,
@@ -38,6 +40,7 @@ impl Executable {
         Self {
             project_id: None,
             id: None,
+            package_name,
             name,
             description,
             homepage,
@@ -113,22 +116,23 @@ impl traits::Target for Executable {
         Ok(project_build_dir.join(format!("{}{}", self.name, ext)))
     }
 
-    #[doc = " Returns the target name"]
+    /// Returns the target name
     fn register<Builder: BackendBuilder<'static>>(
         &self,
         project_name: &str,
         workspace_dir: &Path,
-        _project_build_dir: &Path,
-        _triple: &Triple,
+        project_build_dir: &Path,
+        triple: &Triple,
         _builder: Arc<RwLock<Builder>>,
         scope: &mut Builder::Scope,
-        _context: &Beaver,
+        context: &Beaver,
     ) -> crate::Result<String> {
-        let Some(workspace_dir) = workspace_dir.to_str() else {
+        let workspace_abs = std::path::absolute(workspace_dir)?;
+        let Some(workspace_dir) = workspace_abs.to_str() else {
             return Err(BeaverError::NonUTF8OsStr(workspace_dir.as_os_str().to_os_string()));
         };
 
-        let step_name = format!("{}:{}", project_name, self.name);
+        let step_name = format!("{}$:{}", project_name, self.name);
 
         scope.add_step(&BuildStep::Cmd {
             rule: &rules::CARGO,
@@ -136,24 +140,36 @@ impl traits::Target for Executable {
             dependencies: &[],
             options: &[
                 ("workspaceDir", workspace_dir),
-                ("target", &self.name),
-                ("cargoArgs", &self.cargo_flags.join(" "))
+                ("target", &self.package_name),
+                ("cargoArgs", &(self.cargo_flags.join(" ") + if context.color_enabled() { " --color always " } else { "" } + context.optimize_mode.cargo_flags().join(" ").as_str()))
             ],
         })?;
 
         for artifact in &self.artifacts {
+            let build_step = format!("{}$:{}$:{}", project_name, self.name, artifact);
+
             scope.add_step(&BuildStep::Cmd {
                 rule: &rules::CARGO,
-                name: &format!("{}:{}:{}", project_name, self.name, artifact),
+                name: &build_step,
                 dependencies: &[],
                 options: &[
                     ("workspaceDir", workspace_dir),
-                    ("target", &self.name),
-                    ("cargoArgs", &(format!("--bin {}", self.name) + self.cargo_flags.join(" ").as_str()))
+                    ("target", &self.package_name),
+                    ("cargoArgs", &(format!("--bin {}", self.name) + self.cargo_flags.join(" ").as_str() + if context.color_enabled() { " --color always " } else { "" } + context.optimize_mode.cargo_flags().join(" ").as_str()))
                 ]
             })?;
-        }
 
+            let abs_artifact = std::path::absolute(self.artifact_file(project_build_dir, ArtifactType::Executable(*artifact), triple)?)?;
+            let Some(abs_artifact) = abs_artifact.to_str() else {
+                return Err(BeaverError::NonUTF8OsStr(abs_artifact.as_os_str().to_os_string()));
+            };
+
+            scope.add_step(&BuildStep::Phony {
+                name: abs_artifact,
+                args: &[&build_step],
+                dependencies: &[],
+            })?;
+        }
 
         Ok(step_name)
     }

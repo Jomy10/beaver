@@ -15,6 +15,7 @@ pub struct Library {
     project_id: Option<usize>,
     id: Option<usize>,
 
+    package_name: Arc<String>,
     name: String,
     description: Option<String>,
     homepage: Option<Url>,
@@ -27,6 +28,7 @@ pub struct Library {
 
 impl Library {
     pub fn new(
+        package_name: Arc<String>,
         name: String,
         description: Option<String>,
         homepage: Option<Url>,
@@ -38,6 +40,7 @@ impl Library {
         Self {
             project_id: None,
             id: None,
+            package_name,
             name,
             description,
             homepage,
@@ -127,22 +130,23 @@ impl traits::Target for Library {
         Ok(project_build_dir.join(format!("lib{}.{}", self.name, ext)))
     }
 
-    #[doc = " Returns the target name"]
+    /// Returns the target name
     fn register<Builder: BackendBuilder<'static>>(
         &self,
         project_name: &str,
         workspace_dir: &Path,
-        _project_build_dir: &Path,
-        _triple: &Triple,
+        project_build_dir: &Path,
+        triple: &Triple,
         _builder: Arc<RwLock<Builder>>,
         scope: &mut Builder::Scope,
-        _context: &Beaver,
+        context: &Beaver,
     ) -> crate::Result<String> {
-        let Some(workspace_dir) = workspace_dir.to_str() else {
+        let workspace_abs = std::path::absolute(workspace_dir)?;
+        let Some(workspace_dir) = workspace_abs.to_str() else {
             return Err(BeaverError::NonUTF8OsStr(workspace_dir.as_os_str().to_os_string()));
         };
 
-        let step_name = format!("{}:{}", project_name, self.name);
+        let step_name = format!("{}$:{}", project_name, self.name);
 
         // ! rule should be defined in parent project
         scope.add_step(&BuildStep::Cmd {
@@ -151,28 +155,44 @@ impl traits::Target for Library {
             dependencies: &[],
             options: &[
                 ("workspaceDir", workspace_dir),
-                ("target", &self.name),
-                ("cargoArgs", &self.cargo_flags.join(" "))
+                ("target", &self.package_name),
+                ("cargoArgs", &(self.cargo_flags.join(" ") + " --lib " + if context.color_enabled() { " --color always " } else { "" } + context.optimize_mode.cargo_flags().join(" ").as_str()))
             ]
         })?;
 
         for artifact in &self.artifacts {
-            scope.add_step(&BuildStep::Cmd {
-                rule: &rules::CARGO,
-                name: &format!("{}:{}:{}", project_name, self.name, artifact),
+            let abs_artifact = std::path::absolute(self.artifact_file(project_build_dir, ArtifactType::Library(*artifact), triple)?)?;
+            let Some(abs_artifact) = abs_artifact.to_str() else {
+                return Err(BeaverError::NonUTF8OsStr(abs_artifact.as_os_str().to_os_string()));
+            };
+
+            scope.add_step(&BuildStep::Phony {
+                name: abs_artifact,
+                args: &[&step_name],
                 dependencies: &[],
-                options: &[
-                    ("workspaceDir", workspace_dir),
-                    ("target", &self.name),
-                    ("cargoArgs", &(String::from("--lib") + self.cargo_flags.join(" ").as_str()))
-                ]
             })?;
+
+            scope.add_step(&BuildStep::Phony {
+                name: &format!("{}$:{}$:{}", project_name, self.name, artifact),
+                args: &[abs_artifact],
+                dependencies: &[],
+            })?;
+            // scope.add_step(&BuildStep::Cmd {
+            //     rule: &rules::CARGO,
+            //     name: &format!("{}$:{}$:{}", project_name, self.name, artifact),
+            //     dependencies: &[],
+            //     options: &[
+            //         ("workspaceDir", workspace_dir),
+            //         ("target", &self.package_name),
+            //         ("cargoArgs", &(String::from("--lib") + self.cargo_flags.join(" ").as_str() + if context.color_enabled() { " --color always " } else { "" } + context.optimize_mode.cargo_flags().join(" ").as_str()))
+            //     ]
+            // })?;
         }
 
         Ok(step_name)
     }
 
-    #[doc = " Debug attributes to print when using `--debug`"]
+    /// Debug attributes to print when using `--debug`
     fn debug_attributes(&self) -> Vec<(&'static str, String)> {
         vec![]
     }

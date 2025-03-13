@@ -106,7 +106,7 @@ lazy_static! {
         name: "cargo",
         options: vec![
             ("description", "building $target"),
-            ("command", &CARGO_CMD),
+            ("command", &CARGO_CMD)
         ],
         pool: Some(&EXTERNAL_POOL),
     };

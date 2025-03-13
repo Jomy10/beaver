@@ -1,5 +1,6 @@
 use std::ffi::OsString;
 use std::io::Read;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 use log::*;
@@ -219,25 +220,23 @@ impl Dependency {
         }
     }
 
-    pub(crate) fn linker_flags(&self, triple: &Triple, context: &Beaver, out: &mut Vec<String>) -> crate::Result<()> {
+    pub(crate) fn linker_flags(&self, triple: &Triple, context: &Beaver, out: &mut Vec<String>, additional_files: &mut Vec<PathBuf>) -> crate::Result<()> {
         match self {
             Dependency::Library(dep) => {
                 context.with_project_and_target(&dep.target, |proj, target| {
-                    target.as_library().unwrap().link_against_library(proj.build_dir(), dep.artifact, &triple, out)?;
+                    target.as_library().unwrap().link_against_library(proj.build_dir(), dep.artifact, &triple, out, additional_files)
                     // out.append(&mut target.as_library().unwrap().link_against_library(proj.build_dir(), dep.artifact, &triple)?);
-                    Ok(())
                 })
             },
             Dependency::Flags { cflags: _, linker_flags } => {
                 if let Some(linker_flags) = linker_flags {
                     out.extend_from_slice(linker_flags.as_slice());
                 }
-                // return Ok(linker_flags.clone());
                 Ok(())
             },
             Dependency::CMakeId(cmake_id) => {
                 return context.with_cmake_project_and_library(&cmake_id, |project, target| {
-                    target.link_against_library(project.build_dir(), target.artifact, &triple, out)
+                    target.link_against_library(project.build_dir(), target.artifact, &triple, out, additional_files)
                 });
             }
         }

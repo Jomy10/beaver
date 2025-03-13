@@ -24,9 +24,14 @@ impl Project {
         name: String,
         cargo_flags: Arc<Vec<String>>,
         base_dir: PathBuf,
-        targets: Vec<AnyTarget>
+        targets: Vec<AnyTarget>,
+        context: &Beaver
     ) -> Self {
-        let build_dir = base_dir.join("target");
+        let build_dir = base_dir.join("target").join(context.optimize_mode.cargo_name());
+        let mut targets = targets;
+        for i in 0..targets.len() {
+            targets[i].set_id(i);
+        }
 
         Self {
             id: None,
@@ -112,10 +117,12 @@ impl traits::Project for Project {
         let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
         guard.add_rule_if_not_exists(&rules::CARGO);
         guard.add_rule_if_not_exists(&rules::CARGO_WORKSPACE);
+        #[cfg(debug_assertions)] { guard.add_comment(&self.name)?; }
         let mut scope = guard.new_scope();
         drop(guard);
 
-        let Some(dir) = self.base_dir.to_str() else {
+        let base_abs = std::path::absolute(&self.base_dir)?;
+        let Some(dir) = base_abs.to_str() else {
             return Err(BeaverError::NonUTF8OsStr(self.base_dir.as_os_str().to_os_string()));
         };
 
@@ -137,7 +144,7 @@ impl traits::Project for Project {
             dependencies: &[],
             options: &[
                 ("workspaceDir", dir),
-                ("cargoArgs", &self.cargo_flags.join(" "))
+                ("cargoArgs", &(self.cargo_flags.join(" ") + if context.color_enabled() { " --color always " } else { "" } + context.optimize_mode.cargo_flags().join(" ").as_str()))
             ],
         })?;
 

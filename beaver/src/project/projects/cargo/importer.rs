@@ -61,7 +61,8 @@ pub fn import(
         project_name,
         cargo_args,
         base_dir.to_path_buf(),
-        targets
+        targets,
+        context
     ))?;
 
     Ok(())
@@ -70,7 +71,7 @@ pub fn import(
 fn parse_package(manifest: &Manifest, workspace: Option<&Workspace>, cargo_args: Arc<Vec<String>>) -> crate::Result<(Vec<AnyTarget>, Option<AnyTarget>)> {
     let workspace_package = workspace.and_then(|workspace| workspace.package.clone());
     let package = manifest.package.as_ref().expect("Always present if it's not a workspace");
-    let name = &package.name;
+    let name = Arc::new(package.name.clone());
     let version = package.version().as_local().or(workspace_package.as_ref().and_then(|package| package.version.as_deref()));
     let version = version.map(|version| crate::target::Version::parse(version));
     let description = package.description.as_ref().and_then(|description| {
@@ -99,6 +100,7 @@ fn parse_package(manifest: &Manifest, workspace: Option<&Workspace>, cargo_args:
             AnyTarget::Executable(
                 AnyExecutable::Cargo(
                     target::cargo::Executable::new(
+                        name.clone(),
                         bin_name.clone(),
                         description.map(|str| str.clone()),
                         homepage.clone(),
@@ -134,6 +136,7 @@ fn parse_package(manifest: &Manifest, workspace: Option<&Workspace>, cargo_args:
             }).collect::<Result<Vec<LibraryArtifactType>, BeaverError>>()?;
 
             Some(target::cargo::Library::new(
+                name,
                 lib_name.clone(),
                 description.map(|str| str.clone()),
                 homepage,

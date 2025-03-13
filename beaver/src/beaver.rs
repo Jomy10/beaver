@@ -109,7 +109,7 @@ impl Beaver {
             build_dir: OnceLock::new(), //OnceLock::new(path::absolute(std::env::current_dir().unwrap().join("build"))?),
             enable_color: enable_color.unwrap_or(true), // TODO: derive from isatty or set instance var to optional
             target_triple: Triple::host(),
-            verbose: false,
+            verbose: false, // TODO
             cache: OnceLock::new(),
             status: AtomicState::new(BeaverState::Initialized as u8),
             phase_hook_build: Mutex::new(PhaseHooks(Vec::new())),
@@ -118,6 +118,10 @@ impl Beaver {
             // lock_builddir: AtomicBool::new(false),
             // build_file_create_result: OnceLock::new()
         })
+    }
+
+    pub fn color_enabled(&self) -> bool {
+        self.enable_color
     }
 
     fn set_current_project_index(&self, idx: usize) {

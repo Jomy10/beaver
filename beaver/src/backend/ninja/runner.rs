@@ -28,6 +28,8 @@ impl<'a> NinjaRunner<'a> {
             args.push("-v");
         }
 
+        dbg!(&args);
+
         let mut process = Command::new(tools::ninja.as_os_str())
             .args(args)
             .current_dir(base_dir)

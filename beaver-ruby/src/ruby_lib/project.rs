@@ -64,9 +64,17 @@ fn import_cmake(dir: String) -> Result<(), magnus::Error> {
         .map_err(|err| BeaverRubyError::from(err).into())
 }
 
+// TODO: optional splat -> cargo flags
+fn import_cargo(dir: String) -> Result<(), magnus::Error> {
+    let context = unsafe { &*RBCONTEXT.assume_init() };
+    project::cargo::import(&PathBuf::from(dir), vec![], &context)
+        .map_err(|err| BeaverRubyError::from(err).into())
+}
+
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     ruby.define_global_function("Project", magnus::function!(define_project, 1));
     ruby.define_global_function("import_cmake", magnus::function!(import_cmake, 1));
+    ruby.define_global_function("import_cargo", magnus::function!(import_cargo, 1));
 
     Ok(())
 }

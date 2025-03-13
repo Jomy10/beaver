@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use crate::BeaverError;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum OptimizationMode {
     Debug,
     Release
@@ -26,10 +26,24 @@ impl OptimizationMode {
         }
     }
 
+    pub fn cargo_flags(&self) -> &[&str] {
+        match self {
+            Debug => &[],
+            Release => &["--release"],
+        }
+    }
+
     pub fn cmake_name(&self) -> &'static str {
         match self {
             Debug => "Debug",
             Release => "Release",
+        }
+    }
+
+    pub fn cargo_name(&self) -> &'static str {
+        match self {
+            Debug => "debug",
+            Release => "release",
         }
     }
 }
