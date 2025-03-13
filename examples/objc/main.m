@@ -6,7 +6,7 @@
   - (id)initWithName:(NSString*)name {
     self = [super init];
     if (self) {
-      self->_message = [NSString stringWithFormat:@"%@ %@", @"Hello ", name];
+      self->_message = [NSString stringWithFormat:@"%@ %@", @"Hello", name];
     }
     return self;
   }

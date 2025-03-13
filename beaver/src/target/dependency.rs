@@ -143,6 +143,13 @@ impl Dependency {
     pub fn system(name: &str) -> Dependency {
         Dependency::Flags { cflags: None, linker_flags: Some(vec![format!("-l{}", name)]) }
     }
+
+    pub fn framework(name: &str) -> Dependency {
+        Dependency::Flags {
+            cflags: None,
+            linker_flags: Some(vec!["-framework".to_string(), name.to_string()])
+        }
+    }
 }
 
 // LibraryTarget //

@@ -22,8 +22,8 @@ lazy_static! {
 
 #[cfg(target_os = "macos")]
 lazy_static! {
-    pub static ref OBJC_CFLAGS: &'static [&'static str] = &["-x", "objective-c"];
-    pub static ref OBJCXX_CFLAGS: &'static [&'static str] = &["-x", "objective-c++"];
+    pub static ref OBJC_CFLAGS: &'static [&'static str] = &["-x", "objective-c", "-fobjc-arc", "-fmodules"];
+    pub static ref OBJCXX_CFLAGS: &'static [&'static str] = &["-x", "objective-c++", "-fobjc-arc", "-fmodules"];
     pub static ref OBJC_LINKER_FLAGS: &'static [&'static str] = &["-lobjc"];
     pub static ref OBJCXX_LINKER_FLAGS: &'static [&'static str] = &["-lobjc"];
 }
