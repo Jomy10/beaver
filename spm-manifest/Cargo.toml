@@ -1,0 +1,12 @@
+[package]
+name = "spm-manifest"
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+utils = { path = "../utils" }
+
+[dev-dependencies]
+tempdir = { workspace = true }
