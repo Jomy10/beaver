@@ -7,6 +7,7 @@ members = [
   "utils",
   "beaver-macros",
   "beaver-ruby",
+  "spm-manifest",
 ]
 exclude = [
   "examples/cargo/hello-world"
@@ -27,6 +28,7 @@ semver = "1.0"
 target-lexicon = "0.13"
 thiserror = "2.0"
 url = "2.5"
+urlencoding = "1.0"
 unicode-segmentation = "1.12"
 regex = "1.11"
 lazy_static = "1.5"
@@ -39,7 +41,7 @@ const-gen = "1.6"
 pathdiff = "0.2"
 serde = "1.0"
 toml = "0.8"
-# serde_json = "1.0"
+serde_json = "1.0"
 # clap_mangen = "0.2"
 ormlite = "0.23"
 sqlx = "0.8"

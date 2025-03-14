@@ -70,4 +70,5 @@ pub enum AnyLibrary {
     C(targets::c::Library),
     CMake(targets::cmake::Library),
     Cargo(targets::cargo::Library),
+    SPM(targets::spm::Library),
 }

@@ -8,7 +8,7 @@ use target_lexicon::Triple;
 use crate::backend::BackendBuilder;
 use crate::target::traits::AnyTarget;
 use crate::target::TargetRef;
-use crate::traits::Target;
+use crate::traits::{AnyExecutable, Target};
 use crate::{project, Beaver, BeaverError};
 
 #[enum_dispatch]
@@ -21,7 +21,24 @@ pub trait Project: Send + Sync + std::fmt::Debug {
     fn update_build_dir(&mut self, new_base_build_dir: &Path);
     fn targets<'a>(&'a self) -> crate::Result<Box<dyn Deref<Target = Vec<AnyTarget>> + 'a>>;
     fn find_target(&self, name: &str) -> crate::Result<Option<usize>>;
-    fn default_executable(&self) -> crate::Result<TargetRef>;
+    fn default_executable(&self) -> crate::Result<TargetRef> {
+        let targets = self.targets()?;
+        let executables = targets.iter().filter_map(|target| {
+            match target {
+                AnyTarget::Library(_) => None,
+                AnyTarget::Executable(exe) => Some(exe),
+            }
+        }).collect::<Vec<&AnyExecutable>>();
+
+        match executables.len() {
+            0 => Err(BeaverError::NoExecutable(self.name().to_string())),
+            1 => Ok(executables[0].tref().unwrap()),
+            2.. => Err(BeaverError::ManyExecutable {
+                project: self.name().to_string(),
+                targets: executables.into_iter().map(|exe| exe.name().to_string()).collect::<Vec<String>>()
+            })
+        }
+    }
     fn register<Builder: BackendBuilder<'static>>(&self,
         scope: &rayon::Scope,
         triple: &Triple,
@@ -71,4 +88,5 @@ pub enum AnyProject {
     Beaver(project::beaver::Project),
     CMake(project::cmake::Project),
     Cargo(project::cargo::Project),
+    SPM(project::spm::Project),
 }

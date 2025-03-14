@@ -8,6 +8,7 @@ pub enum Language {
     OBJCXX,
 
     Rust,
+    Swift,
 }
 
 static CXX_TO_C_LINKER_FLAGS: [&str; 1] = ["-lstdc++"];
@@ -73,6 +74,7 @@ impl Language {
             (C, _) => None,
             (CXX, _) => None,
             (Rust, _) => None,
+            (Swift, _) => None,
         }
     }
 
@@ -84,7 +86,7 @@ impl Language {
 
             (CXX, C | OBJC) | (OBJCXX, OBJC) => Some(&CXX_TO_C_LINKER_FLAGS),
             (CXX, CXX | OBJCXX) => None,
-            (CXX, Rust) => None,
+            (CXX, Rust | Swift) => None,
 
             (OBJC, CXX | C) => Some(*OBJC_LINKER_FLAGS),
             (OBJCXX, CXX) => Some(*OBJCXX_LINKER_FLAGS),
@@ -92,9 +94,10 @@ impl Language {
             (OBJC, OBJC | OBJCXX) |
             (OBJCXX, OBJCXX) => None,
 
-            (OBJCXX | OBJC, Rust) => None,
+            (OBJCXX | OBJC, Rust | Swift) => None,
 
             (Rust, _) => None,
+            (Swift, _) => None,
         }
     }
 }

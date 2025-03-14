@@ -3,7 +3,7 @@ use std::path::Path;
 
 use beaver::target::TargetRef;
 use beaver::{Beaver, BeaverError, OptimizationMode};
-use clap::{arg, Arg, ArgAction, ArgGroup, ArgMatches, Command, ValueHint};
+use clap::{arg, Arg, ArgAction, ArgMatches, Command, ValueHint};
 use lazy_static::lazy_static;
 use log::warn;
 
@@ -26,14 +26,7 @@ impl<E: std::error::Error + 'static> From<E> for MainError {
 
 impl std::fmt::Debug for MainError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if console::colors_enabled() {
-            f.write_str("\x1b[1;31m")?;
-        }
-        std::fmt::Display::fmt(self.inner.as_ref(), f)?;
-        if console::colors_enabled() {
-            f.write_str("\x1b[0m")?;
-        }
-        return Ok(());
+        f.write_str(&console::style(format!("{}", self.inner.as_ref())).red().to_string())
     }
 }
 

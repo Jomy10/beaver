@@ -33,4 +33,5 @@ pub enum AnyExecutable {
     C(target::c::Executable),
     CMake(target::cmake::Executable),
     Cargo(target::cargo::Executable),
+    SPM(target::spm::Executable),
 }

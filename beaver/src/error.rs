@@ -3,6 +3,7 @@ use std::ffi::OsString;
 use std::io;
 use std::path::PathBuf;
 use std::process::ExitStatus;
+use std::string::FromUtf8Error;
 use std::time::SystemTimeError;
 
 use target_lexicon::OperatingSystem;
@@ -107,6 +108,10 @@ pub enum BeaverError {
     #[error("CargoManifestError: {0}")]
     CargoManifestError(#[from] cargo_manifest::Error),
 
+    // SPM //
+    #[error("SwiftManifestError: {0}")]
+    SwiftManifestError(#[from] spm_manifest::Error),
+
     // General Errors //
     #[error("There are no projects defined")]
     NoProjects,
@@ -121,6 +126,8 @@ pub enum BeaverError {
     NoExecutable(String),
     #[error("OS String is not UTf-8")]
     NonUTF8OsStr(OsString),
+    #[error(transparent)]
+    FromUTF8Error(#[from] FromUtf8Error),
     #[error("{0}")]
     SystemTimeError(#[from] SystemTimeError),
 

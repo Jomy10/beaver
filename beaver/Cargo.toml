@@ -1,6 +1,5 @@
 [package]
 name = "beaver"
-version = "4.0.0"
 edition.workspace = true
 authors.workspace = true
 
@@ -11,6 +10,7 @@ semver = { workspace = true }
 target-lexicon = { workspace = true }
 thiserror = { workspace = true }
 url = { workspace = true }
+urlencoding = { workspace = true }
 lazy_static = { workspace = true }
 rayon = { workspace = true }
 enum_dispatch = { workspace = true }
@@ -30,6 +30,7 @@ cargo-manifest = { workspace = true }
 utils = { path = "../utils" }
 glob = { path = "../glob" }
 beaver-macros = { path = "../beaver-macros" }
+spm-manifest = { path = "../spm-manifest" }
 
 [dev-dependencies]
 tempdir = { workspace = true }

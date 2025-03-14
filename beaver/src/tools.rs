@@ -81,4 +81,6 @@ lazy_static! {
     pub static ref sh: PathBuf = Tool { name: "sh", aliases: Some(&["zsh", "bash", "fish"]), env: None }.find();
 
     pub static ref cmake: PathBuf = Tool { name: "cmake", ..Default::default() }.find();
+
+    pub static ref swift: PathBuf = Tool { name: "swift", ..Default::default() }.find();
 }

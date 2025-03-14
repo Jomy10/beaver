@@ -6,7 +6,7 @@ use enum_dispatch::enum_dispatch;
 use target_lexicon::Triple;
 use url::Url;
 use crate::backend::BackendBuilder;
-use crate::target::{ArtifactType, Dependency, Language, TargetRef, Version};
+use crate::target::{self, ArtifactType, Dependency, Language, TargetRef, Version};
 use crate::Beaver;
 
 use super::{AnyExecutable, AnyLibrary};
@@ -132,5 +132,17 @@ impl AnyTarget {
             Self::Executable(exe) => Some(exe),
             _ => None
         }
+    }
+}
+
+impl From<target::spm::Library> for AnyTarget {
+    fn from(value: target::spm::Library) -> Self {
+        AnyTarget::Library(AnyLibrary::SPM(value))
+    }
+}
+
+impl From<target::spm::Executable> for AnyTarget {
+    fn from(value: target::spm::Executable) -> Self {
+        AnyTarget::Executable(AnyExecutable::SPM(value))
     }
 }

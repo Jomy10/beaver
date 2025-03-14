@@ -1,6 +1,5 @@
 [package]
 name = "beaver-ruby"
-version = "4.0.0"
 edition.workspace = true
 authors.workspace = true
 
