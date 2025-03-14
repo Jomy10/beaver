@@ -122,7 +122,7 @@ lazy_static! {
         pool: Some(&EXTERNAL_POOL)
     };
 
-    static ref CARGO_CMD: String = format!("cd $workspaceDir && cargo build $cargoArgs --package $target");
+    static ref CARGO_CMD: String = format!("cd $workspaceDir && {} build $cargoArgs --package $target", tools::cargo.display());
     pub static ref CARGO: Rule = Rule {
         name: "cargo",
         options: vec![
@@ -133,12 +133,32 @@ lazy_static! {
     };
 
     // TODO: --artifact-dir <-- unstable
-    static ref CARGO_WORKSPACE_CMD: String = format!("cd $workspaceDir && cargo build $cargoArgs --workspace");
+    static ref CARGO_WORKSPACE_CMD: String = format!("cd $workspaceDir && {} build $cargoArgs --workspace", tools::cargo.display());
     pub static ref CARGO_WORKSPACE: Rule = Rule {
         name: "cargo_build_workspace",
         options: vec![
             ("description", "building cargo workspace $workspaceDir"),
             ("command", &CARGO_WORKSPACE_CMD),
+        ],
+        pool: Some(&EXTERNAL_POOL),
+    };
+
+    static ref SPM_PROJECT_CMD: String = format!("{} build --package-path $packageDir --cache-path $cacheDir -Xswiftc -emit-objc-header", tools::swift.display());
+    pub static ref SPM_PROJECT: Rule = Rule {
+        name: "spm_project",
+        options: vec![
+            ("description", "building SPM project at $packageDir"),
+            ("command", &SPM_CMD),
+        ],
+        pool: Some(&EXTERNAL_POOL),
+    };
+
+    static ref SPM_CMD: String = format!("{} build --package-path $packageDir --cache-path $cacheDir --product $product -Xswiftc -emit-objc-header", tools::swift.display());
+    pub static ref SPM: Rule = Rule {
+        name: "spm",
+        options: vec![
+            ("description", "building SPM target $product"),
+            ("command", &SPM_CMD),
         ],
         pool: Some(&EXTERNAL_POOL),
     };

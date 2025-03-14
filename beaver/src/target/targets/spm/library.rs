@@ -5,6 +5,7 @@ use target_lexicon::Triple;
 use url::Url;
 
 use crate::backend::BackendBuilder;
+use crate::platform::{dynlib_extension_for_os, staticlib_extension_for_os};
 use crate::target::{ArtifactType, Dependency, Language, LibraryArtifactType, Version};
 use crate::traits::{self, TargetType};
 use crate::Beaver;
@@ -16,15 +17,18 @@ pub struct Library {
 
     name: String,
     artifact: LibraryArtifactType,
+
+    cache_dir: Arc<PathBuf>,
 }
 
 impl Library {
-    pub(crate) fn new(name: String, artifact: LibraryArtifactType) -> Self {
+    pub(crate) fn new(name: String, artifact: LibraryArtifactType, cache_dir: Arc<PathBuf>) -> Self {
         Library {
             project_id: None,
             id: None,
             name,
-            artifact
+            artifact,
+            cache_dir
         }
     }
 }
@@ -88,7 +92,14 @@ impl traits::Target for Library {
         artifact: ArtifactType,
         triple: &Triple,
     ) -> crate::Result<PathBuf> {
-        todo!()
+        let ext = match artifact.as_library().unwrap() {
+            LibraryArtifactType::Dynlib => dynlib_extension_for_os(&triple.operating_system),
+            LibraryArtifactType::Staticlib => staticlib_extension_for_os(&triple.operating_system),
+            _ => unreachable!("invalid artifact type for target (bug)")
+        }?;
+        let artifact_name = format!("lib{}.{}", self.name(), ext);
+
+        Ok(traits::Library::artifact_output_dir(self, project_build_dir, triple).join(artifact_name))
     }
 
     #[doc = " Returns the target name"]
@@ -98,11 +109,12 @@ impl traits::Target for Library {
         project_base_dir: &Path,
         project_build_dir: &Path,
         triple: &Triple,
-        builder: Arc<RwLock<Builder>>,
+        _builder: Arc<RwLock<Builder>>,
         scope: &mut Builder::Scope,
-        context: &Beaver,
+        _context: &Beaver,
     ) -> crate::Result<String> {
-        todo!()
+        let artifact_file = std::path::absolute(self.artifact_file(project_build_dir, ArtifactType::Library(self.artifact), triple)?)?;
+        super::register_target(scope, project_name, &self.name, project_base_dir, &artifact_file, self.artifact, &self.cache_dir)
     }
 
     #[doc = " Debug attributes to print when using `--debug`"]
@@ -112,8 +124,8 @@ impl traits::Target for Library {
 }
 
 impl traits::Library for Library {
-    fn artifact_output_dir(&self, project_build_dir: &Path, triple: &Triple) -> PathBuf {
-        todo!()
+    fn artifact_output_dir(&self, project_build_dir: &Path, _triple: &Triple) -> PathBuf {
+        project_build_dir.to_path_buf()
     }
 
     fn library_artifacts(&self) -> Vec<LibraryArtifactType> {
@@ -124,5 +136,9 @@ impl traits::Library for Library {
         None
     }
 
-    fn public_cflags(&self, _project_base_dir: &Path, _collect_into: &mut Vec<String>) {}
+    fn public_cflags(&self, _project_base_dir: &Path, project_build_dir: &Path, collect_into: &mut Vec<String>) {
+        // include {product-name}-Swift.h path
+        let include_path = project_build_dir.join(format!("{}.build", self.name.replace("-", "_")));
+        collect_into.push(format!("-I{}", include_path.display()));
+    }
 }

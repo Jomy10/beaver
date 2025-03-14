@@ -218,7 +218,7 @@ impl CTarget for Executable {
             dependency.linker_flags(triple, context, &mut flags, &mut additional_files)?;
         }
         for lang in languages {
-            let Some(lang_flags) = Language::linker_flags(*lang, self.language) else { continue };
+            let Some(lang_flags) = Language::linker_flags(*lang, self.language, triple) else { continue };
             flags.extend(lang_flags.iter().map(|str| str.to_string()))
         }
 

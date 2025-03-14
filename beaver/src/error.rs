@@ -111,6 +111,8 @@ pub enum BeaverError {
     // SPM //
     #[error("SwiftManifestError: {0}")]
     SwiftManifestError(#[from] spm_manifest::Error),
+    #[error("Not a swift package path: {0}")]
+    NotASwiftPackagePath(PathBuf),
 
     // General Errors //
     #[error("There are no projects defined")]

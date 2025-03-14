@@ -71,10 +71,19 @@ fn import_cargo(dir: String) -> Result<(), magnus::Error> {
         .map_err(|err| BeaverRubyError::from(err).into())
 }
 
+fn import_spm(dir: String) -> Result<ProjectAccessor, magnus::Error> {
+    let context = unsafe { &*RBCONTEXT.assume_init() };
+    let id = project::spm::import(&PathBuf::from(dir), &context)
+        .map_err(BeaverRubyError::from)?;
+    let project_accessor = ProjectAccessor { id };
+    return Ok(project_accessor);
+}
+
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     ruby.define_global_function("Project", magnus::function!(define_project, 1));
     ruby.define_global_function("import_cmake", magnus::function!(import_cmake, 1));
     ruby.define_global_function("import_cargo", magnus::function!(import_cargo, 1));
+    ruby.define_global_function("import_spm", magnus::function!(import_spm, 1));
 
     Ok(())
 }

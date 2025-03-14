@@ -82,5 +82,11 @@ lazy_static! {
 
     pub static ref cmake: PathBuf = Tool { name: "cmake", ..Default::default() }.find();
 
+    pub static ref cargo: PathBuf = Tool { name: "cargo", ..Default::default() }.find();
+
     pub static ref swift: PathBuf = Tool { name: "swift", ..Default::default() }.find();
+    #[cfg(target_os = "macos")]
+    pub static ref xcrun: PathBuf = Tool { name: "xcrun", ..Default::default() }.find();
+    #[cfg(target_os = "macos")]
+    pub static ref xcode_select: PathBuf = Tool { name: "xcode-select", ..Default::default() }.find();
 }

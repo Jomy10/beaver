@@ -7,6 +7,7 @@ use crate::{BeaverRubyError, RBCONTEXT};
 
 use super::target_accessor::TargetAccessor;
 
+#[derive(Debug)]
 #[magnus::wrap(class = "ProjectAccessor")]
 pub struct ProjectAccessor {
     pub id: usize,

@@ -141,14 +141,14 @@ impl traits::Target for Library {
         scope: &mut Builder::Scope,
         context: &Beaver,
     ) -> crate::Result<String> {
-        let workspace_abs = std::path::absolute(workspace_dir)?;
-        let Some(workspace_dir) = workspace_abs.to_str() else {
+        // let workspace_abs = std::path::absolute(workspace_dir)?;
+        let Some(workspace_dir) = workspace_dir.to_str() else {
             return Err(BeaverError::NonUTF8OsStr(workspace_dir.as_os_str().to_os_string()));
         };
 
         let step_name = format!("{}$:{}", project_name, self.name);
 
-        // ! rule should be defined in parent project
+        // ! rule should be registered in parent project
         scope.add_step(&BuildStep::Cmd {
             rule: &rules::CARGO,
             name: &step_name,
@@ -177,16 +177,6 @@ impl traits::Target for Library {
                 args: &[abs_artifact],
                 dependencies: &[],
             })?;
-            // scope.add_step(&BuildStep::Cmd {
-            //     rule: &rules::CARGO,
-            //     name: &format!("{}$:{}$:{}", project_name, self.name, artifact),
-            //     dependencies: &[],
-            //     options: &[
-            //         ("workspaceDir", workspace_dir),
-            //         ("target", &self.package_name),
-            //         ("cargoArgs", &(String::from("--lib") + self.cargo_flags.join(" ").as_str() + if context.color_enabled() { " --color always " } else { "" } + context.optimize_mode.cargo_flags().join(" ").as_str()))
-            //     ]
-            // })?;
         }
 
         Ok(step_name)
@@ -212,5 +202,5 @@ impl traits::Library for Library {
         None
     }
 
-    fn public_cflags(&self, _project_base_dir: &Path, _collect_into: &mut Vec<String>) {}
+    fn public_cflags(&self, _project_base_dir: &Path, _project_build_dir: &Path, _collect_into: &mut Vec<String>) {}
 }

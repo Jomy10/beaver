@@ -40,11 +40,19 @@ impl OptimizationMode {
         }
     }
 
-    pub fn cargo_name(&self) -> &'static str {
+    fn lowercase_name(&self) -> &'static str {
         match self {
             Debug => "debug",
             Release => "release",
         }
+    }
+
+    pub fn cargo_name(&self) -> &'static str {
+        self.lowercase_name()
+    }
+
+    pub fn swift_name(&self) -> &'static str {
+        self.lowercase_name()
     }
 }
 

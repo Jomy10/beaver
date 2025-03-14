@@ -4,9 +4,10 @@ use std::sync::{Arc, RwLock};
 
 use target_lexicon::Triple;
 
-use crate::backend::BackendBuilder;
+use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep};
 use crate::traits::{self, AnyTarget, MutableProject, Target};
-use crate::Beaver;
+use crate::triple::TripleExt;
+use crate::{Beaver, BeaverError, OptimizationMode};
 
 #[derive(Debug)]
 pub struct Project {
@@ -14,6 +15,8 @@ pub struct Project {
     name: String,
     base_dir: PathBuf,
     build_dir: PathBuf,
+    /// The cache dir used by SPM
+    cache_dir: Arc<PathBuf>,
     targets: Vec<AnyTarget>,
 }
 
@@ -21,16 +24,25 @@ impl Project {
     pub fn new(
         name: String,
         base_dir: PathBuf,
-        global_build_dir: &Path,
+        cache_dir: Arc<PathBuf>,
         targets: Vec<AnyTarget>,
+        opt_mode: OptimizationMode,
+        target_triple: &Triple
     ) -> Self {
-        let build_dir = global_build_dir.join(&name);
+        let build_dir = base_dir.join(".build")
+            .join(target_triple.swift_name())
+            .join(opt_mode.swift_name());
+        let mut targets = targets;
+        for i in 0..targets.len() {
+            targets[i].set_id(i);
+        }
 
         Self {
             id: None,
             name,
             base_dir,
             build_dir,
+            cache_dir,
             targets,
         }
     }
@@ -61,8 +73,8 @@ impl traits::Project for Project {
         &self.build_dir
     }
 
-    fn update_build_dir(&mut self, new_base_build_dir: &Path) {
-        self.build_dir = new_base_build_dir.join(&self.name)
+    fn update_build_dir(&mut self, _new_base_build_dir: &Path) {
+        panic!("Cannot upate build_dir")
     }
 
     fn targets<'a>(&'a self) -> crate::Result<Box<dyn Deref<Target = Vec<AnyTarget>> + 'a>> {
@@ -76,12 +88,53 @@ impl traits::Project for Project {
 
     fn register<Builder: BackendBuilder<'static>>(
         &self,
-        scope: &rayon::Scope,
+        _scope: &rayon::Scope,
         triple: &Triple,
         builder: Arc<RwLock<Builder>>,
         context: &Beaver,
     ) -> crate::Result<()> {
-        todo!()
+        let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
+        guard.add_rule_if_not_exists(&rules::SPM_PROJECT);
+        guard.add_rule_if_not_exists(&rules::SPM);
+        let mut scope = guard.new_scope();
+        drop(guard);
+        #[cfg(debug_assertions)] { scope.add_comment(&self.name)?; }
+
+        let base_abs = std::path::absolute(&self.base_dir)?;
+        let Some(dir) = base_abs.to_str() else {
+            return Err(BeaverError::NonUTF8OsStr(self.base_dir.as_os_str().to_os_string()));
+        };
+
+        let Some(cache_dir) = self.cache_dir.to_str() else {
+            return Err(BeaverError::NonUTF8OsStr(self.cache_dir.as_os_str().to_os_string()));
+        };
+
+        for target in &self.targets {
+            _ = target.register(
+                &self.name,
+                &base_abs,
+                &self.build_dir,
+                triple,
+                builder.clone(),
+                &mut scope,
+                context
+            )?;
+        }
+
+        scope.add_step(&BuildStep::Cmd {
+            rule: &rules::SPM_PROJECT,
+            name: &self.name,
+            dependencies: &[],
+            options: &[
+                ("packageDir", dir),
+                ("cacheDir", cache_dir)
+            ],
+        })?;
+
+        let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
+        guard.apply_scope(scope);
+
+        Ok(())
     }
 
     fn as_mutable(&self) -> Option<&dyn MutableProject> {

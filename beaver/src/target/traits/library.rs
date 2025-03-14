@@ -47,7 +47,7 @@ pub trait Library: Target {
 
     fn additional_linker_flags(&self) -> Option<&Vec<String>>;
 
-    fn public_cflags(&self, project_base_dir: &Path, collect_into: &mut Vec<String>);
+    fn public_cflags(&self, project_base_dir: &Path, project_build_dir: &Path, collect_into: &mut Vec<String>);
 
     fn default_library_artifact(&self) -> Option<LibraryArtifactType> {
         let artifacts = self.library_artifacts();

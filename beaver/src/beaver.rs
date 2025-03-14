@@ -3,7 +3,7 @@ use std::fmt::Write;
 use std::process::Command;
 use std::{env, fs, path};
 use std::io::Write as IOWrite;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::sync::atomic::{AtomicIsize, AtomicU8, Ordering};
 
@@ -88,7 +88,7 @@ pub struct Beaver {
     pub(crate) optimize_mode: OptimizationMode,
     build_dir: OnceLock<PathBuf>,
     enable_color: bool,
-    target_triple: Triple,
+    pub(crate) target_triple: Triple,
     verbose: bool,
     cache: OnceLock<Cache>,
     status: AtomicState,
@@ -151,34 +151,41 @@ impl Beaver {
 
     pub fn set_build_dir(&self, dir: PathBuf) -> crate::Result<()> {
         let dir = path::absolute(dir)?;
+        // TODO: !! dir = dir.join(self.optimize_mode);
         if !dir.exists() {
             fs::create_dir(&dir)?;
         }
         self.build_dir.set(dir).map_err(|_| {
             BeaverError::SetBuildDirAfterAddProject // or build_dir called multiple times
         })
-        // if self.lock_builddir.load(Ordering::SeqCst) {
-        // // if self.current_project_index() != None {
-        //     return Err(BeaverError::SetBuildDirAfterAddProject);
-        // }
-
-        // *self.build_dir.write().map_err(|err| BeaverError::LockError(err.to_string()))? = path::absolute(dir)?;
-        // Not needed because of check
-        // for project in self.projects_mut()?.iter_mut() {
-        //     project.update_build_dir(&self.build_dir);
-        // }
-        // return Ok(());
     }
 
     #[inline]
     pub fn get_build_dir(&self) -> crate::Result<&PathBuf> {
         self.lock_build_dir()
-        // self.lock_build_dir()?;
-        // self.build_dir.read().map_err(|err| BeaverError::LockError(err.to_string()))
+    }
+
+    pub fn get_build_dir_for_project(&self, project_name: &str) -> crate::Result<PathBuf> {
+        self.get_build_dir().map(|build_dir| build_dir.join(project_name))
+    }
+
+    /// Directory for storing intermediate files, etc
+    #[inline]
+    pub fn get_build_dir_for_external_build_system(&self, base_dir: &Path) -> crate::Result<PathBuf> {
+        let Some(base_dir_str) = base_dir.to_str() else {
+            return Err(BeaverError::NonUTF8OsStr(base_dir.as_os_str().to_os_string()));
+        };
+        self.get_build_dir_for_external_build_system2(base_dir_str)
+    }
+
+    pub fn get_build_dir_for_external_build_system2(&self, base_dir_str: impl AsRef<str>) -> crate::Result<PathBuf> {
+        self.get_build_dir().map(|build_dir| build_dir
+            .join("__beaver_external")
+            .join(urlencoding::encode(base_dir_str.as_ref())))
     }
 
     pub fn cache(&self) -> Result<&Cache, BeaverError> {
-        self.cache.get_or_try_init(|| {
+        self.cache.get_or_try_init(|| { // TODO: on base build dir
             let build_dir = self.get_build_dir()?;
             Cache::new(&build_dir.join("cache"))
         })

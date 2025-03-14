@@ -5,6 +5,7 @@ use target_lexicon::Triple;
 use url::Url;
 
 use crate::backend::BackendBuilder;
+use crate::platform::executable_extension_for_os;
 use crate::target::{ArtifactType, Dependency, ExecutableArtifactType, Language, Version};
 use crate::traits::{self, TargetType};
 use crate::Beaver;
@@ -15,14 +16,17 @@ pub struct Executable {
     id: Option<usize>,
 
     name: String,
+
+    cache_dir: Arc<PathBuf>,
 }
 
 impl Executable {
-    pub(crate) fn new(name: String) -> Self {
+    pub(crate) fn new(name: String, cache_dir: Arc<PathBuf>) -> Self {
         Self {
             project_id: None,
             id: None,
             name,
+            cache_dir
         }
     }
 }
@@ -86,7 +90,15 @@ impl traits::Target for Executable {
         artifact: ArtifactType,
         triple: &Triple,
     ) -> crate::Result<PathBuf> {
-        todo!()
+        let ext = match artifact.as_executable().unwrap() {
+            ExecutableArtifactType::Executable => executable_extension_for_os(&triple.operating_system)?.map(|ext| String::from(".") + ext),
+            ExecutableArtifactType::App => Some(".app".to_string()),
+        };
+        Ok(if let Some(ext) = &ext {
+            project_build_dir.join(self.name.clone() + ext)
+        } else {
+            project_build_dir.join(&self.name)
+        })
     }
 
     #[doc = " Returns the target name"]
@@ -96,11 +108,12 @@ impl traits::Target for Executable {
         project_build_dir: &Path,
         project_base_dir: &Path,
         triple: &Triple,
-        builder: Arc<RwLock<Builder>>,
+        _builder: Arc<RwLock<Builder>>,
         scope: &mut Builder::Scope,
-        context: &Beaver,
+        _context: &Beaver,
     ) -> crate::Result<String> {
-        todo!()
+        let artifact_file = std::path::absolute(self.artifact_file(project_build_dir, ArtifactType::Executable(ExecutableArtifactType::Executable), triple)?)?;
+        super::register_target(scope, project_name, &self.name, project_base_dir, &artifact_file, ExecutableArtifactType::Executable, &self.cache_dir)
     }
 
     #[doc = " Debug attributes to print when using `--debug`"]

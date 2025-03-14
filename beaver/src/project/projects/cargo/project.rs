@@ -117,9 +117,9 @@ impl traits::Project for Project {
         let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
         guard.add_rule_if_not_exists(&rules::CARGO);
         guard.add_rule_if_not_exists(&rules::CARGO_WORKSPACE);
-        #[cfg(debug_assertions)] { guard.add_comment(&self.name)?; }
         let mut scope = guard.new_scope();
         drop(guard);
+        #[cfg(debug_assertions)] { scope.add_comment(&self.name)?; }
 
         let base_abs = std::path::absolute(&self.base_dir)?;
         let Some(dir) = base_abs.to_str() else {
@@ -129,7 +129,7 @@ impl traits::Project for Project {
         for target in &self.targets {
             _ = target.register(
                 &self.name,
-                &self.base_dir,
+                &base_abs,
                 &self.build_dir,
                 triple,
                 builder.clone(),
@@ -151,7 +151,6 @@ impl traits::Project for Project {
         let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
         guard.apply_scope(scope);
 
-        // TODO apply scope
         Ok(())
     }
 
