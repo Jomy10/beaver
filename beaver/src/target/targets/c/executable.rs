@@ -237,7 +237,8 @@ impl CTarget for Executable {
         dependency_steps: &[&str],
         cflags: &str,
         linker_flags: &str,
-        additional_files: &[PathBuf],
+        additional_artifact_files: &[PathBuf],
+        additional_dependency_files: &[&str],
         builder: &mut Scope
     ) -> crate::Result<String> {
         let cc_rule = self.cc_rule();
@@ -246,7 +247,7 @@ impl CTarget for Executable {
         let object_file_path = project_build_dir.join("objects");
         match artifact {
             ExecutableArtifactType::Executable => {
-                let mut object_files: Vec<PathBuf> = additional_files.to_vec();
+                let mut object_files: Vec<PathBuf> = additional_artifact_files.to_vec();
                 let sources = self.sources.resolve(project_base_dir)?;
                 if sources.len() == 0 { warn!("No sources in C::Executable {}", self.name); }
                 for source in sources {
@@ -263,7 +264,7 @@ impl CTarget for Executable {
                         rule: cc_rule,
                         output: &object_files[object_files.len() - 1],
                         input: &[source.as_path()],
-                        dependencies: &[],
+                        dependencies: additional_dependency_files,
                         options: &[("cflags", cflags)]
                     })?;
                 }

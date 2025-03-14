@@ -33,13 +33,15 @@ pub(crate) trait CTarget: traits::Target {
     fn target_artifacts(&self) -> &[Self::TargetArtifactType];
 
     // TODO: for libraries -> cache cflags and linker_flags
+    /// Returns the cflags and files this target depends on
     fn cflags<'a>(
         &self,
         project_base_dir: &Path,
         dependencies: impl Iterator<Item = &'a Dependency>,
         dependency_languages: impl Iterator<Item = &'a Language>,
         context: &Beaver
-    ) -> crate::Result<Vec<String>> {
+    ) -> crate::Result<(Vec<String>, Vec<PathBuf>)> {
+        let mut add_dependency_files: Vec<PathBuf> = Vec::new();
         let mut cflags: Vec<String> = context.optimize_mode.cflags().iter().map(|s| *s).map(String::from).collect();
         cflags.extend(self.user_cflags().map(|string| string.clone()));
         cflags.extend(self.all_headers(project_base_dir).map(|path| format!("-I{}", path.display())));
@@ -48,7 +50,7 @@ pub(crate) trait CTarget: traits::Target {
         }
 
         for dependency in dependencies {
-            dependency.public_cflags(context, &mut cflags)?;
+            dependency.public_cflags(context, &mut cflags, &mut add_dependency_files)?;
         }
         for lang in dependency_languages {
             let Some(lang_cflags) = Language::cflags(*lang, self.language()) else { continue };
@@ -59,7 +61,7 @@ pub(crate) trait CTarget: traits::Target {
             cflags.push("-fdiagnostics-color=always".to_string());
         }
 
-        return Ok(cflags);
+        return Ok((cflags, add_dependency_files));
     }
 
     // TODO: return iter?
@@ -106,10 +108,17 @@ pub(crate) trait CTarget: traits::Target {
 
         let (dependencies, languages) = self.unique_dependencies_and_languages_set(context)?;
 
-        let cflags = self.cflags(project_base_dir, dependencies.iter(), languages.iter(), context)?;
+        let (cflags, additional_dependency_files) = self.cflags(project_base_dir, dependencies.iter(), languages.iter(), context)?;
         let cflags_str = utils::flags::concat_quoted(cflags.into_iter());
+        let additional_dependency_files = additional_dependency_files.iter().map(|path: &PathBuf| {
+            if let Some(path) = path.to_str() {
+                Ok(path)
+            } else {
+                Err(BeaverError::NonUTF8OsStr(path.as_os_str().to_os_string()))
+            }
+        }).collect::<crate::Result<Vec<&str>>>()?;
 
-        let (linker_flags, additional_files) = self.linker_flags(dependencies.iter(), languages.iter(), target_triple, context)?;
+        let (linker_flags, additional_artifact_files) = self.linker_flags(dependencies.iter(), languages.iter(), target_triple, context)?;
         let linker_flags_str = utils::flags::concat_quoted(linker_flags.into_iter());
 
         let mut artifact_steps: Vec<String> = Vec::new();
@@ -127,7 +136,8 @@ pub(crate) trait CTarget: traits::Target {
                 &dependency_steps,
                 &cflags_str,
                 &linker_flags_str,
-                &additional_files,
+                &additional_artifact_files,
+                &additional_dependency_files,
                 &mut scope
             )?);
         }
@@ -156,7 +166,9 @@ pub(crate) trait CTarget: traits::Target {
         dependency_steps: &[&str],
         cflags: &str,
         linker_flags: &str,
-        additional_files: &[PathBuf],
+        additional_artifact_files: &[PathBuf],
+        // Additional files pre-formatted
+        additional_dependency_files: &[&str],
         builder: &mut Scope
     ) -> crate::Result<String>;
 

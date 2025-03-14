@@ -114,7 +114,7 @@ impl traits::Target for Library {
         _context: &Beaver,
     ) -> crate::Result<String> {
         let artifact_file = std::path::absolute(self.artifact_file(project_build_dir, ArtifactType::Library(self.artifact), triple)?)?;
-        super::register_target(scope, project_name, &self.name, project_base_dir, &artifact_file, self.artifact, &self.cache_dir)
+        super::register_target(scope, project_name, &self.name, project_base_dir, &artifact_file, self.artifact, &self.cache_dir, Some(&self.swift_objc_header_path(project_build_dir)))
     }
 
     #[doc = " Debug attributes to print when using `--debug`"]
@@ -136,9 +136,24 @@ impl traits::Library for Library {
         None
     }
 
-    fn public_cflags(&self, _project_base_dir: &Path, project_build_dir: &Path, collect_into: &mut Vec<String>) {
-        // include {product-name}-Swift.h path
-        let include_path = project_build_dir.join(format!("{}.build", self.name.replace("-", "_")));
+    fn public_cflags(&self, _project_base_dir: &Path, project_build_dir: &Path, collect_into: &mut Vec<String>, additional_file_dependencies: &mut Vec<PathBuf>) {
+        let include_path = self.swift_objc_header_search_path(project_build_dir);
         collect_into.push(format!("-I{}", include_path.display()));
+
+        additional_file_dependencies.push(self.swift_objc_header_path(project_build_dir));
+
+        dbg!(&additional_file_dependencies);
+    }
+}
+
+impl Library {
+    /// include {product-name}-Swift.h path
+    fn swift_objc_header_search_path(&self, project_build_dir: &Path) -> PathBuf {
+        project_build_dir.join(format!("{}.build", self.name.replace("-", "_")))
+    }
+
+    fn swift_objc_header_path(&self, project_build_dir: &Path) -> PathBuf {
+        self.swift_objc_header_search_path(project_build_dir)
+            .join(format!("{}-Swift.h", self.name))
     }
 }

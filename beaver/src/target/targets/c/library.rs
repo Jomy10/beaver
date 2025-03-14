@@ -250,7 +250,8 @@ impl CTarget for Library {
         dependency_steps: &[&str],
         cflags: &str,
         linker_flags: &str,
-        additional_files: &[PathBuf],
+        additional_artifact_files: &[PathBuf],
+        additional_dependency_files: &[&str],
         builder: &mut Scope
     ) -> crate::Result<String> {
         let cc_rule = self.cc_rule();
@@ -261,7 +262,7 @@ impl CTarget for Library {
             LibraryArtifactType::Dynlib | LibraryArtifactType::Staticlib => {
                 let obj_ext = OsString::from(if *artifact == LibraryArtifactType::Dynlib { ".dyn.o" } else { ".o" });
 
-                let mut object_files: Vec<PathBuf> = additional_files.to_vec();
+                let mut object_files: Vec<PathBuf> = additional_artifact_files.to_vec();
                 let sources = self.sources.resolve(project_base_dir)?;
                 if sources.len() == 0 { warn!("No sources in C::Library {}", self.name); }
                 for source in sources {
@@ -278,7 +279,7 @@ impl CTarget for Library {
                         rule: cc_rule,
                         output: &object_files[object_files.len() - 1],
                         input: &[source.as_path()],
-                        dependencies: &[],
+                        dependencies: additional_dependency_files,
                         options: &[("cflags", cflags)]
                     })?;
                 }
@@ -323,7 +324,7 @@ impl CTarget for Library {
 }
 
 impl traits::Library for Library {
-    fn public_cflags(&self, project_base_dir: &Path, _: &Path, out: &mut Vec<String>) {
+    fn public_cflags(&self, project_base_dir: &Path, _: &Path, out: &mut Vec<String>, _: &mut Vec<PathBuf>) {
         out.extend(self.cflags.public.iter().cloned());
         out.extend(self.headers.public(project_base_dir)
             .map(|h| format!("-I{}", h.display())));

@@ -113,7 +113,7 @@ impl traits::Target for Executable {
         _context: &Beaver,
     ) -> crate::Result<String> {
         let artifact_file = std::path::absolute(self.artifact_file(project_build_dir, ArtifactType::Executable(ExecutableArtifactType::Executable), triple)?)?;
-        super::register_target(scope, project_name, &self.name, project_base_dir, &artifact_file, ExecutableArtifactType::Executable, &self.cache_dir)
+        super::register_target(scope, project_name, &self.name, project_base_dir, &artifact_file, ExecutableArtifactType::Executable, &self.cache_dir, None)
     }
 
     #[doc = " Debug attributes to print when using `--debug`"]

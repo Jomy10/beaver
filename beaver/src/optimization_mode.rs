@@ -7,6 +7,10 @@ use crate::BeaverError;
 pub enum OptimizationMode {
     Debug,
     Release
+    // TODO:
+    // - Size (-Os)
+    // - Fast (-Ofast)
+    // - MinimalSize (-Oz)
 }
 
 use OptimizationMode::*;

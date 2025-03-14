@@ -17,7 +17,8 @@ fn register_target<ArtifactType: TArtifactType>(
     project_base_dir: &Path,
     artifact_file: &Path,
     artifact: ArtifactType,
-    cache_dir: &Arc<PathBuf>
+    cache_dir: &Arc<PathBuf>,
+    objc_header_path: Option<&Path>
 ) -> crate::Result<String> {
     let Some(package_dir) = project_base_dir.to_str() else {
         return Err(BeaverError::NonUTF8OsStr(project_base_dir.as_os_str().to_os_string()));
@@ -40,6 +41,20 @@ fn register_target<ArtifactType: TArtifactType>(
             ("cacheDir", cache_dir),
         ],
     })?;
+
+    // define how to build the objc header.
+    // This headers is included in dependants
+    if let Some(objc_header) = objc_header_path {
+        let Some(objc_header) = objc_header.to_str() else {
+            return Err(BeaverError::NonUTF8OsStr(objc_header.as_os_str().to_os_string()));
+        };
+
+        scope.add_step(&BuildStep::Phony {
+            name: objc_header,
+            args: &[&step_name],
+            dependencies: &[],
+        })?;
+    }
 
     let Some(artifact_file) = artifact_file.to_str() else {
         return Err(BeaverError::NonUTF8OsStr(artifact_file.as_os_str().to_os_string()));

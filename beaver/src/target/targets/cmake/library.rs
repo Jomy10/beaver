@@ -179,7 +179,7 @@ impl traits::Library for Library {
         vec![self.artifact]
     }
 
-    fn public_cflags(&self, _project_base_dir: &Path, _project_build_dir: &Path, collect_into: &mut Vec<String>) {
+    fn public_cflags(&self, _project_base_dir: &Path, _project_build_dir: &Path, collect_into: &mut Vec<String>, _: &mut Vec<PathBuf>) {
         collect_into.extend(self.cflags.iter().cloned())
     }
 

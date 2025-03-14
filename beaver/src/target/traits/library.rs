@@ -47,7 +47,15 @@ pub trait Library: Target {
 
     fn additional_linker_flags(&self) -> Option<&Vec<String>>;
 
-    fn public_cflags(&self, project_base_dir: &Path, project_build_dir: &Path, collect_into: &mut Vec<String>);
+    /// - Collects the public C flags of this target into `collect_into`.
+    /// - Collects additional files to which the dependant should depend on into `additional_file_dependencies`.
+    ///   This could be for example generated files that are generated when this target is built.
+    fn public_cflags(&self,
+        roject_base_dir: &Path,
+        project_build_dir: &Path,
+        collect_into: &mut Vec<String>,
+        additional_file_dependencies: &mut Vec<PathBuf>
+    );
 
     fn default_library_artifact(&self) -> Option<LibraryArtifactType> {
         let artifacts = self.library_artifacts();

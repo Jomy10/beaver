@@ -205,11 +205,11 @@ impl Dependency {
         }
     }
 
-    pub(crate) fn public_cflags(&self, context: &Beaver, out: &mut Vec<String>) -> crate::Result<()> {
+    pub(crate) fn public_cflags(&self, context: &Beaver, out: &mut Vec<String>, additional_file_dependencies: &mut Vec<PathBuf>) -> crate::Result<()> {
         match self {
             Dependency::Library(dep) => {
                 context.with_project_and_target(&dep.target, |proj, target| {
-                    target.as_library().unwrap().public_cflags(proj.base_dir(), proj.build_dir(), out);
+                    target.as_library().unwrap().public_cflags(proj.base_dir(), proj.build_dir(), out, additional_file_dependencies);
                     Ok(())
                 })
             },
@@ -221,7 +221,7 @@ impl Dependency {
             },
             Dependency::CMakeId(cmake_id) => {
                 return context.with_cmake_project_and_library(&cmake_id, |project, target| {
-                    Ok(target.public_cflags(project.base_dir(), project.build_dir(), out))
+                    Ok(target.public_cflags(project.base_dir(), project.build_dir(), out, additional_file_dependencies))
                 });
             }
         }
