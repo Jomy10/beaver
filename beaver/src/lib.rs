@@ -9,6 +9,7 @@ pub(crate) mod triple;
 pub mod project;
 pub mod target;
 pub mod tools;
+pub mod command;
 moduse!(beaver);
 moduse!(error);
 moduse!(optimization_mode);

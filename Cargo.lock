@@ -214,6 +214,7 @@ dependencies = [
  "beaver",
  "log",
  "magnus",
+ "rb-sys",
  "target-lexicon",
  "thiserror 2.0.12",
  "url",

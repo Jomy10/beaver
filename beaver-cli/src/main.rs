@@ -1,3 +1,4 @@
+use std::collections::LinkedList;
 use std::ffi::OsString;
 use std::path::Path;
 
@@ -139,8 +140,19 @@ fn main() -> Result<(), MainError> {
         }
     };
 
+    let args = matches.get_many::<String>("args");
+    let args = if let Some(args) = args {
+        LinkedList::from_iter(args.into_iter().map(|str| str.clone()))
+    } else {
+        LinkedList::new()
+    };
+
     let beaver = Box::new(Beaver::new(Some(color), opt)?);
-    let ctx = unsafe { beaver_ruby::execute_script(script_file, beaver)? };
+    let ctx = unsafe { beaver_ruby::execute_script(script_file, args, beaver)? };
+
+    if ctx.has_args() {
+        warn!("Unused arguments: {:?}", *ctx.args());
+    }
 
     if *debug {
         let mut str = String::new();
@@ -150,15 +162,19 @@ fn main() -> Result<(), MainError> {
 
     match matches.subcommand() {
         None => {
-            match ArgMatches::get_many::<String>(&matches, "targets") {
-                Some(targets) => {
-                    assert!(targets.len() > 0);
-                    ctx.context.build_all(&targets.into_iter().map(|target_name| {
-                        ctx.context.parse_target_ref(target_name)
-                    }).collect::<Result<Vec<TargetRef>, BeaverError>>()?)?;
-                },
-                None => {
-                    ctx.context.build_current_project()?
+            if ctx.context.projects()?.len() == 0 {
+                // TODO: run commands
+            } else {
+                match ArgMatches::get_many::<String>(&matches, "targets") {
+                    Some(targets) => {
+                        assert!(targets.len() > 0);
+                        ctx.context.build_all(&targets.into_iter().map(|target_name| {
+                            ctx.context.parse_target_ref(target_name)
+                        }).collect::<Result<Vec<TargetRef>, BeaverError>>()?)?;
+                    },
+                    None => {
+                        ctx.context.build_current_project()?
+                    }
                 }
             }
         },

@@ -4,7 +4,8 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
-magnus = { workspace = true, features = ["embed" ]}
+magnus = { workspace = true, features = ["embed", "rb-sys"] }
+rb-sys = { workspace = true }
 
 thiserror = { workspace = true }
 log = { workspace = true }

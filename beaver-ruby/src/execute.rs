@@ -1,4 +1,7 @@
+use std::cell::RefCell;
+use std::collections::LinkedList;
 use std::mem::MaybeUninit;
+use std::ops::Deref;
 use std::path::Path;
 use std::rc::{self, Rc};
 
@@ -10,13 +13,24 @@ pub struct BeaverRubyContext {
     pub context: Box<Beaver>,
     #[allow(unused)]
     cleanup: magnus::embed::Cleanup,
-    #[allow(unused)]
-    ruby: magnus::Ruby,
+    pub(crate) ruby: magnus::Ruby,
+    pub(crate) args: RefCell<LinkedList<String>>
 }
 
 impl std::fmt::Debug for BeaverRubyContext {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("BeaverRubyContext { ... }")
+    }
+}
+
+impl BeaverRubyContext {
+    /// Are there any arguments left?
+    pub fn has_args(&self) -> bool {
+        self.args.borrow().len() > 0
+    }
+
+    pub fn args<'a>(&'a self) -> impl Deref<Target = LinkedList<String>> + 'a {
+        self.args.borrow()
     }
 }
 
@@ -26,14 +40,15 @@ pub(crate) static mut RBCONTEXT: MaybeUninit<*const Beaver> = MaybeUninit::unini
 pub(crate) static mut CTX_RC: MaybeUninit<rc::Weak<BeaverRubyContext>> = MaybeUninit::uninit();
 
 /// This function is not thread safe and should only be called once
-pub unsafe fn execute_script<P: AsRef<Path>>(script_file: P, context: Box<Beaver>) -> crate::Result<Rc<BeaverRubyContext>> {
+pub unsafe fn execute_script<P: AsRef<Path>>(script_file: P, args: LinkedList<String>, context: Box<Beaver>) -> crate::Result<Rc<BeaverRubyContext>> {
     let cleanup = unsafe { magnus::embed::init() };
     let ruby = magnus::Ruby::get()?;
 
     let context = Rc::new(BeaverRubyContext {
         context,
         cleanup,
-        ruby
+        ruby,
+        args: RefCell::new(args)
     });
     unsafe { CTX_RC = MaybeUninit::new(Rc::downgrade(&context)) }
 
@@ -43,7 +58,6 @@ pub unsafe fn execute_script<P: AsRef<Path>>(script_file: P, context: Box<Beaver
     unsafe { RBCONTEXT = MaybeUninit::new(Box::as_ptr(&context.context)); }
 
     ruby_lib::register(&context.ruby)?;
-
 
     context.ruby.require(std::path::absolute(script_file.as_ref())?)?;
 

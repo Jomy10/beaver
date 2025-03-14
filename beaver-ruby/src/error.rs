@@ -1,4 +1,6 @@
+use std::num::{ParseFloatError, ParseIntError};
 use std::rc::Rc;
+use std::str::ParseBoolError;
 
 use magnus::error::RubyUnavailableError;
 use magnus::value::ReprValue;
@@ -37,6 +39,15 @@ pub enum BeaverRubyError {
     InvalidKey(String),
     #[error("Couldn't parse URL: {0}")]
     URLParseError(#[from] url::ParseError),
+
+    #[error("Couldn't convert value to float: {0}")]
+    FloatConversionError(#[from] ParseFloatError),
+    #[error("Couldn't convert value to int: {0}")]
+    IntegerConversionError(#[from] ParseIntError),
+    #[error("Couldn't convert value to bool: {0}")]
+    BooleanConversionError(#[from] ParseBoolError),
+    #[error("{0}")]
+    CLIArgumentError(String),
 }
 
 impl From<magnus::Error> for BeaverRubyError {
