@@ -102,9 +102,9 @@ fn main() -> Result<(), MainError> {
         let verbosity = if *debug { 3 } else { matches.get_count("verbosity") };
         match verbosity {
             0 => {},
-            1 => clog.filter(None, log::LevelFilter::Info),
-            2 => clog.filter(None, log::LevelFilter::Debug),
-            3.. => clog.filter(None, log::LevelFilter::Trace),
+            1 => { clog.filter(None, log::LevelFilter::Info); },
+            2 => { clog.filter(None, log::LevelFilter::Debug); },
+            3.. => { clog.filter(None, log::LevelFilter::Trace); },
         }
     }
 

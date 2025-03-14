@@ -1,27 +1,4 @@
-*.gem
 **/.DS_Store
-/.beaver
-/private
-Gemfile.lock
-TODO.md
-
-/.build
-/.swiftpm
-# zed keeps adding this
-/.ropeproject
-
-/target
-/Packages
-
-/test.rb
-/Sources/Beaver/Generated.swift
-/Sources/UtilMacros/generated
 
 /bin
-
-
-# Added by cargo
-#
-# already existing elements were commented out
-
-#/target
+/target

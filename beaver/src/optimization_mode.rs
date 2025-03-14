@@ -11,18 +11,19 @@ pub enum OptimizationMode {
 
 use OptimizationMode::*;
 
+/// see: [Options That Control Optimization](https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html)
 impl OptimizationMode {
     pub fn cflags(&self) -> &[&str] {
         match self {
             Debug => &["-g", "-O0"],
-            Release => &["-O3", "-flto", "-DNDEBUG"],
+            Release => &["-O3", "-flto", "-ffat-lto-objects", "-DNDEBUG"],
         }
     }
 
     pub fn linker_flags(&self) -> &[&str] {
         match self {
             Debug => &["-O0"],
-            Release => &["-O3", "-flto"]
+            Release => &["-O3", "-flto", "-ffat-lto-objects"]
         }
     }
 
