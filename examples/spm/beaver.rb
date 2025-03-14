@@ -2,8 +2,6 @@ build_dir "build"
 
 import_spm "./hello-swift"
 
-puts "imported"
-
 Project(name: "TestSwift")
 
 C::Executable(

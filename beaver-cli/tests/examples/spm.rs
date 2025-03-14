@@ -1,6 +1,6 @@
 #[test]
-fn swift() {
-    let dir = super::example_dir("cargo");
+fn spm() {
+    let dir = super::example_dir("spm");
     let mut stdout = String::new();
     let (mut iter, code) = crate::run(&dir, &mut stdout);
 

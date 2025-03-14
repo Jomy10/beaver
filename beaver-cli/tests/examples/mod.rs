@@ -5,7 +5,7 @@ pub mod cmake;
 pub mod pre_phase_hooks;
 pub mod cargo;
 pub mod objc;
-pub mod swift;
+pub mod spm;
 
 pub(crate) fn example_dir(example: &str) -> std::path::PathBuf {
     std::env::current_dir().unwrap()

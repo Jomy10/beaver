@@ -1,6 +1,6 @@
 #[test]
 pub fn objc() {
-    let dir = super::example_dir("multi-project");
+    let dir = super::example_dir("objc");
     let mut out = String::new();
     let (_, code) = crate::run(&dir, &mut out);
 
