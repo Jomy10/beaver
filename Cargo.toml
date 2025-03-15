@@ -55,3 +55,12 @@ itertools = "0.14"
 
 cmake-file-api = "0.1"
 cargo-manifest = "0.19"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+# TODO: look into UPX
+
+[profile.dev.package.sqlx-macros]
+opt-level = 3

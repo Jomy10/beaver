@@ -24,9 +24,3 @@ serde = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
 regex = { workspace = true }
-
-[profile.release]
-strip = true
-lto = true
-codegen-units = 1
-# TODO: look into UPX

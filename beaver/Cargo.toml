@@ -36,6 +36,3 @@ spm-manifest = { path = "../spm-manifest" }
 [dev-dependencies]
 tempdir = { workspace = true }
 colog = { workspace = true }
-
-[profile.dev.package.sqlx-macros]
-opt-level = 3
