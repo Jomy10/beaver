@@ -75,6 +75,11 @@ pub trait Project: Send + Sync + std::fmt::Debug {
         Ok((guard, steps))
     }
 
+    fn clean(&self) -> crate::Result<()> {
+        std::fs::remove_dir_all(self.build_dir())
+            .map_err(BeaverError::from)
+    }
+
     fn as_mutable(&self) -> Option<&dyn MutableProject>;
 }
 

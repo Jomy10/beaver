@@ -186,7 +186,7 @@ fn main() -> Result<(), MainError> {
             print!("{}", ctx.context);
         },
         Some(("clean", _)) => {
-            unimplemented!("clean")
+            ctx.context.clean()?;
         },
         Some(("run", matches)) => {
             let target_name: Option<&String> = matches.get_one("target");

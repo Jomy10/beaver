@@ -477,7 +477,14 @@ impl Beaver {
 
     pub fn clean(&self) -> crate::Result<()> {
         self.run_phase_hook(Phase::Clean)?;
-        unimplemented!()
+
+        for project in self.projects()?.iter() {
+            project.clean()?;
+        }
+
+        fs::remove_dir_all(self.get_build_dir()?)?;
+
+        Ok(())
     }
 
     /// Adding a phase hook or "pre-phase hook" is a function that will run before the user
