@@ -1,18 +1,7 @@
-
-use beaver::Phase;
+use utils::UnsafeSendable;
+use beaver::phase_hook::Phase;
 
 use crate::{BeaverRubyError, RBCONTEXT};
-
-struct UnsafeSendable<T>(T);
-
-impl<T> UnsafeSendable<T> {
-    unsafe fn value(&self) -> &T {
-        &self.0
-    }
-}
-
-unsafe impl<T> Send for UnsafeSendable<T> {}
-unsafe impl<T> Sync for UnsafeSendable<T> {}
 
 fn pre(args: &[magnus::Value]) -> Result<(), magnus::Error> {
     let args = magnus::scan_args::scan_args::<
@@ -36,7 +25,7 @@ fn pre(args: &[magnus::Value]) -> Result<(), magnus::Error> {
         Err(BeaverRubyError::IncompatibleType(phase, "String or Symbol"))
     }?;
 
-    let block = UnsafeSendable(args.block);
+    let block = UnsafeSendable::new(args.block);
 
     context.add_phase_hook(phase, Box::new(move || {
         unsafe { block.value() }.call::<magnus::RArray, magnus::Value>(magnus::RArray::new())

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fmt::Write;
 use std::process::Command;
@@ -14,8 +15,10 @@ use target_lexicon::Triple;
 use crate::backend::ninja::{NinjaBuilder, NinjaRunner};
 use crate::backend::BackendBuilder;
 use crate::cache::Cache;
+use crate::command::Commands;
 use crate::traits::{AnyLibrary, AnyProject};
 use crate::OptimizationMode;
+use crate::phase_hook::{Phase, PhaseHook, PhaseHooks};
 use crate::error::BeaverError;
 use crate::project::traits::Project;
 use crate::target::traits::{AnyTarget, Target};
@@ -49,36 +52,6 @@ impl TryFrom<u8> for BeaverState {
 
 type AtomicState = AtomicU8;
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum Phase {
-    Build,
-    Run,
-    Clean,
-}
-
-impl TryFrom<&str> for Phase {
-    type Error = BeaverError;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            "build" => Ok(Phase::Build),
-            "run" => Ok(Phase::Run),
-            "clean" => Ok(Phase::Clean),
-            _ => Err(BeaverError::InvalidPhase(value.to_string()))
-        }
-    }
-}
-
-pub type PhaseHook = Box<dyn FnOnce() -> Result<(), Box<dyn std::error::Error>> + Send>;
-
-struct PhaseHooks(Vec<PhaseHook>);
-
-impl std::fmt::Debug for PhaseHooks {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("PhaseHooks(hooks: {})", self.0.len()))
-    }
-}
-
 /// All methods of this struct are immutable because this struct ensures all calls to its
 /// methods are thread safe
 #[derive(Debug)]
@@ -95,6 +68,7 @@ pub struct Beaver {
     phase_hook_build: Mutex<PhaseHooks>,
     phase_hook_run: Mutex<PhaseHooks>,
     phase_hook_clean: Mutex<PhaseHooks>,
+    commands: Mutex<Commands>,
     // lock_builddir: AtomicBool,
     // /// Create the build file once and store the result of the operation in this cell
     // build_file_create_result: OnceLock<crate::Result<()>>,
@@ -115,6 +89,7 @@ impl Beaver {
             phase_hook_build: Mutex::new(PhaseHooks(Vec::new())),
             phase_hook_run: Mutex::new(PhaseHooks(Vec::new())),
             phase_hook_clean: Mutex::new(PhaseHooks(Vec::new())),
+            commands: Mutex::new(Commands(HashMap::new())),
             // lock_builddir: AtomicBool::new(false),
             // build_file_create_result: OnceLock::new()
         })
@@ -568,6 +543,31 @@ impl Beaver {
             .map(|fun| fun())
             .collect::<Result<(), Box<dyn std::error::Error>>>()
             .map_err(|err| BeaverError::AnyError(err.to_string()))
+    }
+
+    pub fn add_command(&self, name: String, command: crate::command::Command) -> crate::Result<()> {
+        let mut guard = self.commands.lock().map_err(|err| BeaverError::LockError(err.to_string()))?;
+        if guard.0.contains_key(&name) {
+            return Err(BeaverError::CommandExists(name.to_string()));
+        }
+        _ = guard.0.insert(name, command);
+
+        Ok(())
+    }
+
+    pub fn run_command(&self, name: &str) -> crate::Result<()> {
+        let mut guard = self.commands.lock().map_err(|err| BeaverError::LockError(err.to_string()))?;
+
+        let Some(command) = guard.0.remove(name) else {
+            return Err(BeaverError::NoCommand(name.to_string()));
+        };
+        command().map_err(|err| BeaverError::AnyError(err.to_string()))
+    }
+
+    pub fn has_command(&self, name: &str) -> crate::Result<bool> {
+        let guard = self.commands.lock().map_err(|err| BeaverError::LockError(err.to_string()))?;
+
+        return Ok(guard.0.contains_key(name));
     }
 
     /// Used by the CLI

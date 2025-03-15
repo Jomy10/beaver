@@ -88,6 +88,12 @@ pub enum BeaverError {
     #[error("ORMLite Error: {0}")]
     ORMLiteError(String),
 
+    // Commands //
+    #[error("Command '{0}' exists")]
+    CommandExists(String),
+    #[error("No command exists with the name '{0}'")]
+    NoCommand(String),
+
     // CMake //
     #[error("CMake failed")]
     CMakeFailed,

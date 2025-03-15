@@ -10,3 +10,4 @@ pub mod any;
 pub mod str;
 pub mod flags;
 moduse!(which);
+moduse!(unsafe_sendable);

@@ -3,8 +3,9 @@ use std::collections::LinkedList;
 use log::warn;
 use magnus::rb_sys::AsRawValue;
 use magnus::value::ReprValue;
+use utils::UnsafeSendable;
 
-use crate::{BeaverRubyError, CTX_RC};
+use crate::{BeaverRubyError, CTX_RC, RBCONTEXT};
 
 // Parse ruby function args for opt/arg
 fn parse_ruby_args(args: &[magnus::Value]) -> Result<(Option<String>, Option<String>, Option<magnus::Value>), magnus::Error> {
@@ -190,9 +191,34 @@ fn flag(args: &[magnus::Value]) -> Result<magnus::Value, magnus::Error> {
     }
 }
 
+fn cmd(args: &[magnus::Value]) -> Result<(), magnus::Error> {
+    let context = unsafe { &*RBCONTEXT.assume_init() };
+
+    let args = magnus::scan_args::scan_args::<
+        (String,), // required
+        (), // optional
+        (), // splat
+        (), // trailing
+        (), // keyword
+        magnus::block::Proc // block
+    >(args)?;
+
+    let cmd_name = args.required.0;
+    let proc = UnsafeSendable::new(args.block);
+
+    context.add_command(cmd_name, Box::new(move || {
+        unsafe { proc.value() }.call(())
+            .map_err(|err| Box::new(BeaverRubyError::from(err)) as Box<dyn std::error::Error>)
+            .map(|v| { let _: magnus::Value = v; (); })
+    })).map_err(BeaverRubyError::from)?;
+
+    Ok(())
+}
+
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     ruby.define_global_function("opt", magnus::function!(opt, -1));
     ruby.define_global_function("flag", magnus::function!(flag, -1));
+    ruby.define_global_function("cmd", magnus::function!(cmd, -1));
 
     Ok(())
 }

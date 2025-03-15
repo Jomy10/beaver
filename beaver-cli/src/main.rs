@@ -150,10 +150,6 @@ fn main() -> Result<(), MainError> {
     let beaver = Box::new(Beaver::new(Some(color), opt)?);
     let ctx = unsafe { beaver_ruby::execute_script(script_file, args, beaver)? };
 
-    if ctx.has_args() {
-        warn!("Unused arguments: {:?}", *ctx.args());
-    }
-
     if *debug {
         let mut str = String::new();
         ctx.context.fmt_debug(&mut str)?;
@@ -162,18 +158,26 @@ fn main() -> Result<(), MainError> {
 
     match matches.subcommand() {
         None => {
-            if ctx.context.projects()?.len() == 0 {
-                // TODO: run commands
-            } else {
-                match ArgMatches::get_many::<String>(&matches, "targets") {
-                    Some(targets) => {
-                        assert!(targets.len() > 0);
+            match ArgMatches::get_many::<String>(&matches, "targets") {
+                Some(targets) => {
+                    assert!(targets.len() > 0);
+                    let mut targets = targets.peekable();
+
+                    if ctx.context.has_command(targets.peek().unwrap())? {
+                        // interpret arguments as commands
+                        for command in targets {
+                            ctx.context.run_command(command)?;
+                        }
+                    } else {
+                        // interpret arguments as targets
                         ctx.context.build_all(&targets.into_iter().map(|target_name| {
                             ctx.context.parse_target_ref(target_name)
                         }).collect::<Result<Vec<TargetRef>, BeaverError>>()?)?;
-                    },
-                    None => {
-                        ctx.context.build_current_project()?
+                    }
+                },
+                None => {
+                    if ctx.context.projects()?.len() > 0 {
+                        ctx.context.build_current_project()?;
                     }
                 }
             }
@@ -206,6 +210,10 @@ fn main() -> Result<(), MainError> {
         Some((subcommand_name, _)) => {
             unreachable!("Invalid subcommand {subcommand_name}")
         }
+    }
+
+    if ctx.has_args() {
+        warn!("Unused arguments: {:?}", *ctx.args());
     }
 
     return Ok(());

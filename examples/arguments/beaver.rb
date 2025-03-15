@@ -25,8 +25,6 @@ buildFromSource = flag "from-source"
 #   beaver           # nil
 warnings = flag "warn", "w", default: nil
 
-=begin
-
 # Define a command
 # Commands can be called from the command line just like the standard `build`,
 # `run` and `test`. When no project is defined, these standard commands can also
@@ -57,5 +55,3 @@ cmd "printArg" do
     else puts "Unknown argument-name: #{argName}"
   end
 end
-
-=end
