@@ -229,7 +229,7 @@ fn sh(args: &[magnus::Value]) -> Result<(), magnus::Error> {
     let console_style = console::Style::new().fg(console::Color::Color256(8));
 
     let mut process = if args.splat.len() == 0 {
-        println!("{}", console_style.apply_to(&args.required.0));
+        eprintln!("{}", console_style.apply_to(&args.required.0));
 
         Command::new("sh")
             .args(["-c", &args.required.0])
@@ -249,7 +249,7 @@ fn sh(args: &[magnus::Value]) -> Result<(), magnus::Error> {
         let args = splat.map(|v| v.to_string()).collect::<Vec<_>>();
 
         let cmd_str = cmd.to_string_lossy().to_string() + " " + args.iter().map(|v| format!("\"{v}\"")).fold(String::new(), |acc, v| acc + v.as_str()).as_str();
-        println!("{}", console_style.apply_to(cmd_str));
+        eprintln!("{}", console_style.apply_to(cmd_str));
 
         Command::new(cmd)
             .args(args)
