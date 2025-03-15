@@ -22,7 +22,7 @@ pub fn import(
         return Err(BeaverError::NonUTF8OsStr(base_dir.as_os_str().to_os_string()));
     };
 
-    let build_sys_cache_dir = context.get_build_dir_for_external_build_system2(base_dir_str)?;
+    let build_sys_cache_dir = context.get_build_dir_for_external_build_system_static2(base_dir_str)?;
     if !build_sys_cache_dir.exists() {
         fs::create_dir_all(&build_sys_cache_dir)?;
     }

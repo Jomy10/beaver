@@ -6,7 +6,7 @@ authors.workspace = true
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-utils = { path = "../utils" }
+utils = { path = "../utils", features = ["junctions"] }
 
 [dev-dependencies]
 tempdir = { workspace = true }

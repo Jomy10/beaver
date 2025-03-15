@@ -28,7 +28,7 @@ tokio = { workspace = true, features = ["rt", "macros"] }
 cmake-file-api = { workspace = true }
 cargo-manifest = { workspace = true }
 itertools = { workspace = true }
-utils = { path = "../utils" }
+utils = { path = "../utils", features = ["junctions"] }
 glob = { path = "../glob" }
 beaver-macros = { path = "../beaver-macros" }
 spm-manifest = { path = "../spm-manifest" }

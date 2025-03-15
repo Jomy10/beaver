@@ -62,6 +62,12 @@ pub enum BeaverError {
     #[error("Error writing build file: {0}")]
     BuildFileWriteError(io::Error),
 
+    // Symlink //
+    #[error("Couldn't create symlink {1} -> {2}: {0}")]
+    SymlinkCreationError(io::Error, PathBuf, PathBuf),
+    #[error("Couldn't create symlink because a file or directory already exists at the location and it's not a symlink: {0}")]
+    SymlinkCreationExists(PathBuf),
+
     // Project Validation //
     #[error("Base path {path} of project {project} doesn't exist")]
     ProjectPathDoesntExist { project: String, path: PathBuf },

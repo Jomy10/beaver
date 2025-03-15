@@ -6,7 +6,7 @@ use std::{env, fs};
 use std::io::Write as IOWrite;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard};
-use std::sync::atomic::{AtomicIsize, AtomicU8, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU8, Ordering};
 
 use console::style;
 use log::{error, info, trace};
@@ -79,6 +79,8 @@ pub struct Beaver {
     phase_hook_run: Mutex<PhaseHooks>,
     phase_hook_clean: Mutex<PhaseHooks>,
     commands: Mutex<Commands>,
+    /// Indicates wether the symlink to the last built target has been created
+    symlink_created: AtomicBool,
     // lock_builddir: AtomicBool,
     // /// Create the build file once and store the result of the operation in this cell
     // build_file_create_result: OnceLock<crate::Result<()>>,
@@ -101,6 +103,7 @@ impl Beaver {
             phase_hook_run: Mutex::new(PhaseHooks(Vec::new())),
             phase_hook_clean: Mutex::new(PhaseHooks(Vec::new())),
             commands: Mutex::new(Commands(HashMap::new())),
+            symlink_created: AtomicBool::new(false),
             // lock_builddir: AtomicBool::new(false),
             // build_file_create_result: OnceLock::new()
         })
@@ -183,6 +186,45 @@ impl Beaver {
         self.get_build_dir().map(|build_dir| build_dir
             .join("__beaver_external")
             .join(urlencoding::encode(base_dir_str.as_ref())))
+    }
+
+    /// Directory for storing intermediate files, etc. This version doesn't change based on target triple or optimization mode
+    #[inline]
+    pub fn get_build_dir_for_external_build_system_static(&self, base_dir: &Path) -> crate::Result<PathBuf> {
+        let Some(base_dir_str) = base_dir.to_str() else {
+            return Err(BeaverError::NonUTF8OsStr(base_dir.as_os_str().to_os_string()));
+        };
+        self.get_build_dir_for_external_build_system_static2(base_dir_str)
+    }
+
+    pub fn get_build_dir_for_external_build_system_static2(&self, base_dir_str: impl AsRef<str>) -> crate::Result<PathBuf> {
+        self.get_base_build_dir().map(|build_dir| build_dir
+            .join("__beaver_external")
+            .join(urlencoding::encode(base_dir_str.as_ref())))
+    }
+
+    fn create_symlink(&self) -> crate::Result<()> {
+        let Ok(_) = self.symlink_created.compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed) else {
+            return Ok(()); // when error, then this function has already been executed
+        };
+
+        // let from = self.get_build_dir()?;
+        let from: PathBuf = self.with_current_project(|proj| {
+            match proj {
+                AnyProject::Beaver(project) => Ok(project.build_dir().join("artifacts")),
+                _ => self.get_build_dir().map(|path| path.to_path_buf())
+            }
+        })?;
+        let to = self.get_base_build_dir()?.join(self.optimize_mode.to_string());
+
+        if to.exists() && to.is_symlink() {
+            fs::remove_file(&to)?;
+        } else {
+            return Err(BeaverError::SymlinkCreationExists(to));
+        }
+
+        utils::fs::symlink_dir(&from, &to)
+            .map_err(|err| BeaverError::SymlinkCreationError(err, from.to_path_buf(), to))
     }
 
     pub fn cache(&self) -> Result<&Cache, BeaverError> {
@@ -448,7 +490,11 @@ impl Beaver {
         let build_file = self.build_file()?;
         let ninja_runner = NinjaRunner::new(&build_file, self.verbose, self.debug);
         let build_dir = self.get_build_dir()?;
-        ninja_runner.build(target_names, &env::current_dir()?, &build_dir)
+        ninja_runner.build(target_names, &env::current_dir()?, &build_dir)?;
+
+        self.create_symlink()?;
+
+        Ok(())
     }
 
     pub fn build_current_project(&self) -> crate::Result<()> {

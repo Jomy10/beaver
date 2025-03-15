@@ -15,7 +15,7 @@ shlex = { workspace = true }
 console = { workspace = true }
 
 beaver = { path = "../beaver" }
-utils = { path = "../utils" }
+utils = { path = "../utils", features = ["junctions"] }
 
 # [build-dependencies]
 # pkg-config = "0.3"
