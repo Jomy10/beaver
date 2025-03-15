@@ -162,6 +162,7 @@ dependencies = [
  "enum_dispatch",
  "futures-lite",
  "glob 0.0.0",
+ "itertools 0.14.0",
  "lazy_static",
  "log",
  "ormlite",

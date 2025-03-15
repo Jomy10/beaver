@@ -4,7 +4,7 @@ use std::iter::zip;
 use std::path::Path;
 use std::sync::Mutex;
 
-use log::trace;
+use log::{debug, trace};
 use ormlite::sqlite::SqlitePool;
 use ormlite::model::*;
 use uuid::Uuid;
@@ -260,11 +260,12 @@ impl Cache {
         }
 
         if to_insert.len() > 0 {
-            models::ConcreteFile::insert_many(to_insert, &self.pool).await.map_err(|err| match err {
-                ormlite::Error::SqlxError(error) => BeaverError::SQLError(error),
-                ormlite::Error::TokenizationError(tokenizer_error) => panic!("Unexpected error (bug): {}", tokenizer_error),
-                ormlite::Error::OrmliteError(err) => BeaverError::ORMLiteError(err),
-            })?;
+            models::ConcreteFile::insert_many(to_insert, &self.pool)
+                .await.map_err(|err| match err {
+                    ormlite::Error::SqlxError(error) => BeaverError::SQLError(error),
+                    ormlite::Error::TokenizationError(tokenizer_error) => panic!("Unexpected error (bug): {}", tokenizer_error),
+                    ormlite::Error::OrmliteError(err) => BeaverError::ORMLiteError(err),
+                })?;
         }
 
         Ok(())

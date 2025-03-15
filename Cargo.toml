@@ -51,5 +51,7 @@ futures-lite = "2.6"
 uuid = "1.15"
 tempdir = "0.3"
 tokio = "1.43"
+itertools = "0.14"
+
 cmake-file-api = "0.1"
 cargo-manifest = "0.19"

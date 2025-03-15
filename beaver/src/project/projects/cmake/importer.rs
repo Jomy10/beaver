@@ -3,6 +3,7 @@ use std::path::Path;
 use std::process::Command;
 
 use cmake_file_api::objects::{codemodel_v2, CMakeFilesV1, CodeModelV2};
+use itertools::Itertools;
 use log::{trace, warn};
 
 use crate::project::projects;
@@ -83,7 +84,8 @@ pub fn import(
         trace!("CMake importer: storing cache");
         let cmake_files: CMakeFilesV1 = reader.read_object()?;
         let inputs = cmake_files.inputs.into_iter()
-            .map(|input| base_dir.join(input.path));
+            .map(|input| base_dir.join(input.path))
+            .unique();
         context.cache()?.add_all_files(inputs, &file_context)?;
     }
 
