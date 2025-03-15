@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fmt::Write;
 use std::process::Command;
-use std::{env, fs, path};
+use std::{env, fs};
 use std::io::Write as IOWrite;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -52,6 +52,14 @@ impl TryFrom<u8> for BeaverState {
 
 type AtomicState = AtomicU8;
 
+#[derive(Debug)]
+struct BuildDirs {
+    /// base_dir/{build_dir}
+    base: PathBuf,
+    /// base_dir/{build_dir}/{triple}/{optimization_mode}
+    output: PathBuf
+}
+
 /// All methods of this struct are immutable because this struct ensures all calls to its
 /// methods are thread safe
 #[derive(Debug)]
@@ -59,7 +67,7 @@ pub struct Beaver {
     projects: RwLock<Vec<AnyProject>>,
     project_index: AtomicIsize,
     pub(crate) optimize_mode: OptimizationMode,
-    build_dir: OnceLock<PathBuf>,
+    build_dirs: OnceLock<BuildDirs>,
     enable_color: bool,
     pub(crate) target_triple: Triple,
     verbose: bool,
@@ -82,7 +90,7 @@ impl Beaver {
             projects: RwLock::new(Vec::new()),
             project_index: AtomicIsize::new(-1),
             optimize_mode,
-            build_dir: OnceLock::new(), //OnceLock::new(path::absolute(std::env::current_dir().unwrap().join("build"))?),
+            build_dirs: OnceLock::new(),
             enable_color: enable_color.unwrap_or(true), // TODO: derive from isatty or set instance var to optional
             target_triple: Triple::host(),
             verbose,
@@ -115,32 +123,47 @@ impl Beaver {
         }
     }
 
-    pub fn lock_build_dir(&self) -> crate::Result<&PathBuf> {
-        let res: Result<&PathBuf, BeaverError> = self.build_dir.get_or_try_init(|| {
-            let dir = std::env::current_dir().map_err(BeaverError::from)?.join("build");
-            if !dir.exists() {
-                fs::create_dir(dir.as_path()).map_err(BeaverError::from)?;
-            }
-            Ok(dir)
-        });
+    fn create_build_dirs(&self, dir: impl AsRef<Path>) -> crate::Result<BuildDirs> {
+        let base = std::env::current_dir().map_err(BeaverError::from)?.join(dir);
+        if !base.exists() {
+            fs::create_dir_all(base.as_path()).map_err(BeaverError::from)?;
+        }
 
-        return res;
+        let outdir = base.join(&self.target_triple.to_string()).join(&self.optimize_mode.to_string());
+        if !outdir.exists() {
+            fs::create_dir_all(outdir.as_path()).map_err(BeaverError::from)?;
+        }
+
+        Ok(BuildDirs {
+            base,
+            output: outdir
+        })
     }
 
+    /// Initialize if not done yet, otherwise get the value
+    fn lock_build_dir(&self) -> crate::Result<&BuildDirs> {
+        self.build_dirs.get_or_try_init(|| {
+            self.create_build_dirs("build") // default value
+        })
+    }
+
+    /// Initialize the build dir
     pub fn set_build_dir(&self, dir: PathBuf) -> crate::Result<()> {
-        let dir = path::absolute(dir)?;
-        // TODO: !! dir = dir.join(self.optimize_mode);
-        if !dir.exists() {
-            fs::create_dir(&dir)?;
-        }
-        self.build_dir.set(dir).map_err(|_| {
+        let dirs = self.create_build_dirs(dir)?;
+
+        self.build_dirs.set(dirs).map_err(|_| {
             BeaverError::SetBuildDirAfterAddProject // or build_dir called multiple times
         })
     }
 
     #[inline]
-    pub fn get_build_dir(&self) -> crate::Result<&PathBuf> {
-        self.lock_build_dir()
+    pub fn get_build_dir(&self) -> crate::Result<&Path> {
+        Ok(&self.lock_build_dir()?.output)
+    }
+
+    #[inline]
+    pub fn get_base_build_dir(&self) -> crate::Result<&Path> {
+        Ok(&self.lock_build_dir()?.base)
     }
 
     pub fn get_build_dir_for_project(&self, project_name: &str) -> crate::Result<PathBuf> {
@@ -164,7 +187,7 @@ impl Beaver {
 
     pub fn cache(&self) -> Result<&Cache, BeaverError> {
         self.cache.get_or_try_init(|| { // TODO: on base build dir
-            let build_dir = self.get_build_dir()?;
+            let build_dir = self.get_base_build_dir()?;
             Cache::new(&build_dir.join("cache"))
         })
     }
@@ -329,11 +352,11 @@ impl Beaver {
             })
         }
     }
+    // TODO: build/triple/optimize mode & symlink current triple
 
     fn build_file(&self) -> crate::Result<PathBuf> {
-        // TODO: build/triple/optimize mode & symlink current triple
         self.get_build_dir()
-            .map(|path| path.join(format!("build.{}.{}.ninja", self.optimize_mode, self.target_triple)))
+            .map(|path| path.join("build.ninja"))
     }
 
     pub fn create_build_file(&self) -> crate::Result<()> {
