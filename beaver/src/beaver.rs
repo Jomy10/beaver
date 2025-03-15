@@ -75,7 +75,7 @@ pub struct Beaver {
 }
 
 impl Beaver {
-    pub fn new(enable_color: Option<bool>, optimize_mode: OptimizationMode) -> crate::Result<Beaver> {
+    pub fn new(enable_color: Option<bool>, optimize_mode: OptimizationMode, verbose: bool) -> crate::Result<Beaver> {
         Ok(Beaver {
             projects: RwLock::new(Vec::new()),
             project_index: AtomicIsize::new(-1),
@@ -83,7 +83,7 @@ impl Beaver {
             build_dir: OnceLock::new(), //OnceLock::new(path::absolute(std::env::current_dir().unwrap().join("build"))?),
             enable_color: enable_color.unwrap_or(true), // TODO: derive from isatty or set instance var to optional
             target_triple: Triple::host(),
-            verbose: false, // TODO
+            verbose,
             cache: OnceLock::new(),
             status: AtomicState::new(BeaverState::Initialized as u8),
             phase_hook_build: Mutex::new(PhaseHooks(Vec::new())),

@@ -1,6 +1,8 @@
 use std::path::Path;
 use std::process::Command;
 
+use log::trace;
+
 use crate::{tools, BeaverError};
 
 pub struct NinjaRunner<'a> {
@@ -26,6 +28,8 @@ impl<'a> NinjaRunner<'a> {
         if self.verbose {
             args.push("-v");
         }
+
+        trace!("Invoking ninja with arguments: {:?}", args);
 
         let mut process = Command::new(tools::ninja.as_os_str())
             .args(args)

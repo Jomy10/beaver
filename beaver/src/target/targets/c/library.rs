@@ -290,7 +290,7 @@ impl CTarget for Library {
                         rule: link_rule,
                         output: &artifact_file,
                         input: &object_files.iter().map(|path| path.as_path()).collect::<Vec<&Path>>(),
-                        dependencies: &[],
+                        dependencies: dependency_steps,
                         options: &[("linkerFlags", linker_flags)]
                     })?;
                 } else {

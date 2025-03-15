@@ -103,3 +103,9 @@ impl Into<ffi::OsString> for OptimizationMode {
             }
         }
 }
+
+impl Default for OptimizationMode {
+    fn default() -> Self {
+        Self::Debug
+    }
+}
