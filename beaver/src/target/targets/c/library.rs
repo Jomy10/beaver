@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
@@ -9,7 +10,7 @@ use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep};
 use crate::platform::{dynlib_extension_for_os, dynlib_linker_flags_for_os, staticlib_extension_for_os};
 use crate::target::parameters::{DefaultArgument, Files, Flags, Headers};
 use crate::target::traits::{self, TargetType};
-use crate::target::{ArtifactType, Dependency, Language, LibraryArtifactType, Version};
+use crate::target::{self, ArtifactType, Dependency, Language, LibraryArtifactType, Version};
 use crate::traits::Library as _;
 use crate::{Beaver, BeaverError};
 
@@ -39,7 +40,7 @@ pub struct Library {
 }
 
 impl Library {
-    pub fn new_desc(desc: TargetDescriptor<LibraryArtifactType>) -> Library {
+    pub fn new_desc(desc: TargetDescriptor<LibraryArtifactType>) -> crate::Result<Library> {
         Library::new(
             desc.name,
             desc.description,
@@ -69,8 +70,18 @@ impl Library {
         linker_flags: Vec<String>,
         artifacts: DefaultArgument<Vec<LibraryArtifactType>>,
         dependencies: Vec<Dependency>,
-    ) -> Library {
-        Library {
+    ) -> crate::Result<Library> {
+        target::utils::check_language(&[Language::C, Language::CXX, Language::OBJC, Language::OBJCXX], &language, "C")?;
+
+        let artifacts = artifacts.or_default(vec![
+            LibraryArtifactType::Dynlib,
+            LibraryArtifactType::Staticlib,
+            LibraryArtifactType::PkgConfig,
+        ]);
+        let valid_artifacts = HashSet::from([LibraryArtifactType::Dynlib, LibraryArtifactType::Staticlib, LibraryArtifactType::Framework, LibraryArtifactType::XCFramework, LibraryArtifactType::PkgConfig]);
+        target::utils::check_artifacts(&valid_artifacts, &artifacts, "C")?;
+
+        Ok(Library {
             id: None,
             project_id: None,
             name,
@@ -83,13 +94,9 @@ impl Library {
             cflags,
             headers,
             linker_flags,
-            artifacts: artifacts.or_default(vec![
-                LibraryArtifactType::Dynlib,
-                LibraryArtifactType::Staticlib,
-                LibraryArtifactType::PkgConfig,
-            ]),
+            artifacts,
             dependencies
-        }
+        })
     }
 }
 
@@ -298,7 +305,7 @@ impl CTarget for Library {
                         rule: &rules::AR,
                         output: &artifact_file,
                         input: &object_files.iter().map(|path| path.as_path()).collect::<Vec<&Path>>(),
-                        dependencies: &[],
+                        dependencies: dependency_steps,
                         options: &[]
                     })?;
                 }
@@ -308,7 +315,7 @@ impl CTarget for Library {
                     name: &artifact_step,
                     args: &[Scope::format_path(builder, artifact_file).to_str().unwrap()],
                     // args: &[&artifact_file.to_str().unwrap()],
-                    dependencies: dependency_steps
+                    dependencies: &[]
                 })?;
 
                 return Ok(artifact_step);

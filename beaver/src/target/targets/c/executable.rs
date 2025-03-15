@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
@@ -7,7 +8,7 @@ use target_lexicon::Triple;
 use crate::backend::{BackendBuilder, BackendBuilderScope, BuildStep};
 use crate::platform::executable_extension_for_os;
 use crate::target::parameters::{DefaultArgument, Files, Flags, Headers};
-use crate::target::{traits, ArtifactType, Dependency, ExecutableArtifactType, Language, Version};
+use crate::target::{self, traits, ArtifactType, Dependency, ExecutableArtifactType, Language, Version};
 use crate::traits::TargetType;
 use crate::Beaver;
 
@@ -36,7 +37,7 @@ pub struct Executable {
 }
 
 impl Executable {
-    pub fn new_desc(desc: TargetDescriptor<ExecutableArtifactType>) -> Executable {
+    pub fn new_desc(desc: TargetDescriptor<ExecutableArtifactType>) -> crate::Result<Executable> {
         Executable::new(
             desc.name,
             desc.description,
@@ -66,8 +67,14 @@ impl Executable {
         linker_flags: Vec<String>,
         artifacts: DefaultArgument<Vec<ExecutableArtifactType>>,
         dependencies: Vec<Dependency>,
-    ) -> Executable {
-        Executable {
+    ) -> crate::Result<Executable> {
+        target::utils::check_language(&[Language::C, Language::CXX, Language::OBJC, Language::OBJCXX], &language, "C")?;
+
+        let artifacts = artifacts.or_default(vec![ExecutableArtifactType::Executable]);
+        let valid_artifacts = HashSet::from([ExecutableArtifactType::App, ExecutableArtifactType::Executable]);
+        target::utils::check_artifacts(&valid_artifacts, &artifacts, "C")?;
+
+        Ok(Executable {
             id: None,
             project_id: None,
             name,
@@ -80,9 +87,9 @@ impl Executable {
             cflags,
             headers,
             linker_flags,
-            artifacts: artifacts.or_default(vec![ExecutableArtifactType::Executable]),
+            artifacts,
             dependencies
-        }
+        })
     }
 }
 

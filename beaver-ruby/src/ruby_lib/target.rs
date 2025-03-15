@@ -262,7 +262,7 @@ fn def_c_library(ruby: &magnus::Ruby, args: magnus::RHash) -> Result<TargetAcces
     let context = unsafe { &*RBCONTEXT.assume_init() };
 
     let ctarget_desc: target::c::TargetDescriptor<LibraryArtifactType> = c_target_parse_ruby_args(ruby, args, &context)?;
-    let library = AnyLibrary::C(target::c::Library::new_desc(ctarget_desc));
+    let library = AnyLibrary::C(target::c::Library::new_desc(ctarget_desc).map_err(BeaverRubyError::from)?);
 
     context.with_current_project_mut(|project| {
         match project.as_mutable() {
@@ -283,7 +283,7 @@ fn def_c_executable(ruby: &magnus::Ruby, args: magnus::RHash) -> Result<TargetAc
     let context = unsafe { &*RBCONTEXT.assume_init() };
 
     let ctarget_desc: target::c::TargetDescriptor<ExecutableArtifactType> = c_target_parse_ruby_args(ruby, args, &context)?;
-    let exe = AnyExecutable::C(target::c::Executable::new_desc(ctarget_desc));
+    let exe = AnyExecutable::C(target::c::Executable::new_desc(ctarget_desc).map_err(BeaverRubyError::from)?);
 
     context.with_current_project_mut(|project| {
         match project.as_mutable() {

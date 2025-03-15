@@ -34,7 +34,7 @@ fn adding() {
         linker_flags: Vec::new(),
         artifacts: DefaultArgument::Some(Vec::<LibraryArtifactType>::from([LibraryArtifactType::Staticlib])),
         dependencies: Vec::<Dependency>::new()
-    });
+    }).unwrap();
     project.add_target(AnyTarget::Library(target.into())).unwrap();
     beaver.add_project(project).unwrap();
 

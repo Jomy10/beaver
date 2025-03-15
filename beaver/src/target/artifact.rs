@@ -2,7 +2,7 @@ use std::cmp::{Eq, PartialEq};
 
 use crate::BeaverError;
 
-pub trait TArtifactType: Sized + std::fmt::Display {
+pub trait TArtifactType: Sized + std::fmt::Display + Into<ArtifactType> + Copy + Clone {
     fn parse(str: &str) -> crate::Result<Self>;
 }
 
@@ -73,6 +73,12 @@ impl std::fmt::Display for LibraryArtifactType {
     }
 }
 
+impl Into<ArtifactType> for LibraryArtifactType {
+    fn into(self) -> ArtifactType {
+        ArtifactType::Library(self)
+    }
+}
+
 #[derive(Eq, PartialEq, Hash, Clone, Copy, Debug)]
 pub enum ExecutableArtifactType {
     Executable,
@@ -96,6 +102,12 @@ impl std::fmt::Display for ExecutableArtifactType {
             ExecutableArtifactType::Executable => f.write_str("exe"),
             ExecutableArtifactType::App => f.write_str("app"),
         }
+    }
+}
+
+impl Into<ArtifactType> for ExecutableArtifactType {
+    fn into(self) -> ArtifactType {
+        ArtifactType::Executable(self)
     }
 }
 

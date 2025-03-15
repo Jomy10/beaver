@@ -8,6 +8,8 @@ use std::time::SystemTimeError;
 
 use target_lexicon::OperatingSystem;
 
+use crate::target::{ArtifactType, Language};
+
 #[derive(thiserror::Error)]
 pub enum BeaverError {
     // Set Build Dir //
@@ -95,6 +97,12 @@ pub enum BeaverError {
     CommandExists(String),
     #[error("No command exists with the name '{0}'")]
     NoCommand(String),
+
+    // Targets //
+    #[error("Language '{0:?}' cannot be used for a {1} target")]
+    InvalidLanguage(Language, &'static str),
+    #[error("Artifact '{0:?}' cannot be used for a {1} target")]
+    InvalidArtifact(ArtifactType, &'static str),
 
     // CMake //
     #[error("CMake failed")]
