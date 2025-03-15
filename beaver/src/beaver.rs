@@ -546,6 +546,9 @@ impl Beaver {
     }
 
     pub fn add_command(&self, name: String, command: crate::command::Command) -> crate::Result<()> {
+        if self.status.load(Ordering::SeqCst) != BeaverState::Initialized as u8 {
+            return Err(BeaverError::AlreadyFinalized);
+        }
         let mut guard = self.commands.lock().map_err(|err| BeaverError::LockError(err.to_string()))?;
         if guard.0.contains_key(&name) {
             return Err(BeaverError::CommandExists(name.to_string()));
@@ -556,6 +559,11 @@ impl Beaver {
     }
 
     pub fn run_command(&self, name: &str) -> crate::Result<()> {
+        match BeaverState::try_from(self.status.load(Ordering::SeqCst))? {
+            BeaverState::Initialized => self.create_build_file()?, // finalize beaver
+            BeaverState::Invalid => return Err(BeaverError::UnrecoverableError),
+            BeaverState::Build => {},
+        }
         let mut guard = self.commands.lock().map_err(|err| BeaverError::LockError(err.to_string()))?;
 
         let Some(command) = guard.0.remove(name) else {

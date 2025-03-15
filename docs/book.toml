@@ -1,0 +1,6 @@
+[book]
+authors = ["Jonas Everaert"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Beaver"

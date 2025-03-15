@@ -4,7 +4,7 @@
 #
 
 # Define an option
-# Optionas have values
+# Options have values
 #
 # To use options and flags, they have to be passed after a `--` to
 # differentiate them from beaver's own options
