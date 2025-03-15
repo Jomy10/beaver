@@ -6,6 +6,7 @@ pub mod backend;
 pub(crate) mod platform;
 pub(crate) mod cache;
 pub(crate) mod triple;
+pub(crate) mod path;
 pub mod phase_hook;
 pub mod command;
 pub mod project;

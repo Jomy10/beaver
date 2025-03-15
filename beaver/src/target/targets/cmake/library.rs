@@ -123,7 +123,6 @@ impl traits::Target for Library {
         scope: &mut Builder::Scope,
         context: &Beaver
     ) -> crate::Result<String> {
-        _ = triple; // TODO
         _ = context;
         _ = project_base_dir;
 
@@ -162,8 +161,13 @@ impl traits::Target for Library {
             dependencies: &[]
         })?;
 
-        // let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
-        // guard.apply_scope(scope);
+        let artifact_file = self.artifact_file(project_build_dir, ArtifactType::Library(self.artifact), triple)?;
+        let artifact_file = crate::path::path_to_str(&artifact_file)?;
+        scope.add_step(&BuildStep::Phony {
+            name: artifact_file,
+            args: &[&target_cmd_name],
+            dependencies: &[],
+        })?;
 
         Ok(target_cmd_name)
     }

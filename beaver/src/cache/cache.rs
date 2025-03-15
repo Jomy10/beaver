@@ -4,7 +4,7 @@ use std::iter::zip;
 use std::path::Path;
 use std::sync::Mutex;
 
-use log::{debug, trace};
+use log::trace;
 use ormlite::sqlite::SqlitePool;
 use ormlite::model::*;
 use uuid::Uuid;
