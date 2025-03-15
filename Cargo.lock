@@ -215,6 +215,7 @@ dependencies = [
  "log",
  "magnus",
  "rb-sys",
+ "shlex",
  "target-lexicon",
  "thiserror 2.0.12",
  "url",

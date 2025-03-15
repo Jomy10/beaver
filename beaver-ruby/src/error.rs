@@ -1,4 +1,5 @@
 use std::num::{ParseFloatError, ParseIntError};
+use std::process::ExitStatus;
 use std::rc::Rc;
 use std::str::ParseBoolError;
 
@@ -48,6 +49,14 @@ pub enum BeaverRubyError {
     BooleanConversionError(#[from] ParseBoolError),
     #[error("{0}")]
     CLIArgumentError(String),
+    #[error("Exit status {0} while executing {1}")]
+    ShExitFailure(ExitStatus, String),
+    #[error("Invalid arguments (couldn't split): {0}")]
+    ErroneousSplitArgsInput(String),
+    #[error("Couldn't find PATH")]
+    NoPATH,
+    #[error("No command named '{0}' found in PATH")]
+    NoCommand(String),
 }
 
 impl From<magnus::Error> for BeaverRubyError {

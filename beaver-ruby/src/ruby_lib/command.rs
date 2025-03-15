@@ -1,4 +1,5 @@
 use std::collections::LinkedList;
+use std::process::Command;
 
 use log::warn;
 use magnus::rb_sys::AsRawValue;
@@ -215,10 +216,61 @@ fn cmd(args: &[magnus::Value]) -> Result<(), magnus::Error> {
     Ok(())
 }
 
+fn sh(args: &[magnus::Value]) -> Result<(), magnus::Error> {
+    let args = magnus::scan_args::scan_args::<
+        (String,), // required
+        (),
+        magnus::RArray, // splat
+        (),
+        (),
+        ()
+    >(args)?;
+
+    let mut process = if args.splat.len() == 0 {
+        Command::new("sh")
+            .args(["-c", &args.required.0])
+            .spawn()
+            .map_err(BeaverRubyError::from)
+    } else {
+        let cmd = args.required.0;
+        let Some(paths) = utils::path() else {
+            return Err(BeaverRubyError::NoPATH.into());
+        };
+        let pathext = utils::pathext();
+        let Some(cmd) = utils::which(&cmd, paths.iter(), pathext.as_ref().map(|v| v.as_slice())) else {
+            return Err(BeaverRubyError::NoCommand(cmd).into());
+        };
+
+        let splat = args.splat.into_iter();
+
+        Command::new(cmd)
+            .args(splat.map(|v| v.to_string()).collect::<Vec<_>>())
+            .spawn()
+            .map_err(BeaverRubyError::from)
+    }?;
+
+    let exit_status = process.wait().map_err(BeaverRubyError::from)?;
+
+    if exit_status.success() {
+        Ok(())
+    } else {
+        Err(BeaverRubyError::ShExitFailure(exit_status, args.splat.to_string()).into())
+    }
+}
+
+fn split_args(args: String) -> Result<magnus::RArray, magnus::Error> {
+    match shlex::split(&args) {
+        Some(args) => Ok(magnus::RArray::from_vec(args)),
+        None => Err(BeaverRubyError::ErroneousSplitArgsInput(args).into())
+    }
+}
+
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     ruby.define_global_function("opt", magnus::function!(opt, -1));
     ruby.define_global_function("flag", magnus::function!(flag, -1));
     ruby.define_global_function("cmd", magnus::function!(cmd, -1));
+    ruby.define_global_function("sh", magnus::function!(sh, -1));
+    ruby.define_global_function("split_args", magnus::function!(split_args, 1));
 
     Ok(())
 }

@@ -11,6 +11,7 @@ thiserror = { workspace = true }
 log = { workspace = true }
 url = { workspace = true }
 target-lexicon = { workspace = true }
+shlex = { workspace = true }
 
 beaver = { path = "../beaver" }
 utils = { path = "../utils" }
