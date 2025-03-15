@@ -212,6 +212,7 @@ name = "beaver-ruby"
 version = "0.0.0"
 dependencies = [
  "beaver",
+ "console",
  "log",
  "magnus",
  "rb-sys",
