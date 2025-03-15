@@ -31,26 +31,6 @@ impl Cache {
                 .read(true)
                 .write(true)
                 .open(file)?;
-            // #[cfg(unix)] {
-            //     use std::os::unix::fs::PermissionsExt;
-            //     let f = fs::File::options()
-            //         .create(true)
-            //         .open(file)?;
-            //     let mut permissions = f.metadata()?.permissions();
-            //     permissions.set_mode(0o660);
-            //     f.set_permissions(permissions)?;
-            // }
-            // #[cfg(windows)] {
-            //     use std::os::windows::fs::OpenOptionsExt;
-            //     let f = fs::File::options()
-            //         .acces_mode(??)
-            //         .create(true)
-            //         .open(file)?;
-            // }
-            // #[cfg(all(not(windows), not(unix)))] {
-            //     // TODO: verify
-            //     fs::File::create(file)?;
-            // }
         }
 
         let Some(file) = file.as_os_str().to_str() else {

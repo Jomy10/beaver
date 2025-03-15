@@ -3,7 +3,7 @@ use std::path::Path;
 use std::process::Command;
 
 use cmake_file_api::objects::{codemodel_v2, CMakeFilesV1, CodeModelV2};
-use log::warn;
+use log::{trace, warn};
 
 use crate::project::projects;
 use crate::target::cmake;
@@ -16,16 +16,14 @@ pub fn import(
     cmake_flags: &[&str],
     context: &Beaver
 ) -> crate::Result<()> {
-    let build_dir = context.get_build_dir()?;
+    let base_dir = std::path::absolute(base_dir)?;
 
-    let Some(file_context) = base_dir.as_os_str().to_str() else {
+    let Some(base_dir_str) = base_dir.as_os_str().to_str() else {
         return Err(BeaverError::NonUTF8OsStr(base_dir.as_os_str().to_os_string()));
     };
-    let file_context = context.optimize_mode.cmake_name().to_string() + ":" + file_context;
+    let file_context = context.optimize_mode.cmake_name().to_string() + ":" + base_dir_str;
 
-    let build_dir = build_dir
-        .join("__cmake")
-        .join(base_dir);
+    let build_dir = context.get_build_dir_for_external_build_system2(base_dir_str)?;
 
     let build_dir_exists = build_dir.exists();
     if !build_dir_exists {
@@ -56,12 +54,6 @@ pub fn import(
     let cmake_files_changed = context.cache()?.files_changed_in_context(&file_context)?;
     let reconfigure = cmake_files_changed || !build_dir_exists || !query_dir_exists || !reply_dir.exists();
     if reconfigure {
-        let base_dir_abs = std::path::absolute(base_dir)?;
-        let base_dir_os = base_dir_abs.as_os_str();
-        let Some(base_dir_str) = base_dir_os.to_str() else {
-            return Err(BeaverError::NonUTF8OsStr(base_dir_os.to_os_string()));
-        };
-
         let build_type_arg = format!("-DCMAKE_BUILD_TYPE={}", context.optimize_mode.cmake_name());
         let mut args = vec![
             base_dir_str,
@@ -81,16 +73,21 @@ pub fn import(
         }
     }
 
+    trace!("CMake importer: reading queries");
+
     // Read query replies
     let reader = cmake_file_api::reply::Reader::from_build_dir(&build_dir)?;
 
     // Store CMake files to determine if reconfiguring is needed later
     if reconfigure {
+        trace!("CMake importer: storing cache");
         let cmake_files: CMakeFilesV1 = reader.read_object()?;
         let inputs = cmake_files.inputs.into_iter()
-            .map(|input| input.path);
+            .map(|input| base_dir.join(input.path));
         context.cache()?.add_all_files(inputs, &file_context)?;
     }
+
+    trace!("CMake importer: reading codemodel");
 
     let codemodel: CodeModelV2 = reader.read_object()?;
     let Some(cmake_config) = codemodel.configurations.iter().find(|config| {
@@ -98,6 +95,8 @@ pub fn import(
     }) else {
         return Err(BeaverError::CMakeMissingConfig(context.optimize_mode.cmake_name()));
     };
+
+    trace!("CMake importer: reading replies to targets and projects");
 
     for project in cmake_config.projects.iter() {
         let mut targets: Vec<AnyTarget> = Vec::new();
@@ -123,6 +122,8 @@ pub fn import(
                 }
             }
         }
+
+        trace!("CMake importer: adding project {}", &project.name);
 
         let project = projects::cmake::Project::new(
             project.name.clone(),

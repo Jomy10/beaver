@@ -22,7 +22,7 @@ pre "build" do
 end
 
 pre "clean" do
-  File.delete("MyFileFormat_generated.h")
+  File.delete("MyFileFormat_generated.h") if File.exist?("MyFileFormat_generated.h")
 end
 
 Project(name: "MyFileFormat")

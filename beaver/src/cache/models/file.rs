@@ -4,13 +4,14 @@ use std::fs;
 #[cfg(unix)]
 use std::os::unix::fs::MetadataExt;
 
-use log::trace;
+use log::{trace, warn};
 use ormlite::Model;
 use sqlx::sqlite::SqliteTypeInfo;
 use sqlx::{SqliteConnection, TypeInfo};
 use uuid::Uuid;
 
 use crate::cache::types::{Timespec, UInt};
+use crate::BeaverError;
 
 #[derive(Model, Debug, Clone)]
 pub struct File {
@@ -29,7 +30,8 @@ pub struct File {
 
 impl File {
     pub fn new(filename: &str) -> crate::Result<File> {
-        let f = fs::File::open(filename)?;
+        let f = fs::File::open(filename)
+            .map_err(|err| BeaverError::OpeningFileToBeCached(filename.to_string(), err))?;
         let meta = f.metadata()?;
 
         Ok(File {
@@ -91,7 +93,13 @@ CREATE TABLE IF NOT EXISTS file (
             return Ok(false);
         }
 
-        let f = fs::File::open(&self.filename)?;
+        let f = match fs::File::open(&self.filename) {
+            Ok(f) => f,
+            Err(err) => {
+                warn!("Error opening file {}: {}", self.filename, err);
+                return Ok(true);
+            }
+        };
         let meta = f.metadata()?;
 
         let mut changed = false;

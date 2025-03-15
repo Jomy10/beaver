@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex, MutexGuard, OnceLock, RwLock, RwLockReadGuard, RwLoc
 use std::sync::atomic::{AtomicIsize, AtomicU8, Ordering};
 
 use console::style;
-use log::{error, trace};
+use log::{error, info, trace};
 use target_lexicon::Triple;
 
 use crate::backend::ninja::{NinjaBuilder, NinjaRunner};
@@ -476,6 +476,13 @@ impl Beaver {
     }
 
     pub fn clean(&self) -> crate::Result<()> {
+        info!("Cleaning all projects...");
+
+        if self.projects()?.len() == 0 {
+            info!("Nothing to clean (no projects defined)");
+            return Ok(());
+        }
+
         self.run_phase_hook(Phase::Clean)?;
 
         for project in self.projects()?.iter() {

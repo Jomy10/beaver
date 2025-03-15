@@ -87,6 +87,8 @@ pub enum BeaverError {
     SQLError(#[from] ormlite::SqlxError),
     #[error("ORMLite Error: {0}")]
     ORMLiteError(String),
+    #[error("Error opening file to be cached {0}: {1}")]
+    OpeningFileToBeCached(String, io::Error),
 
     // Commands //
     #[error("Command '{0}' exists")]

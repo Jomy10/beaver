@@ -76,7 +76,13 @@ pub trait Project: Send + Sync + std::fmt::Debug {
     }
 
     fn clean(&self) -> crate::Result<()> {
-        std::fs::remove_dir_all(self.build_dir())
+        let build_dir = self.build_dir();
+
+        if !build_dir.exists() {
+            return Ok(());
+        }
+
+        std::fs::remove_dir_all(build_dir)
             .map_err(BeaverError::from)
     }
 

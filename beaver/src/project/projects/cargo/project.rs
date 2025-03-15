@@ -1,13 +1,15 @@
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::{Arc, RwLock};
 
 use target_lexicon::Triple;
+use log::error;
 
 use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep};
 use crate::target::TargetRef;
 use crate::traits::{self, AnyTarget, MutableProject, Target, TargetType};
-use crate::{Beaver, BeaverError};
+use crate::{tools, Beaver, BeaverError};
 
 #[derive(Debug)]
 pub struct Project {
@@ -150,6 +152,20 @@ impl traits::Project for Project {
 
         let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
         guard.apply_scope(scope);
+
+        Ok(())
+    }
+
+    fn clean(&self) -> crate::Result<()> {
+        let output = Command::new(tools::cargo.as_path())
+            .args(["clean"])
+            .current_dir(&self.base_dir)
+            .output()?;
+
+        if !output.status.success() {
+            error!("{}", String::from_utf8_lossy(&output.stderr));
+            return Err(BeaverError::NonZeroExitStatus(output.status));
+        }
 
         Ok(())
     }
