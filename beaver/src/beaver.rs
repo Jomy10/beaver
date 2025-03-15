@@ -63,6 +63,8 @@ pub struct Beaver {
     enable_color: bool,
     pub(crate) target_triple: Triple,
     verbose: bool,
+    /// enable various debug utilities. adds -d explain to ninja
+    debug: bool,
     cache: OnceLock<Cache>,
     status: AtomicState,
     phase_hook_build: Mutex<PhaseHooks>,
@@ -75,7 +77,7 @@ pub struct Beaver {
 }
 
 impl Beaver {
-    pub fn new(enable_color: Option<bool>, optimize_mode: OptimizationMode, verbose: bool) -> crate::Result<Beaver> {
+    pub fn new(enable_color: Option<bool>, optimize_mode: OptimizationMode, verbose: bool, debug: bool) -> crate::Result<Beaver> {
         Ok(Beaver {
             projects: RwLock::new(Vec::new()),
             project_index: AtomicIsize::new(-1),
@@ -84,6 +86,7 @@ impl Beaver {
             enable_color: enable_color.unwrap_or(true), // TODO: derive from isatty or set instance var to optional
             target_triple: Triple::host(),
             verbose,
+            debug,
             cache: OnceLock::new(),
             status: AtomicState::new(BeaverState::Initialized as u8),
             phase_hook_build: Mutex::new(PhaseHooks(Vec::new())),
@@ -420,7 +423,7 @@ impl Beaver {
         self.run_phase_hook(Phase::Build)?;
 
         let build_file = self.build_file()?;
-        let ninja_runner = NinjaRunner::new(&build_file, self.verbose);
+        let ninja_runner = NinjaRunner::new(&build_file, self.verbose, self.debug);
         let build_dir = self.get_build_dir()?;
         ninja_runner.build(target_names, &env::current_dir()?, &build_dir)
     }

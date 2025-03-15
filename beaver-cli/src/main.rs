@@ -173,7 +173,7 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
     };
 
     // Execute script
-    let beaver = Box::new(Beaver::new(Some(color), opt, verbosity != 0)?);
+    let beaver = Box::new(Beaver::new(Some(color), opt, verbosity != 0, *debug)?);
     let ctx = unsafe { beaver_ruby::execute_script(script_file, script_args, beaver)? };
 
     if *debug {

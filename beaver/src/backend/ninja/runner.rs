@@ -8,13 +8,15 @@ use crate::{tools, BeaverError};
 pub struct NinjaRunner<'a> {
     build_file: &'a Path,
     verbose: bool,
+    debug: bool,
 }
 
 impl<'a> NinjaRunner<'a> {
-    pub fn new(build_file: &'a Path, verbose: bool) -> Self {
+    pub fn new(build_file: &'a Path, verbose: bool, debug: bool) -> Self {
         NinjaRunner {
             build_file,
             verbose,
+            debug
         }
     }
 
@@ -27,6 +29,10 @@ impl<'a> NinjaRunner<'a> {
         args.extend(targets.iter().map(|s| s.as_ref()));
         if self.verbose {
             args.push("-v");
+        }
+        if self.debug {
+            args.push("-d");
+            args.push("explain");
         }
 
         trace!("Invoking ninja with arguments: {:?}", args);

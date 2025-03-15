@@ -274,7 +274,7 @@ impl CTarget for Executable {
                     rule: link_rule,
                     output: &artifact_file,
                     input: &object_files.iter().map(|path| path.as_path()).collect::<Vec<&Path>>(),
-                    dependencies: &[],
+                    dependencies: dependency_steps,
                     options: &[("linkerFlags", linker_flags)]
                 })?;
 
@@ -283,7 +283,7 @@ impl CTarget for Executable {
                     name: &artifact_step,
                     args: &[Scope::format_path(builder, artifact_file).to_str().unwrap()],
                     // args: &[&artifact_file.to_str().unwrap()],
-                    dependencies: dependency_steps
+                    dependencies: &[]
                 })?;
 
                 return Ok(artifact_step);

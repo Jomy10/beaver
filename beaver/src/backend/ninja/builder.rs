@@ -120,7 +120,7 @@ impl NinjaBuilderScope {
 
     fn write_dependencies(&mut self, deps: &[&str]) -> crate::Result<()> {
         if deps.len() > 0 {
-            self.write_str(" || ")?;
+            self.write_str(" | ")?;
             for dep in deps.iter() {
                 self.write_str(dep)?;
                 self.write_char(' ')?;

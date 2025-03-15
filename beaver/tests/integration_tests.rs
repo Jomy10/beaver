@@ -14,7 +14,7 @@ fn adding() {
 
     dbg!(&tmpdir);
 
-    let beaver = Beaver::new(Some(true), OptimizationMode::Debug, true).unwrap();
+    let beaver = Beaver::new(Some(true), OptimizationMode::Debug, true, false).unwrap();
     beaver.set_build_dir(tmpdir.join("build")).unwrap();
     let project = BeaverProject::new(
         String::from("MyProject"),
