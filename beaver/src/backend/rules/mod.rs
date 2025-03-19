@@ -1,8 +1,9 @@
 
 use lazy_static::lazy_static;
 
-use crate::target::{OBJCXX_CFLAGS, OBJCXX_LINKER_FLAGS, OBJC_CFLAGS, OBJC_LINKER_FLAGS};
+// use crate::target::{OBJCXX_CFLAGS, OBJCXX_LINKER_FLAGS, OBJC_CFLAGS, OBJC_LINKER_FLAGS};
 use crate::tools;
+use crate::target::language;
 
 use super::{Pool, Rule};
 
@@ -31,7 +32,7 @@ lazy_static! {
         pool: None
     };
 
-    static ref OBJC_CMD: String = format!("{} {} $cflags -MD -MF $out.d -c $in -o $out", tools::objc.display(), OBJC_CFLAGS.join(" "));
+    static ref OBJC_CMD: String = format!("{} {} $cflags -MD -MF $out.d -c $in -o $out", tools::objc.display(), language::objc::objc_cflags().join(" "));
     pub static ref OBJC: Rule = Rule {
         name: "objc",
         options: vec![
@@ -43,7 +44,7 @@ lazy_static! {
         pool: None
     };
 
-    static ref OBJCXX_CMD: String = format!("{} {} $cflags -MD -MF $out.d -c $in -o $out", tools::objcxx.display(), OBJCXX_CFLAGS.join(" "));
+    static ref OBJCXX_CMD: String = format!("{} {} $cflags -MD -MF $out.d -c $in -o $out", tools::objcxx.display(), language::objc::objcxx_cflags().join(" "));
     pub static ref OBJCXX: Rule = Rule {
         name: "objcxx",
         options: vec![
@@ -75,7 +76,7 @@ lazy_static! {
         pool: None
     };
 
-    static ref LINKOBJC_CMD: String = format!("{} {} $linkerFlags $in -o $out", tools::objc.display(), OBJC_LINKER_FLAGS.join(" "));
+    static ref LINKOBJC_CMD: String = format!("{} {} $linkerFlags $in -o $out", tools::objc.display(), language::objc::objc_linker_flags().join(" "));
     pub static ref LINKOBJC: Rule = Rule {
         name: "link_objc",
         options: vec![
@@ -85,7 +86,7 @@ lazy_static! {
         pool: None
     };
 
-    static ref LINKOBJCXX_CMD: String = format!("{} {} $linkerFlags $in -o $out", tools::objcxx.display(), OBJCXX_LINKER_FLAGS.join(" "));
+    static ref LINKOBJCXX_CMD: String = format!("{} {} $linkerFlags $in -o $out", tools::objcxx.display(), language::objc::objcxx_linker_flags().join(" "));
     pub static ref LINKOBJCXX: Rule = Rule {
         name: "link_objcxx",
         options: vec![
