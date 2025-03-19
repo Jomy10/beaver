@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fmt::Write;
 use std::process::Command;
-use std::{env, fs};
+use std::{env, fs, io};
 use std::io::Write as IOWrite;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -217,14 +217,36 @@ impl Beaver {
         })?;
         let to = self.get_base_build_dir()?.join(self.optimize_mode.to_string());
 
-        if to.exists() && to.is_symlink() {
-            fs::remove_file(&to)?;
-        } else {
-            return Err(BeaverError::SymlinkCreationExists(to));
+        if to.exists() {
+            if to.is_symlink() {
+                fs::remove_file(&to)?;
+            } else {
+                return Err(BeaverError::SymlinkCreationExists(to));
+            }
         }
 
-        utils::fs::symlink_dir(&from, &to)
-            .map_err(|err| BeaverError::SymlinkCreationError(err, from.to_path_buf(), to))
+        let mut create_symlink = true;
+        match fs::read_link(&to) {
+            Ok(links_to) => if links_to != from {
+                fs::remove_file(&to)?;
+            } else {
+                create_symlink = false;
+            },
+            Err(err) => match err.kind() {
+                io::ErrorKind::NotFound => {}
+                _ => {
+                    dbg!(err.kind());
+                    return Err(BeaverError::SymlinkCreationError(err, from, to));
+                }
+            },
+        }
+
+        if create_symlink {
+            utils::fs::symlink_dir(&from, &to)
+                .map_err(|err| { dbg!(err.kind()); BeaverError::SymlinkCreationError(err, from.to_path_buf(), to) })
+        } else {
+            Ok(())
+        }
     }
 
     pub fn cache(&self) -> Result<&Cache, BeaverError> {

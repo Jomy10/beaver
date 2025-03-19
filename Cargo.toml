@@ -34,7 +34,7 @@ regex = "1.11"
 lazy_static = "1.5"
 rayon = "1.10"
 magnus = "0.7"
-rb-sys = "^0.9.85" # keep on par with magnus
+rb-sys = { version = "^0.9.85", default-features = false } # keep on par with magnus
 # rutie = { git = "https://github.com/danielpclark/rutie" }
 # rutie = { path = "/tmp/rutie" }
 enum_dispatch = "0.3"

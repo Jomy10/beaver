@@ -5,7 +5,7 @@ authors.workspace = true
 
 [dependencies]
 magnus = { workspace = true, features = ["embed", "rb-sys"] }
-rb-sys = { workspace = true, default-features = false, features = [] } # TODO: option for dynamic
+rb-sys = { workspace = true, features = [] } # TODO: option for dynamic
 
 thiserror = { workspace = true }
 log = { workspace = true }

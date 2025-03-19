@@ -28,21 +28,17 @@ pub(crate) fn run<'a>(dir: &Path, stdout: &'a mut String) -> (impl Iterator<Item
 
     let mut out: VecDeque<&str> = VecDeque::new();
     *stdout = String::from_utf8(output.stdout).unwrap();
-    dbg!(&stdout);
     let components: Vec<&str> = stdout.split("\n").collect();
     let mut iter = components.into_iter().rev();
     assert_eq!(iter.next(), Some(""));
 
     while let Some(val) = iter.next() {
-        dbg!(val);
         if val.starts_with("Cleaning...") {
             break;
         } else {
             out.push_front(val);
         }
     }
-
-    dbg!(out.len());
 
     (out.into_iter(), output.status.code())
     // let output = ::std::process::Command::new(crate::beaver())
