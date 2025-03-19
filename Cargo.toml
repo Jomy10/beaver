@@ -14,7 +14,7 @@ exclude = [
 ]
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 authors = ["Jonas Everaert"]
 
 [workspace.dependencies]
@@ -35,8 +35,6 @@ lazy_static = "1.5"
 rayon = "1.10"
 magnus = "0.7"
 rb-sys = { version = "^0.9.85", default-features = false } # keep on par with magnus
-# rutie = { git = "https://github.com/danielpclark/rutie" }
-# rutie = { path = "/tmp/rutie" }
 enum_dispatch = "0.3"
 const-gen = "1.6"
 pathdiff = "0.2"

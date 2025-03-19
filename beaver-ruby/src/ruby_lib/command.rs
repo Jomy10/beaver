@@ -99,7 +99,7 @@ fn get_opt(args: &mut LinkedList<String>, full_name: Option<&str>, short_name: O
 
 fn opt(args: &[magnus::Value]) -> Result<magnus::Value, magnus::Error> {
     #[allow(static_mut_refs)]
-    let ctx = unsafe { &CTX_RC.assume_init_ref() }.upgrade().unwrap();
+    let ctx = unsafe { CTX_RC.assume_init_ref() }.upgrade().unwrap();
 
     let (long_name, short_name, default) = parse_ruby_args(args)?;
 
