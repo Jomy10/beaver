@@ -139,7 +139,10 @@ impl traits::Project for Project {
         Ok(())
     }
 
-    fn clean(&self) -> crate::Result<()> {
+    fn clean(&self, context: &Beaver) -> crate::Result<()> {
+        let base_dir_str = self.base_dir.to_string_lossy();
+        context.cache()?.remove_context(&(context.optimize_mode.to_string() + ":" + base_dir_str.as_ref()))?;
+
         let output = Command::new(tools::swift.as_path())
             .args(["package", "clean"])
             .current_dir(&self.base_dir)

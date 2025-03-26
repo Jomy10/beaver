@@ -1,10 +1,13 @@
 use std::collections::LinkedList;
 use std::ffi::OsString;
 use std::path::Path;
+use std::io::Write;
 
 use beaver::target::TargetRef;
 use beaver::{Beaver, BeaverError, OptimizationMode};
 use clap::{arg, Arg, ArgAction, ArgMatches, Command, ValueHint};
+use colog::format::CologStyle;
+use colored::Colorize;
 use lazy_static::lazy_static;
 use log::warn;
 
@@ -110,12 +113,26 @@ fn main() -> Result<(), MainError> {
     run_cli(&matches)
 }
 
+struct DebugLoggingStyle;
+
+impl CologStyle for DebugLoggingStyle {
+    fn format(&self, buf: &mut env_logger::fmt::Formatter, record: &log::Record<'_>) -> Result<(), std::io::Error> {
+        // colog::format::default_format(self, buf, record)
+        writeln!(buf, "{:?}", record)
+    }
+}
+
 fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
     let debug = matches.get_one::<bool>("debug").unwrap();
 
     let mut clog = colog::default_builder();
+
     #[cfg(debug_assertions)] { clog.filter(None, log::LevelFilter::Trace); }
     #[cfg(not(debug_assertions))] { clog.filter(None, log::LevelFilter::Warn); }
+
+    clog.filter(Some("sled"), log::LevelFilter::Warn);
+
+    // clog.format(colog::formatter(DebugLoggingStyle));
 
     let verbosity = if *debug { 3 } else { matches.get_count("verbosity") };
     // dbg!(&matches);

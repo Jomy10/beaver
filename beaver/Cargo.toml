@@ -16,22 +16,25 @@ rayon = { workspace = true }
 enum_dispatch = { workspace = true }
 pathdiff = { workspace = true }
 shlex = { workspace = true }
-ormlite = { workspace = true, features = ["sqlite", "uuid"] }
+sled = { workspace = true }
+zerocopy = { workspace = true, features = ["derive"] }
+# ormlite = { workspace = true, features = ["sqlite", "uuid"] }
 # TODO: add feature link-sqlite -> enables sqlite-unbundled (see https://docs.rs/sqlx/latest/sqlx/sqlite/index.html)
-sqlx = { workspace = true, features = ["sqlite", "derive", "uuid", "runtime-tokio"] }
+# sqlx = { workspace = true, features = ["sqlite", "derive", "uuid", "runtime-tokio"] }
 async-executor = { workspace = true }
 futures-lite = { workspace = true }
 uuid = { workspace = true, features = ["v4", "fast-rng", "macro-diagnostics"] }
 tokio = { workspace = true, features = ["rt", "macros"] }
+itertools = { workspace = true }
+seq-macro = { workspace = true }
 # serde = { workspace = true, features = ["derive"] }
 # serde_json = { workspace = true }
 cmake-file-api = { workspace = true }
 cargo-manifest = { workspace = true }
-itertools = { workspace = true }
+spm-manifest = { path = "../spm-manifest" }
 utils = { path = "../utils", features = ["junctions"] }
 glob = { path = "../glob" }
 beaver-macros = { path = "../beaver-macros" }
-spm-manifest = { path = "../spm-manifest" }
 
 [dev-dependencies]
 tempdir = { workspace = true }

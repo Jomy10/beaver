@@ -13,7 +13,9 @@ clap = { workspace = true, features = ["cargo"] }
 console = { workspace =  true }
 lazy_static = { workspace = true }
 log = { workspace = true }
+env_logger = { workspace = true }
 colog = { workspace = true }
+colored = { workspace = true }
 beaver = { path = "../beaver" }
 beaver-ruby = { path = "../beaver-ruby" }
 

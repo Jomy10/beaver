@@ -4,7 +4,7 @@ use std::io;
 use std::path::PathBuf;
 use std::process::ExitStatus;
 use std::string::FromUtf8Error;
-use std::time::SystemTimeError;
+use std::time::{SystemTimeError, TryFromFloatSecsError};
 
 use target_lexicon::OperatingSystem;
 
@@ -91,12 +91,22 @@ pub enum BeaverError {
     DebugBufferWriteError(std::fmt::Error),
 
     // Cache //
-    #[error("SQL Error: {0}")]
-    SQLError(#[from] ormlite::SqlxError),
-    #[error("ORMLite Error: {0}")]
-    ORMLiteError(String),
+    // #[error("SQL Error: {0}")]
+    // SQLError(#[from] ormlite::SqlxError),
+    // #[error("ORMLite Error: {0}")]
+    // ORMLiteError(String),
     #[error("Error opening file to be cached {0}: {1}")]
     OpeningFileToBeCached(String, io::Error),
+    #[error("System time conversion error")]
+    SystemTimeConversionError,
+    #[error(transparent)]
+    TryFromFloatSecsError(#[from] TryFromFloatSecsError),
+    #[error("Nul terminator in filename or context {0} - {1}")]
+    NulTerminatorInFile(String, String),
+    #[error(transparent)]
+    SledError(#[from] sled::Error),
+    #[error("Unknown file context {0}")]
+    FileContextUnknown(String),
 
     // Commands //
     #[error("Command '{0}' exists")]
@@ -109,6 +119,8 @@ pub enum BeaverError {
     InvalidLanguage(Language, &'static str),
     #[error("Artifact '{0:?}' cannot be used for a {1} target")]
     InvalidArtifact(ArtifactType, &'static str),
+    #[error("Target {1} does not have an artifact of type {0:?}")]
+    NoArtifact(ArtifactType, String),
 
     // CMake //
     #[error("CMake failed")]

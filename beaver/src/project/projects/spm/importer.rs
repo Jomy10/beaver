@@ -18,11 +18,9 @@ pub fn import(
         return Err(BeaverError::NotASwiftPackagePath(manifest_path));
     }
 
-    let Some(base_dir_str) = base_dir.as_os_str().to_str() else {
-        return Err(BeaverError::NonUTF8OsStr(base_dir.as_os_str().to_os_string()));
-    };
+    let base_dir_str = base_dir.to_string_lossy();
 
-    let build_sys_cache_dir = context.get_build_dir_for_external_build_system_static2(base_dir_str)?;
+    let build_sys_cache_dir = context.get_build_dir_for_external_build_system_static2(base_dir_str.as_ref())?;
     if !build_sys_cache_dir.exists() {
         fs::create_dir_all(&build_sys_cache_dir)?;
     }
@@ -30,8 +28,9 @@ pub fn import(
     let cache_dir = Arc::new(std::path::absolute(cache_dir)?);
     let json_save_path = build_sys_cache_dir.join("manifest.json");
 
-    let file_context = context.optimize_mode.to_string() + ":" + base_dir_str;
-    let remake_json = context.cache()?.files_changed_in_context(&file_context)? || (!json_save_path.exists());
+    let file_context = context.optimize_mode.to_string() + ":" + base_dir_str.as_ref();
+    let cache = context.cache()?;
+    let remake_json = cache.files_changed_in_context(&file_context)? || (!json_save_path.exists());
 
     let json = if remake_json {
         let output = std::process::Command::new(tools::swift.as_path())
@@ -48,7 +47,7 @@ pub fn import(
         fs::write(json_save_path, &str)?;
 
         let files = [manifest_path.as_path()];
-        context.cache()?.add_all_files(files.iter(), &file_context)?;
+        context.cache()?.set_all_files(files.into_iter(), &file_context)?;
 
         str
     } else {
@@ -101,8 +100,6 @@ pub fn import(
         context.optimize_mode,
         &context.target_triple
     );
-
-    dbg!(&project);
 
     context.add_project(project)
 }

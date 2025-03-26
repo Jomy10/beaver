@@ -156,7 +156,7 @@ impl traits::Project for Project {
         Ok(())
     }
 
-    fn clean(&self) -> crate::Result<()> {
+    fn clean(&self, _context: &Beaver) -> crate::Result<()> {
         let output = Command::new(tools::cargo.as_path())
             .args(["clean"])
             .current_dir(&self.base_dir)

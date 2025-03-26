@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use cmake_file_api::objects::{codemodel_v2, CMakeFilesV1, CodeModelV2};
@@ -12,6 +12,7 @@ use crate::target::{Dependency, ExecutableArtifactType, Language, LibraryArtifac
 use crate::traits::{AnyExecutable, AnyLibrary, AnyTarget};
 use crate::{tools, Beaver, BeaverError};
 
+// TODO: debug why cmake keeps re-configuring
 pub fn import(
     base_dir: &Path,
     cmake_flags: &[&str],
@@ -19,12 +20,10 @@ pub fn import(
 ) -> crate::Result<()> {
     let base_dir = std::path::absolute(base_dir)?;
 
-    let Some(base_dir_str) = base_dir.as_os_str().to_str() else {
-        return Err(BeaverError::NonUTF8OsStr(base_dir.as_os_str().to_os_string()));
-    };
-    let file_context = context.optimize_mode.cmake_name().to_string() + ":" + base_dir_str;
+    let base_dir_str = base_dir.to_string_lossy();
+    let file_context = context.optimize_mode.cmake_name().to_string() + ":" + base_dir_str.as_ref();
 
-    let build_dir = context.get_build_dir_for_external_build_system2(base_dir_str)?;
+    let build_dir = context.get_build_dir_for_external_build_system2(base_dir_str.as_ref())?;
 
     let build_dir_exists = build_dir.exists();
     if !build_dir_exists {
@@ -52,12 +51,15 @@ pub fn import(
     }
 
     // Execute cmake
-    let cmake_files_changed = context.cache()?.files_changed_in_context(&file_context)?;
+    let cache = context.cache()?;
+    let cmake_files_changed = cache.files_changed_in_context(&file_context)?;
     let reconfigure = cmake_files_changed || !build_dir_exists || !query_dir_exists || !reply_dir.exists();
     if reconfigure {
+        trace!("Reconfiguring CMake project {:?}", base_dir);
+
         let build_type_arg = format!("-DCMAKE_BUILD_TYPE={}", context.optimize_mode.cmake_name());
         let mut args = vec![
-            base_dir_str,
+            base_dir_str.as_ref(),
             &build_type_arg,
             "-G", "Ninja"
         ];
@@ -85,8 +87,9 @@ pub fn import(
         let cmake_files: CMakeFilesV1 = reader.read_object()?;
         let inputs = cmake_files.inputs.into_iter()
             .map(|input| base_dir.join(input.path))
-            .unique();
-        context.cache()?.add_all_files(inputs, &file_context)?;
+            .unique()
+            .collect::<Vec<PathBuf>>();
+        context.cache()?.set_all_files(inputs.iter().map(|pathbuf| pathbuf.as_path()), &file_context)?;
     }
 
     trace!("CMake importer: reading codemodel");
@@ -118,7 +121,7 @@ pub fn import(
                 },
                 name => {
                     if reconfigure {
-                        warn!("CMake target tpye '{}' will not be mapped to a target (currently unsupported)", name)
+                        warn!("CMake target type '{}' will not be mapped to a target (currently unsupported)", name)
                     }
                     continue
                 }
@@ -148,7 +151,7 @@ fn add_library(target: &codemodel_v2::Target, artifact_type: LibraryArtifactType
         }
     }
 
-    let artifact_path = build_dir.join(&target.paths.build).join(&target.artifacts[0].path);
+    let artifact_path = build_dir.join(&target.artifacts[0].path);
 
     if target.compile_groups.len() > 1 {
         warn!("Multiple compile groups found for {}", target.name);

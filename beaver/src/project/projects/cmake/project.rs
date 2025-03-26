@@ -138,4 +138,16 @@ impl traits::Project for Project {
     fn as_mutable(&self) -> Option<&dyn traits::MutableProject> {
         None
     }
+
+    fn clean(&self, context: &Beaver) -> crate::Result<()> {
+        let base_dir_str = self.base_dir.to_string_lossy();
+        context.cache()?.remove_context(&(context.optimize_mode.cmake_name().to_string() + ":" + base_dir_str.as_ref()))?;
+
+        if !self.build_dir.exists() {
+            return Ok(())
+        }
+
+        std::fs::remove_dir_all(&self.build_dir)
+            .map_err(BeaverError::from)
+    }
 }

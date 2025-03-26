@@ -580,7 +580,7 @@ impl Beaver {
         self.run_phase_hook(Phase::Clean)?;
 
         for project in self.projects()?.iter() {
-            project.clean()?;
+            project.clean(self)?;
         }
 
         fs::remove_dir_all(self.get_build_dir()?)?;

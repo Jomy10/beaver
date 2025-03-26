@@ -99,6 +99,10 @@ impl DependencyWrapper {
         let name = Self::get_name(name)?;
         return Ok(DependencyWrapper(Dependency::framework(&name)));
     }
+
+    fn new_flags(cflags: Option<Vec<String>>, linker_flags: Option<Vec<String>>) -> Result<DependencyWrapper, magnus::Error> {
+        return Ok(DependencyWrapper(Dependency::Flags { cflags, linker_flags }));
+    }
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
@@ -109,6 +113,7 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     ruby.define_global_function("pkgconfig", magnus::function!(DependencyWrapper::new_pkgconfig, -1));
     ruby.define_global_function("system_lib", magnus::function!(DependencyWrapper::new_system, 1));
     ruby.define_global_function("framework", magnus::function!(DependencyWrapper::new_framework, 1));
+    ruby.define_global_function("flags", magnus::function!(DependencyWrapper::new_flags, 2));
 
     Ok(())
 }

@@ -75,7 +75,9 @@ pub trait Project: Send + Sync + std::fmt::Debug {
         Ok((guard, steps))
     }
 
-    fn clean(&self) -> crate::Result<()> {
+    fn clean(&self, context: &Beaver) -> crate::Result<()> {
+        _ = context;
+
         let build_dir = self.build_dir();
 
         if !build_dir.exists() {
