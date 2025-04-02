@@ -1,5 +1,6 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+use std::process;
 
 use lazy_static::lazy_static;
 use log::warn;
@@ -57,16 +58,18 @@ impl<'a> Default for Tool<'a> {
 
 // Paths to executables installed on the system and used for building
 lazy_static! {
+    // Tools //
+
     static ref env_path: Vec<PathBuf> = utils::path().expect("PATH environment variable not defined"); // TODO: do we need a fallback?
     // mainly used for Windows
     static ref env_pathext: Option<Vec<OsString>> = utils::pathext();
 
     pub static ref ninja: PathBuf = Tool { name: "ninja", ..Default::default() }.find();
 
-    pub static ref cc: PathBuf = Tool { name: "cc", aliases: Some(&["clang", "gcc", "zig", "icc"]), env: Some("CC") }.find();
+    pub static ref cc: PathBuf = Tool { name: "cc", aliases: Some(&["clang", "gcc", "zig", "icx", "icc"]), env: Some("CC") }.find();
     pub static ref cc_extra_args: Option<&'static [&'static str]> = if cc.file_stem().unwrap() == "zig" { Some(&["cc"]) } else { None };
 
-    pub static ref cxx: PathBuf = Tool { name: "cxx", aliases: Some(&["clang++", "g++", "zig", "icpc"]), env: Some("CXX") }.find();
+    pub static ref cxx: PathBuf = Tool { name: "cxx", aliases: Some(&["clang++", "g++", "zig", "icpx", "icpc"]), env: Some("CXX") }.find();
     pub static ref cxx_extra_args: Option<&'static [&'static str]> = if cc.file_stem().unwrap() == "zig" { Some(&["c++"]) } else { None };
 
     pub static ref objc: &'static Path = cc.as_path();
@@ -89,4 +92,44 @@ lazy_static! {
     pub static ref xcrun: PathBuf = Tool { name: "xcrun", ..Default::default() }.find();
     #[cfg(target_os = "macos")]
     pub static ref xcode_select: PathBuf = Tool { name: "xcode-select", ..Default::default() }.find();
+
+    // Tool version //
+
+    /// CC
+    pub static ref cc_version: CCVersion = {
+        let proc = process::Command::new(cc.as_path())
+            .args(["-dM", "-E", "-x", "-c", "/dev/null"])
+            .output()
+            .unwrap();
+
+        let output = String::from_utf8(proc.stdout).unwrap();
+        output.split("\n")
+            .find_map(|line| {
+                if line.starts_with("#define __clang__version__") {
+                    Some(CCVersion::Clang(semver::Version::parse(&line["#define __clang__version__".len()..]).unwrap()))
+                } else if line.starts_with("#define __VERSION__") {
+                    let v = &line["#define __VERSION__".len()..];
+                    if v.starts_with("Intel") { // ICC/ICX
+                        None
+                    } else {
+                        Some(CCVersion::Gcc(semver::Version::parse(v).unwrap()))
+                    }
+                } else if line.starts_with("#define __INTEL_COMPILER") { // ICC
+                    Some(CCVersion::Icc(line["#define __INTEL_COMPILER".len()..].parse::<i32>().unwrap()))
+                } else if line.starts_with("#define __INTEL_LLVM_COMPILER") {
+                    Some(CCVersion::Icx(line["#define __INTEL_LLVM_COMPILER".len()..].parse::<i32>().unwrap()))
+                } else {
+                    None
+                }
+            });
+
+        todo!()
+    };
+}
+
+pub enum CCVersion {
+    Clang(semver::Version),
+    Gcc(semver::Version),
+    Icc(i32),
+    Icx(i32)
 }

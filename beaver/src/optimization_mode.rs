@@ -1,6 +1,9 @@
 use std::ffi::{self, OsString};
 use std::str::FromStr;
 
+use lazy_static::lazy_static;
+
+use crate::tools::{self, CCVersion};
 use crate::BeaverError;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -15,19 +18,42 @@ pub enum OptimizationMode {
 
 use OptimizationMode::*;
 
+lazy_static! {
+    static ref cflags_release: Vec<&'static str> = {
+        let mut v = ["-O3", "-flto", "-DNDEBUG"].to_vec();
+        match &*tools::cc_version {
+            CCVersion::Clang(ver) => if ver.major >= 18 { v.push("-ffat-lto-objects") },
+            CCVersion::Gcc(_) => v.push("-ffat-lto-objects"),
+            _ => {}
+        }
+        return v;
+    };
+
+    static ref linker_flags_release: Vec<&'static str> = {
+        let mut v = ["-O3", "-flto"].to_vec();
+        match &*tools::cc_version {
+            CCVersion::Clang(ver) => if ver.major >= 18 { v.push("-ffat-lto-objects") },
+            CCVersion::Gcc(_) => v.push("-ffat-lto-objects"),
+            _ => {}
+        }
+        return v;
+    };
+}
+
 /// see: [Options That Control Optimization](https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html)
 impl OptimizationMode {
+    // Flags //
     pub fn cflags(&self) -> &[&str] {
         match self {
             Debug => &["-g", "-O0"],
-            Release => &["-O3", "-flto", "-ffat-lto-objects", "-DNDEBUG"],
+            Release => cflags_release.as_slice(),
         }
     }
 
     pub fn linker_flags(&self) -> &[&str] {
         match self {
             Debug => &["-O0"],
-            Release => &["-O3", "-flto", "-ffat-lto-objects"]
+            Release => linker_flags_release.as_slice()
         }
     }
 
@@ -38,6 +64,7 @@ impl OptimizationMode {
         }
     }
 
+    // Names //
     pub fn cmake_name(&self) -> &'static str {
         match self {
             Debug => "Debug",
