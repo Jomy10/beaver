@@ -1,6 +1,7 @@
 use std::collections::LinkedList;
 use std::ffi::OsString;
 use std::path::Path;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use beaver::target::TargetRef;
@@ -8,12 +9,14 @@ use beaver::{Beaver, BeaverError, OptimizationMode};
 use clap::{arg, Arg, ArgAction, ArgMatches, Command, ValueHint};
 use lazy_static::lazy_static;
 use log::warn;
+use target_lexicon::Triple;
 
 include!(concat!(env!("OUT_DIR"), "/rb_const_gen.rs"));
 
 lazy_static! {
     static ref default_opt_mode: OsString = Into::<OsString>::into(OptimizationMode::default());
     static ref release_opt_mode: OsString = Into::<OsString>::into(OptimizationMode::Release);
+    static ref default_target: OsString = OsString::from(Triple::host().to_string());
 }
 
 struct MainError {
@@ -32,6 +35,22 @@ impl std::fmt::Debug for MainError {
     }
 }
 
+struct TripleParseError {
+    inner: target_lexicon::ParseError
+}
+
+impl std::error::Error for TripleParseError {}
+impl std::fmt::Debug for TripleParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self.inner, f)
+    }
+}
+impl std::fmt::Display for TripleParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.inner, f)
+    }
+}
+
 fn main() -> Result<(), MainError> {
     let build_args = [
         arg!(-o --opt [OPT] "Optimization mode")
@@ -43,6 +62,10 @@ fn main() -> Result<(), MainError> {
             .value_parser(["debug", "release"])
             .ignore_case(true)
             .help_heading("Build options"),
+        arg!(--target -t [TARGET] "The target to compile to")
+            .default_value(default_target.as_os_str())
+            .value_hint(ValueHint::Other)
+            .help_heading("Build options")
     ];
 
     let matches = Command::new("beaver")
@@ -186,8 +209,17 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
         _ => OptimizationMode::default()
     };
 
+    let target = matches.get_one::<String>("target").unwrap();
+    let target = Triple::from_str(target).map_err(|err| TripleParseError { inner: err })?;
+
     // Execute script
-    let beaver = Arc::new(Beaver::new(Some(color), opt, verbosity != 0, *debug)?);
+    let beaver = Arc::new(Beaver::new(
+        Some(color),
+        opt,
+        verbosity != 0,
+        *debug,
+        target
+    )?);
     let ctx = unsafe { beaver_ruby::execute_script(script_file, script_args, &beaver)? };
 
     if *debug {

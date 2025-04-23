@@ -16,6 +16,7 @@ log = { workspace = true }
 env_logger = { workspace = true }
 colog = { workspace = true }
 colored = { workspace = true }
+target-lexicon = {  workspace = true }
 beaver = { path = "../beaver" }
 beaver-ruby = { path = "../beaver-ruby" }
 

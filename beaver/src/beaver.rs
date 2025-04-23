@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex, MutexGuard, OnceLock, RwLock, RwLockReadGuard, RwLoc
 use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU8, Ordering};
 
 use console::style;
-use log::{error, info, trace};
+use log::*;
 use program_communicator::socket::ReceiveResult;
 use target_lexicon::Triple;
 use zerocopy::IntoBytes;
@@ -96,14 +96,23 @@ pub struct Beaver {
 }
 
 impl Beaver {
-    pub fn new(enable_color: Option<bool>, optimize_mode: OptimizationMode, verbose: bool, debug: bool) -> crate::Result<Beaver> {
+    pub fn new(
+        enable_color: Option<bool>,
+        optimize_mode: OptimizationMode,
+        verbose: bool, debug: bool,
+        target: Triple
+    ) -> crate::Result<Beaver> {
+        if target != Triple::host() {
+            warn!("Cross-compilation is in early development, expect bugs");
+        }
+
         Ok(Beaver {
             projects: RwLock::new(Vec::new()),
             project_index: AtomicIsize::new(-1),
             optimize_mode,
             build_dirs: OnceLock::new(),
             enable_color: enable_color.unwrap_or(true), // TODO: derive from isatty or set instance var to optional
-            target_triple: Triple::host(),
+            target_triple: target,
             verbose,
             debug,
             cache: OnceLock::new(),
