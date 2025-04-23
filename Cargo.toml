@@ -8,6 +8,7 @@ members = [
   "beaver-macros",
   "beaver-ruby",
   "spm-manifest",
+  "program-communicator"
 ]
 exclude = [
   "examples/cargo/hello-world"
@@ -56,6 +57,7 @@ tempdir = "0.3"
 tokio = "1.43"
 itertools = "0.14"
 seq-macro = "0.3"
+libc = "0.2"
 
 cmake-file-api = "0.1"
 cargo-manifest = "0.19"

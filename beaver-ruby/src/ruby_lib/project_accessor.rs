@@ -3,7 +3,7 @@ use beaver::BeaverError;
 
 use magnus::Module;
 
-use crate::{BeaverRubyError, RBCONTEXT};
+use crate::{BeaverRubyError, CTX};
 
 use super::target_accessor::TargetAccessor;
 
@@ -15,7 +15,7 @@ pub struct ProjectAccessor {
 
 impl ProjectAccessor {
     fn access(name: String) -> Result<ProjectAccessor, magnus::Error> {
-        let context = unsafe { &*RBCONTEXT.assume_init() };
+        let context = &CTX.get().unwrap().context;
         let projects = context.projects().map_err(|err| BeaverRubyError::from(err))?;
         let project = projects.iter().find(|project| project.name() == name);
         let Some(project) = project else {
@@ -26,7 +26,7 @@ impl ProjectAccessor {
     }
 
     fn target(&self, name: String) -> Result<TargetAccessor, magnus::Error> {
-        let context = unsafe { &*RBCONTEXT.assume_init() };
+        let context = &CTX.get().unwrap().context;
         let projects = context.projects().map_err(|err| BeaverRubyError::from(err))?;
         let target = projects[self.id].find_target(&name).map_err(|err| BeaverRubyError::from(err))?;
         let Some(target) = target else {

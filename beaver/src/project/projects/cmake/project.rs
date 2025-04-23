@@ -105,7 +105,7 @@ impl traits::Project for Project {
         scope: &rayon::Scope,
         triple: &Triple,
         builder: Arc<RwLock<Builder>>,
-        context: &Beaver,
+        context: &Arc<Beaver>,
     ) -> crate::Result<()> {
         _ = scope; // TODO
 

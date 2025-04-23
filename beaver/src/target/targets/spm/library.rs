@@ -111,7 +111,7 @@ impl traits::Target for Library {
         triple: &Triple,
         _builder: Arc<RwLock<Builder>>,
         scope: &mut Builder::Scope,
-        _context: &Beaver,
+        _context: &Arc<Beaver>,
     ) -> crate::Result<String> {
         let artifact_file = std::path::absolute(self.artifact_file(project_build_dir, ArtifactType::Library(self.artifact), triple)?)?;
         super::register_target(scope, project_name, &self.name, project_base_dir, &artifact_file, self.artifact, &self.cache_dir, Some(&self.swift_objc_header_path(project_build_dir)))
@@ -141,8 +141,6 @@ impl traits::Library for Library {
         collect_into.push(format!("-I{}", include_path.display()));
 
         additional_file_dependencies.push(self.swift_objc_header_path(project_build_dir));
-
-        dbg!(&additional_file_dependencies);
     }
 }
 

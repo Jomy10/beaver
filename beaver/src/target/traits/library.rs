@@ -49,7 +49,8 @@ pub trait Library: Target {
 
     /// - Collects the public C flags of this target into `collect_into`.
     /// - Collects additional files to which the dependant should depend on into `additional_file_dependencies`.
-    ///   This could be for example generated files that are generated when this target is built.
+    ///   This could be for example generated files that are generated when this target is built. These files are
+    ///   not compiled into the dependant, but could be added as e.g. a -I{file} flag
     fn public_cflags(&self,
         roject_base_dir: &Path,
         project_build_dir: &Path,
@@ -79,4 +80,5 @@ pub enum AnyLibrary {
     CMake(targets::cmake::Library),
     Cargo(targets::cargo::Library),
     SPM(targets::spm::Library),
+    Custom(targets::custom::Library),
 }

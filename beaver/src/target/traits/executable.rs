@@ -2,7 +2,7 @@ use std::path::Path;
 use enum_dispatch::enum_dispatch;
 use target_lexicon::Triple;
 
-use crate::target;
+use crate::target::{self, targets};
 use crate::target::{ArtifactType, ExecutableArtifactType, traits::Target};
 
 #[enum_dispatch]
@@ -34,4 +34,5 @@ pub enum AnyExecutable {
     CMake(target::cmake::Executable),
     Cargo(target::cargo::Executable),
     SPM(target::spm::Executable),
+    Custom(targets::custom::Executable),
 }

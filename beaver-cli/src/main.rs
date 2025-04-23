@@ -1,13 +1,11 @@
 use std::collections::LinkedList;
 use std::ffi::OsString;
 use std::path::Path;
-use std::io::Write;
+use std::sync::Arc;
 
 use beaver::target::TargetRef;
 use beaver::{Beaver, BeaverError, OptimizationMode};
 use clap::{arg, Arg, ArgAction, ArgMatches, Command, ValueHint};
-use colog::format::CologStyle;
-use colored::Colorize;
 use lazy_static::lazy_static;
 use log::warn;
 
@@ -113,14 +111,14 @@ fn main() -> Result<(), MainError> {
     run_cli(&matches)
 }
 
-struct DebugLoggingStyle;
+// struct DebugLoggingStyle;
 
-impl CologStyle for DebugLoggingStyle {
-    fn format(&self, buf: &mut env_logger::fmt::Formatter, record: &log::Record<'_>) -> Result<(), std::io::Error> {
-        // colog::format::default_format(self, buf, record)
-        writeln!(buf, "{:?}", record)
-    }
-}
+// impl CologStyle for DebugLoggingStyle {
+//     fn format(&self, buf: &mut env_logger::fmt::Formatter, record: &log::Record<'_>) -> Result<(), std::io::Error> {
+//         // colog::format::default_format(self, buf, record)
+//         writeln!(buf, "{:?}", record)
+//     }
+// }
 
 fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
     let debug = matches.get_one::<bool>("debug").unwrap();
@@ -135,7 +133,6 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
     // clog.format(colog::formatter(DebugLoggingStyle));
 
     let verbosity = if *debug { 3 } else { matches.get_count("verbosity") };
-    // dbg!(&matches);
     #[cfg(not(debug_assertions))] {
         match verbosity {
             0 => {},
@@ -190,16 +187,14 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
     };
 
     // Execute script
-    let beaver = Box::new(Beaver::new(Some(color), opt, verbosity != 0, *debug)?);
-    let ctx = unsafe { beaver_ruby::execute_script(script_file, script_args, beaver)? };
+    let beaver = Arc::new(Beaver::new(Some(color), opt, verbosity != 0, *debug)?);
+    let ctx = unsafe { beaver_ruby::execute_script(script_file, script_args, &beaver)? };
 
     if *debug {
         let mut str = String::new();
         ctx.context.fmt_debug(&mut str)?;
         eprintln!("{}", str);
     }
-
-    let beaver = &ctx.context;
 
     // Execute subcommand
     match matches.subcommand() {
@@ -265,6 +260,9 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
     if ctx.has_args() {
         warn!("Unused arguments: {:?}", *ctx.args());
     }
+
+    drop(beaver);
+    drop(ctx);
 
     Ok(())
 }

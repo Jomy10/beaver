@@ -59,7 +59,7 @@ pub trait Target: Send + Sync + std::fmt::Debug {
         triple: &Triple,
         builder: Arc<RwLock<Builder>>,
         scope: &mut Builder::Scope,
-        context: &Beaver
+        context: &Arc<Beaver>
     ) -> crate::Result<String>;
 
     fn unique_dependencies_and_languages(&self, context: &Beaver) -> crate::Result<(std::collections::hash_set::IntoIter<Dependency>, std::collections::hash_set::IntoIter<Language>)> {

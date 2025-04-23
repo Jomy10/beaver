@@ -43,7 +43,7 @@ pub trait Project: Send + Sync + std::fmt::Debug {
         scope: &rayon::Scope,
         triple: &Triple,
         builder: Arc<RwLock<Builder>>,
-        context: &Beaver
+        context: &Arc<Beaver>
     ) -> crate::Result<()>;
 
     #[doc(hidden)]
@@ -54,7 +54,7 @@ pub trait Project: Send + Sync + std::fmt::Debug {
     fn register_targets<'a, Builder: BackendBuilder<'static>>(&self,
         triple: &Triple,
         builder: &'a Arc<RwLock<Builder>>,
-        context: &Beaver
+        context: &Arc<Beaver>
     ) -> crate::Result<(RwLockWriteGuard<'a, Builder>, Vec<String>)> {
         let targets = self.targets()?;
 

@@ -187,7 +187,7 @@ impl traits::Target for Library {
         target_triple: &Triple,
         builder: Arc<RwLock<Builder>>,
         scope: &mut Builder::Scope,
-        context: &Beaver
+        context: &Arc<Beaver>
     ) -> crate::Result<String> {
         CTarget::register_impl(
             self,

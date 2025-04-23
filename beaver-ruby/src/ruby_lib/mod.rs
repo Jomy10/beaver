@@ -4,7 +4,7 @@ mod project_accessor;
 mod target_accessor;
 mod project;
 mod target;
-mod dependency;
+pub(crate) mod dependency;
 mod build_dir;
 mod pre;
 mod command;

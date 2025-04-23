@@ -10,13 +10,15 @@ use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU8, Ordering};
 
 use console::style;
 use log::{error, info, trace};
+use program_communicator::socket::ReceiveResult;
 use target_lexicon::Triple;
+use zerocopy::IntoBytes;
 
 use crate::backend::ninja::{NinjaBuilder, NinjaRunner};
 use crate::backend::BackendBuilder;
 use crate::cache::Cache;
 use crate::command::Commands;
-use crate::traits::{AnyLibrary, AnyProject};
+use crate::traits::{AnyExecutable, AnyLibrary, AnyProject};
 use crate::OptimizationMode;
 use crate::phase_hook::{Phase, PhaseHook, PhaseHooks};
 use crate::error::BeaverError;
@@ -60,6 +62,41 @@ struct BuildDirs {
     output: PathBuf
 }
 
+// #[derive(Debug)]
+// struct FifoPipe {
+//     pipe_file_path: PathBuf,
+//     pipe_file: CString,
+//     watcher: std::thread::JoinHandle<crate::Result<()>>
+// }
+
+// impl FifoPipe {
+//     fn end(&self) -> crate::Result<()> {
+//         let fd = unsafe { libc::open(self.pipe_file.as_ptr(), libc::O_WRONLY) };
+//         if fd < 0 {
+//             return Err(BeaverError::LibcError(std::io::Error::last_os_error().raw_os_error().unwrap()));
+//         }
+
+//         let rv = unsafe { libc::write(fd, [0].as_ptr() as *const c_void, 1) };
+//         if rv < 0 {
+//             return Err(BeaverError::LibcError(std::io::Error::last_os_error().raw_os_error().unwrap()));
+//         }
+
+//         if unsafe { libc::close(fd) } < 0 {
+//             return Err(BeaverError::LibcError(std::io::Error::last_os_error().raw_os_error().unwrap()));
+//         }
+
+//         Ok(())
+//     }
+// }
+
+pub(crate) struct CommunicationSocket(pub(crate) OnceLock<program_communicator::socket::Socket>);
+
+impl std::fmt::Debug for CommunicationSocket {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("CommunicationSocket")
+    }
+}
+
 /// All methods of this struct are immutable because this struct ensures all calls to its
 /// methods are thread safe
 #[derive(Debug)]
@@ -81,9 +118,8 @@ pub struct Beaver {
     commands: Mutex<Commands>,
     /// Indicates wether the symlink to the last built target has been created
     symlink_created: AtomicBool,
-    // lock_builddir: AtomicBool,
-    // /// Create the build file once and store the result of the operation in this cell
-    // build_file_create_result: OnceLock<crate::Result<()>>,
+
+    pub(crate) comm_socket: CommunicationSocket,
 }
 
 impl Beaver {
@@ -104,6 +140,7 @@ impl Beaver {
             phase_hook_clean: Mutex::new(PhaseHooks(Vec::new())),
             commands: Mutex::new(Commands(HashMap::new())),
             symlink_created: AtomicBool::new(false),
+            comm_socket: CommunicationSocket(OnceLock::new())
             // lock_builddir: AtomicBool::new(false),
             // build_file_create_result: OnceLock::new()
         })
@@ -235,7 +272,7 @@ impl Beaver {
             Err(err) => match err.kind() {
                 io::ErrorKind::NotFound => {}
                 _ => {
-                    dbg!(err.kind());
+                    trace!("(err kind) {}", err.kind());
                     return Err(BeaverError::SymlinkCreationError(err, from, to));
                 }
             },
@@ -243,7 +280,7 @@ impl Beaver {
 
         if create_symlink {
             utils::fs::symlink_dir(&from, &to)
-                .map_err(|err| { dbg!(err.kind()); BeaverError::SymlinkCreationError(err, from.to_path_buf(), to) })
+                .map_err(|err| { trace!("(err kind) {}", err.kind()); BeaverError::SymlinkCreationError(err, from.to_path_buf(), to) })
         } else {
             Ok(())
         }
@@ -356,6 +393,15 @@ impl Beaver {
         return cb(&mut projects[project_id]);
     }
 
+    pub fn with_project<S>(
+        &self,
+        project_id: usize,
+        cb: impl FnOnce(&AnyProject) -> crate::Result<S>
+    ) -> crate::Result<S> {
+        let projects = self.projects()?;
+        return cb(&projects[project_id]);
+    }
+
     pub fn with_current_project_mut<S>(
         &self,
         cb: impl FnOnce(&mut AnyProject) -> crate::Result<S>
@@ -423,7 +469,117 @@ impl Beaver {
             .map(|path| path.join("build.ninja"))
     }
 
-    pub fn create_build_file(&self) -> crate::Result<()> {
+    /// If `callback_path` is set, this indicates that a message should be sent to the caller of the command
+    fn handle_communication(self: &Arc<Self>, reader: &mut dyn io::Read, callback_path: &mut Option<PathBuf>) -> crate::Result<ReceiveResult> {
+        trace!(target: "communication", "Received message to communication socket");
+
+        let mut str = String::new();
+        reader.read_to_string(&mut str)?;
+
+        let i = str.chars().position(|c| c == ' ').unwrap_or(str.len());
+        let cmd = &str[..i];
+
+        match cmd {
+            "close" => Ok(ReceiveResult::Close),
+            "build" => {
+                #[cfg(unix)] {
+                    trace!(target: "communication", "message is a build message");
+                    let target_end = i+1 + str[i+1..].chars().position(|c| c == ' ').expect("invalid formatted command");
+                    let mut target = str[i+1..target_end].split(":");
+                    let project_id = target.next().unwrap().parse::<usize>().unwrap();
+                    let target_id = target.next().unwrap().parse::<usize>().unwrap();
+                    assert!(target.next().is_none());
+
+                    *callback_path = Some(PathBuf::from(&str[target_end+1..]));
+
+                    trace!(target: "communication", "parameters: project_id={} target_id={} callback_path={:?}", project_id, target_id, callback_path);
+
+                    self.with_project(project_id, |proj| {
+                        let target = &proj.targets()?[target_id];
+                        trace!("{:?}", target);
+
+                        match target {
+                            AnyTarget::Library(lib) => match lib {
+                                AnyLibrary::Custom(library) => library.build()?,
+                                _ => return Err(BeaverError::TargetHasNoBuildCommand(target.name().to_string()))
+                            },
+                            AnyTarget::Executable(exe) => match exe {
+                                AnyExecutable::Custom(executable) => executable.build()?,
+                                _ => return Err(BeaverError::TargetHasNoBuildCommand(target.name().to_string()))
+                            },
+                        }
+
+                        Ok(())
+                    })?;
+
+                    Ok(ReceiveResult::Continue)
+                }
+
+                #[cfg(not(unix))] {
+                    panic!("Custom targets are not supported on this platform");
+                }
+
+                // // let target_ref = unsafe { &(**self_ptr.value()) }.parse_target_ref(target).map_err(|err| Box::new(err) as Box<dyn std::error::Error + Send>)?;
+                // match self2.build(target_ref) {
+                //     Ok(()) => {
+                //         #[cfg(unix)] {
+                //             program_communicator::callback::unix::send_message(&callback_path, '0'.as_bytes()).map_err(|err| Box::new(err) as Box<dyn std::error::Error + Send>)?;
+                //         }
+                //         #[cfg(not(unix))] {
+                //             panic!("Custom targets not supported on this platform");
+                //         }
+                //     },
+                //     Err(err) => {
+                //         error!("{err}");
+                //         #[cfg(unix)] {
+                //             program_communicator::callback::unix::send_message(&callback_path, '1'.as_bytes()).map_err(|err| Box::new(err) as Box<dyn std::error::Error + Send>)?;
+                //         }
+                //         #[cfg(not(unix))] {
+                //             panic!("Custom targets not supported on this platform");
+                //         }
+                //     },
+                // }
+
+            },
+            _ => {
+                error!("Invalid command {cmd}");
+                Ok(ReceiveResult::Continue)
+            }
+        }
+    }
+
+    pub(crate) fn enable_communication(self: &Arc<Self>) -> crate::Result<()> {
+        let self2 = self.clone();
+        let _ = self.comm_socket.0.set(program_communicator::socket::listen("beaver_custom_targets", move |reader| {
+            let mut callback_path: Option<PathBuf> = None;
+            match self2.handle_communication(reader, &mut callback_path) {
+                Ok(res) => {
+                    trace!(target: "communication", "message result = {:?}", res);
+                    #[cfg(unix)] {
+                        if let Some(callback_path) = callback_path {
+                            program_communicator::callback::unix::send_message(&callback_path, '0'.as_bytes())
+                                .map_err(|err| Box::new(err) as Box<dyn std::error::Error + Send>)?;
+                        }
+                    }
+                    Ok(res)
+                },
+                Err(err) => {
+                    error!(target: "communication", "{}", err);
+                    #[cfg(unix)] {
+                        if let Some(callback_path) = callback_path {
+                            program_communicator::callback::unix::send_message(&callback_path, '1'.as_bytes())
+                                .map_err(|err| Box::new(err) as Box<dyn std::error::Error + Send>)?;
+                        }
+                    }
+                    Err(Box::new(err) as Box<dyn std::error::Error + Send>)
+                },
+            }
+        }).map_err(|err| BeaverError::AnyError(err.to_string()))?);
+
+        Ok(())
+    }
+
+    pub fn create_build_file(self: &Arc<Self>) -> crate::Result<()> {
         if self.status.load(Ordering::SeqCst) != BeaverState::Initialized as u8 {
             return Err(BeaverError::AlreadyFinalized);
         }
@@ -490,17 +646,17 @@ impl Beaver {
         return Ok(names);
     }
 
-    pub fn build(&self, target: TargetRef) -> crate::Result<()> {
+    pub fn build(self: &Arc<Self>, target: TargetRef) -> crate::Result<()> {
         self.build_all(&[target])
     }
 
-    pub fn build_all(&self, targets: &[TargetRef]) -> crate::Result<()> {
+    pub fn build_all(self: &Arc<Self>, targets: &[TargetRef]) -> crate::Result<()> {
         let target_names = self.qualified_names(targets)?;
         let target_names: Vec<&str> = target_names.iter().map(|str| str.as_str()).collect();
         self.build_all_named(target_names.as_slice())
     }
 
-    pub fn build_all_named(&self, target_names: &[&str]) -> crate::Result<()> {
+    pub fn build_all_named(self: &Arc<Self>, target_names: &[&str]) -> crate::Result<()> {
         match BeaverState::try_from(self.status.load(Ordering::SeqCst))? {
             BeaverState::Initialized => self.create_build_file()?,
             BeaverState::Invalid => return Err(BeaverError::UnrecoverableError),
@@ -519,7 +675,7 @@ impl Beaver {
         Ok(())
     }
 
-    pub fn build_current_project(&self) -> crate::Result<()> {
+    pub fn build_current_project(self: &Arc<Self>) -> crate::Result<()> {
         self.with_current_project(|project| {
             self.build_all_named(&[project.name()])
             // match project.targets() {
@@ -531,7 +687,7 @@ impl Beaver {
         })
     }
 
-    pub fn run<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(&self, target: TargetRef, args: I) -> crate::Result<()> {
+    pub fn run<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(self: &Arc<Self>, target: TargetRef, args: I) -> crate::Result<()> {
         if self.target_triple != Triple::host() {
             panic!("Running targets in a triple that is not the current host is currently unsupported");
         }
@@ -562,14 +718,14 @@ impl Beaver {
         }
     }
 
-    pub fn run_default<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(&self, args: I) -> crate::Result<()> {
+    pub fn run_default<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(self: &Arc<Self>, args: I) -> crate::Result<()> {
         let exe = self.with_current_project(|project| {
             project.default_executable()
         })?;
         self.run(exe, args)
     }
 
-    pub fn clean(&self) -> crate::Result<()> {
+    pub fn clean(self: &Arc<Self>) -> crate::Result<()> {
         info!("Cleaning all projects...");
 
         if self.projects()?.len() == 0 {
@@ -622,7 +778,7 @@ impl Beaver {
 
     /// Run all the registered hooks for a particular phase. When this function is called multiple times for the
     /// same phase, the hooks will only run on the first invocation
-    fn run_phase_hook(&self, phase: Phase) -> crate::Result<()> {
+    fn run_phase_hook(self: &Arc<Self>, phase: Phase) -> crate::Result<()> {
         match BeaverState::try_from(self.status.load(Ordering::SeqCst))? {
             BeaverState::Initialized => self.create_build_file()?, // finalize beaver
             BeaverState::Invalid => return Err(BeaverError::UnrecoverableError),
@@ -666,7 +822,7 @@ impl Beaver {
         Ok(())
     }
 
-    pub fn run_command(&self, name: &str) -> crate::Result<()> {
+    pub fn run_command(self: &Arc<Self>, name: &str) -> crate::Result<()> {
         match BeaverState::try_from(self.status.load(Ordering::SeqCst))? {
             BeaverState::Initialized => self.create_build_file()?, // finalize beaver
             BeaverState::Invalid => return Err(BeaverError::UnrecoverableError),
@@ -746,5 +902,17 @@ impl std::fmt::Display for Beaver {
         }
 
         return Ok(());
+    }
+}
+
+impl Drop for Beaver {
+    fn drop(&mut self) {
+        if let Some(socket) = self.comm_socket.0.take() {
+            socket.send("close").unwrap();
+            #[cfg(unix)] {
+                use program_communicator::socket::SocketUnixExt;
+                socket.wait().unwrap();
+            }
+        }
     }
 }

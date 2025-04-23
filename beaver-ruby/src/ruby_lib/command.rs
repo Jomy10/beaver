@@ -1,12 +1,12 @@
 use std::collections::LinkedList;
 use std::process::Command;
 
-use log::warn;
+use log::{trace, warn};
 use magnus::rb_sys::AsRawValue;
 use magnus::value::ReprValue;
 use utils::UnsafeSendable;
 
-use crate::{BeaverRubyError, CTX_RC, RBCONTEXT};
+use crate::{BeaverRubyError, CTX};
 
 // Parse ruby function args for opt/arg
 fn parse_ruby_args(args: &[magnus::Value]) -> Result<(Option<String>, Option<String>, Option<magnus::Value>), magnus::Error> {
@@ -97,9 +97,8 @@ fn get_opt(args: &mut LinkedList<String>, full_name: Option<&str>, short_name: O
     }
 }
 
-fn opt(args: &[magnus::Value]) -> Result<magnus::Value, magnus::Error> {
-    #[allow(static_mut_refs)]
-    let ctx = unsafe { CTX_RC.assume_init_ref() }.upgrade().unwrap();
+fn opt(ruby: &magnus::Ruby, args: &[magnus::Value]) -> Result<magnus::Value, magnus::Error> {
+    let ctx = CTX.get().unwrap();
 
     let (long_name, short_name, default) = parse_ruby_args(args)?;
 
@@ -118,7 +117,7 @@ fn opt(args: &[magnus::Value]) -> Result<magnus::Value, magnus::Error> {
                     Err(err) => Err(BeaverRubyError::from(err).into()),
                 },
                 rb_sys::ruby_value_type::RUBY_T_NIL |
-                rb_sys::ruby_value_type::RUBY_T_STRING => Ok(ctx.ruby.str_new(&value).as_value()),
+                rb_sys::ruby_value_type::RUBY_T_STRING => Ok(ruby.str_new(&value).as_value()),
                 rb_sys::ruby_value_type::RUBY_T_FIXNUM |
                 rb_sys::ruby_value_type::RUBY_T_BIGNUM => match value.parse::<i64>() {
                     Ok(i) => Ok(magnus::Integer::from_i64(i).as_value()),
@@ -127,15 +126,15 @@ fn opt(args: &[magnus::Value]) -> Result<magnus::Value, magnus::Error> {
                 rb_sys::ruby_value_type::RUBY_T_TRUE |
                 rb_sys::ruby_value_type::RUBY_T_FALSE => match value.parse::<bool>() {
                     Ok(b) => Ok(match b {
-                        true => ctx.ruby.qtrue().as_value(),
-                        false => ctx.ruby.qfalse().as_value(),
+                        true => ruby.qtrue().as_value(),
+                        false => ruby.qfalse().as_value(),
                     }),
                     Err(err) => Err(BeaverRubyError::from(err).into()),
                 },
                 rb_sys::ruby_value_type::RUBY_T_SYMBOL => Ok(magnus::Symbol::new(value).as_value()),
                 ty => {
                     warn!("Couldn't determine type for `opt`. Default value is {:?} which is not supported, defaulting to string", ty);
-                    Ok(ctx.ruby.str_new(&value).as_value())
+                    Ok(ruby.str_new(&value).as_value())
                 }
             }
         } else {
@@ -143,9 +142,9 @@ fn opt(args: &[magnus::Value]) -> Result<magnus::Value, magnus::Error> {
         }
     } else {
         if let Some(value) = value {
-            Ok(ctx.ruby.str_new(&value).as_value())
+            Ok(ruby.str_new(&value).as_value())
         } else {
-            Ok(ctx.ruby.qnil().as_value())
+            Ok(ruby.qnil().as_value())
         }
     }
 }
@@ -160,19 +159,18 @@ fn get_flag(args: &mut LinkedList<String>, full_name: Option<&str>, short_name: 
     }
 }
 
-fn flag(args: &[magnus::Value]) -> Result<magnus::Value, magnus::Error> {
-    #[allow(static_mut_refs)]
-    let ctx = unsafe { CTX_RC.assume_init_ref() }.upgrade().unwrap();
+fn flag(ruby: &magnus::Ruby, args: &[magnus::Value]) -> Result<magnus::Value, magnus::Error> {
+    let ctx = CTX.get().unwrap();
 
     let (long_name, short_name, default) = parse_ruby_args(args)?;
 
     // no-[flag]
     if let Some(default) = default {
-        if default.is_nil() || default.is_kind_of(ctx.ruby.class_true_class()) {
+        if default.is_nil() || default.is_kind_of(ruby.class_true_class()) {
             let mut args = ctx.args.borrow_mut();
             let flag_present: bool = get_flag(&mut args, long_name.as_ref().map(|str| "no-".to_string() + str.as_str()).as_deref(), None)?;
             if flag_present {
-                return Ok(ctx.ruby.qfalse().as_value());
+                return Ok(ruby.qfalse().as_value());
             }
         }
     }
@@ -182,18 +180,18 @@ fn flag(args: &[magnus::Value]) -> Result<magnus::Value, magnus::Error> {
     drop(args);
 
     if flag_present {
-        return Ok(ctx.ruby.qtrue().as_value());
+        return Ok(ruby.qtrue().as_value());
     }
 
     if let Some(default) = default {
         return Ok(default);
     } else {
-        return Ok(ctx.ruby.qfalse().as_value());
+        return Ok(ruby.qfalse().as_value());
     }
 }
 
 fn cmd(args: &[magnus::Value]) -> Result<(), magnus::Error> {
-    let context = unsafe { &*RBCONTEXT.assume_init() };
+    let context = &CTX.get().unwrap().context;
 
     let args = magnus::scan_args::scan_args::<
         (String,), // required
@@ -208,9 +206,12 @@ fn cmd(args: &[magnus::Value]) -> Result<(), magnus::Error> {
     let proc = UnsafeSendable::new(args.block);
 
     context.add_command(cmd_name, Box::new(move || {
-        unsafe { proc.value() }.call(())
-            .map_err(|err| Box::new(BeaverRubyError::from(err)) as Box<dyn std::error::Error>)
-            .map(|v| { let _: magnus::Value = v; (); })
+        let ctx = CTX.get().unwrap();
+        ctx.block_execute_on(Box::new(move || {
+            unsafe { proc.value() }.call(())
+                .map(|v| { /*trace!("ruby val: {:?}", v);*/ let _: magnus::Value = v; (); })
+                .map_err(BeaverRubyError::from)
+        })).map_err(|err| Box::new(err) as Box<dyn std::error::Error>)
     })).map_err(BeaverRubyError::from)?;
 
     Ok(())

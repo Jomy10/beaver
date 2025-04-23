@@ -3,9 +3,11 @@ use std::process::Command;
 #[test]
 fn opt() {
     let dir = super::example_dir_no_clean("arguments");
-    let output = Command::new(crate::beaver())
+    let mut output = Command::new(crate::beaver());
+    let output = output
         .args(["printArg", "--", "--argument-name", "sdl-version", "--sdl-version", "3"])
-        .current_dir(dir)
+        .current_dir(dir);
+    let output = output
         .output()
         .unwrap();
 

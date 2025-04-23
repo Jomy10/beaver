@@ -1,7 +1,6 @@
 use std::{fs, io};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use log::*;
 use uuid::Uuid;
 use zerocopy::IntoBytes;
 
@@ -241,6 +240,7 @@ impl<'a> File<'a> {
         });
     }
 
+    #[allow(unused)]
     pub fn check_id_from_bytes(bytes: impl AsRef<[u8]>) -> Uuid {
         let bytes = bytes.as_ref();
         let (start, size) = const { Self::layout_item_index(LayoutItem::CheckId) };

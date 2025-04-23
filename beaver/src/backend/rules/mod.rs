@@ -1,7 +1,6 @@
 
 use lazy_static::lazy_static;
 
-// use crate::target::{OBJCXX_CFLAGS, OBJCXX_LINKER_FLAGS, OBJC_CFLAGS, OBJC_LINKER_FLAGS};
 use crate::tools;
 use crate::target::language;
 
@@ -162,5 +161,15 @@ lazy_static! {
             ("command", &SPM_CMD),
         ],
         pool: Some(&EXTERNAL_POOL),
+    };
+
+    pub static ref CUSTOM: Rule = Rule {
+        name: "custom_command",
+        options: vec![
+            ("description", "building $name"),
+            // ("command", "echo -n -e $bytes >> $file")
+            ("command", "$cmd")
+        ],
+        pool: None
     };
 }

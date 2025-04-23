@@ -27,6 +27,7 @@ uuid = { workspace = true, features = ["v4", "fast-rng", "macro-diagnostics"] }
 tokio = { workspace = true, features = ["rt", "macros"] }
 itertools = { workspace = true }
 seq-macro = { workspace = true }
+libc = { workspace = true }
 # serde = { workspace = true, features = ["derive"] }
 # serde_json = { workspace = true }
 cmake-file-api = { workspace = true }
@@ -35,6 +36,7 @@ spm-manifest = { path = "../spm-manifest" }
 utils = { path = "../utils", features = ["junctions"] }
 glob = { path = "../glob" }
 beaver-macros = { path = "../beaver-macros" }
+program-communicator = { path = "../program-communicator" }
 
 [dev-dependencies]
 tempdir = { workspace = true }

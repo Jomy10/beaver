@@ -1,7 +1,7 @@
 use utils::UnsafeSendable;
 use beaver::phase_hook::Phase;
 
-use crate::{BeaverRubyError, RBCONTEXT};
+use crate::{BeaverRubyError, CTX};
 
 fn pre(args: &[magnus::Value]) -> Result<(), magnus::Error> {
     let args = magnus::scan_args::scan_args::<
@@ -14,7 +14,7 @@ fn pre(args: &[magnus::Value]) -> Result<(), magnus::Error> {
         magnus::block::Proc,
     >(args)?;
 
-    let context = unsafe { &*RBCONTEXT.assume_init() };
+    let context = &CTX.get().unwrap().context;
 
     let phase = args.required.0;
     let phase: Phase = if let Some(str) = magnus::RString::from_value(phase) {
@@ -28,9 +28,12 @@ fn pre(args: &[magnus::Value]) -> Result<(), magnus::Error> {
     let block = UnsafeSendable::new(args.block);
 
     context.add_phase_hook(phase, Box::new(move || {
-        unsafe { block.value() }.call::<magnus::RArray, magnus::Value>(magnus::RArray::new())
-            .map_err(|err| Box::from(BeaverRubyError::from(err)) as Box<dyn std::error::Error>)
-            .map(|_| ())
+        let ctx = &CTX.get().unwrap();
+        ctx.block_execute_on(Box::new(move || {
+            unsafe { block.value() }.call::<magnus::RArray, magnus::Value>(magnus::RArray::new())
+                .map(|_| ())
+                .map_err(BeaverRubyError::from)
+        })).map_err(|err| Box::new(err) as Box<dyn std::error::Error>)
     })).map_err(|err| BeaverRubyError::from(err).into())
 }
 

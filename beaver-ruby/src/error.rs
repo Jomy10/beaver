@@ -1,38 +1,89 @@
 use std::num::{ParseFloatError, ParseIntError};
 use std::process::ExitStatus;
-use std::rc::Rc;
 use std::str::ParseBoolError;
+use std::sync::{Arc, Mutex};
 
 use magnus::error::RubyUnavailableError;
 use magnus::value::ReprValue;
+use utils::UnsafeSendable;
 
-use crate::{BeaverRubyContext, CTX_RC};
+use crate::CTX;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BeaverRubyError {
     #[error(transparent)]
     RubyUnavailableError(#[from] RubyUnavailableError),
-    #[error("{}{}",
-        .0,
-        // include a backtrace
-        .0.value().map_or("".to_string(), |value| value.funcall("backtrace", ())
-            .map_or("".to_string(), |value: magnus::Value| {
-                value.funcall("join", ("\n",))
-                    .map_or("".to_string(), |value: magnus::RString| {
-                        match unsafe { value.as_str() } {
-                            Ok(val) => "\n".to_string() + val,
-                            Err(_) => "".to_string()
-                        }
-                    })
-                })
-        )
-    )]
-    MagnusError(magnus::Error, Rc<BeaverRubyContext>), // The BeaverRubyContext should be kept alive so we can construct the backtrace
+    #[error("{1}")]
+    MagnusError(magnus::Error, String),
+    // #[error("{}",
+    //     {
+    //         if (unsafe { CTX_RC.assume_init().upgrade().unwrap() }.thread_id == std::thread::current().id()) {
+    //             format!(
+    //                 "{}{}",
+    //                 .1,
+    //                 // include a backtrace
+    //                 .1.value().map_or("".to_string(), |value| value.funcall("backtrace", ())
+    //                     .map_or("".to_string(), |value: magnus::Value| {
+    //                         value.funcall("join", ("\n",))
+    //                             .map_or("".to_string(), |value: magnus::RString| {
+    //                                 match unsafe { value.as_str() } {
+    //                                     Ok(val) => "\n".to_string() + val,
+    //                                     Err(_) => "".to_string()
+    //                                 }
+    //                             })
+    //                         })
+    //                 )
+    //             )
+    //         } else {
+    //             let _out: Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
+    //             let out = _out.clone();
+    //             block_execute_on(.0, Box::new(|| {
+    //                 let out = out.lock().unwrap();
+    //                 *out = format!(
+    //                     "{}{}",
+    //                     .1,
+    //                     // include a backtrace
+    //                     .1.value().map_or("".to_string(), |value| value.funcall("backtrace", ())
+    //                         .map_or("".to_string(), |value: magnus::Value| {
+    //                             value.funcall("join", ("\n",))
+    //                                 .map_or("".to_string(), |value: magnus::RString| {
+    //                                     match unsafe { value.as_str() } {
+    //                                         Ok(val) => "\n".to_string() + val,
+    //                                         Err(_) => "".to_string()
+    //                                     }
+    //                                 })
+    //                             })
+    //                     )
+    //                 );
+    //                 Ok(())
+    //             })).unwrap();
+
+    //             _out.lock().unwrap().clone()
+    //         }
+    //     }
+    // )]
+    // MagnusError(RubyThreadSender<'static>, magnus::Error, Arc<BeaverRubyContext>), // The BeaverRubyContext should be kept alive so we can construct the backtrace
     #[error("IO Error: {0}")]
     IOError(#[from] std::io::Error),
     #[error(transparent)]
     BeaverError(#[from] beaver::BeaverError),
-    #[error("Cannot convert {0} to {1}", )]
+    #[error("Cannot convert {} to {}", {
+        let ctx = &CTX.get().unwrap();
+        if ctx.thread_id == std::thread::current().id() {
+            .0.to_string()
+        } else {
+            // scuffed implementation
+            let res = Arc::new(Mutex::new(String::new()));
+            let value = UnsafeSendable::new(&raw const *.0);
+            let _res = res.clone();
+            ctx.block_execute_on(Box::new(move || {
+                let value = unsafe { *value.value() };
+                *_res.lock().unwrap() = unsafe { (*value).to_string() };
+                Ok(())
+            })).unwrap();
+            res.lock().unwrap().clone()
+        }
+    }, .1)]
     IncompatibleType(magnus::Value, &'static str),
     #[error("{0}")]
     ArgumentError(String),
@@ -59,6 +110,8 @@ pub enum BeaverRubyError {
     NoCommand(String),
 }
 
+unsafe impl Send for BeaverRubyError {}
+
 impl From<magnus::Error> for BeaverRubyError {
     fn from(value: magnus::Error) -> Self {
         // let backtrace = value.value().map_or("".to_string(), |value| value.funcall("backtrace", ())
@@ -73,11 +126,24 @@ impl From<magnus::Error> for BeaverRubyError {
         //     })
         // );
 
-        BeaverRubyError::MagnusError(
+        let strerr = format!(
+            "{}{}",
             value,
-            #[allow(static_mut_refs)]
-            unsafe { CTX_RC.assume_init_ref().upgrade().expect("Rc was dropped") }
-        )
+            // include a backtrace
+            value.value().map_or("".to_string(), |value| value.funcall("backtrace", ())
+                .map_or("".to_string(), |value: magnus::Value| {
+                    value.funcall("join", ("\n",))
+                        .map_or("".to_string(), |value: magnus::RString| {
+                            match unsafe { value.as_str() } {
+                                Ok(val) => "\n".to_string() + val,
+                                Err(_) => "".to_string()
+                            }
+                        })
+                    })
+            )
+        );
+
+        BeaverRubyError::MagnusError(value, strerr)
     }
 }
 

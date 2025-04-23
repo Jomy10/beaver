@@ -121,7 +121,7 @@ impl traits::Target for Library {
         triple: &Triple,
         builder: Arc<RwLock<Builder>>,
         scope: &mut Builder::Scope,
-        context: &Beaver
+        context: &Arc<Beaver>
     ) -> crate::Result<String> {
         _ = context;
         _ = project_base_dir;

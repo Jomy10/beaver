@@ -3,13 +3,13 @@ use std::path::PathBuf;
 use beaver::project;
 use beaver::traits::AnyProject;
 
-use crate::{BeaverRubyError, RBCONTEXT};
+use crate::{BeaverRubyError, CTX};
 
 use super::project_accessor::ProjectAccessor;
 use super::Arg;
 
 fn define_project(args: magnus::RHash) -> Result<ProjectAccessor, magnus::Error> {
-    let context = unsafe { &*RBCONTEXT.assume_init() };
+    let context = &CTX.get().unwrap().context;
 
     let mut name: Arg<String> = Arg::new("name");
     let mut base_dir: Arg<PathBuf> = Arg::new("base_dir");
@@ -59,20 +59,20 @@ fn define_project(args: magnus::RHash) -> Result<ProjectAccessor, magnus::Error>
 
 // TODO: optional splat -> cmake flags
 fn import_cmake(dir: String) -> Result<(), magnus::Error> {
-    let context = unsafe { &*RBCONTEXT.assume_init() };
+    let context = &CTX.get().unwrap().context;
     project::cmake::import(&PathBuf::from(dir), &[], &context)
         .map_err(|err| BeaverRubyError::from(err).into())
 }
 
 // TODO: optional splat -> cargo flags
 fn import_cargo(dir: String) -> Result<(), magnus::Error> {
-    let context = unsafe { &*RBCONTEXT.assume_init() };
+    let context = &CTX.get().unwrap().context;
     project::cargo::import(&PathBuf::from(dir), vec![], &context)
         .map_err(|err| BeaverRubyError::from(err).into())
 }
 
 fn import_spm(dir: String) -> Result<ProjectAccessor, magnus::Error> {
-    let context = unsafe { &*RBCONTEXT.assume_init() };
+    let context = &CTX.get().unwrap().context;
     let id = project::spm::import(&PathBuf::from(dir), &context)
         .map_err(BeaverRubyError::from)?;
     let project_accessor = ProjectAccessor { id };

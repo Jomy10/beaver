@@ -93,7 +93,7 @@ impl traits::Project for Project {
         _scope: &rayon::Scope,
         triple: &Triple,
         builder: Arc<RwLock<Builder>>,
-        context: &Beaver,
+        context: &Arc<Beaver>,
     ) -> crate::Result<()> {
         let mut guard = builder.write().map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
         guard.add_rule_if_not_exists(&rules::SPM_PROJECT);

@@ -110,7 +110,7 @@ impl traits::Target for Executable {
         triple: &Triple,
         _builder: Arc<RwLock<Builder>>,
         scope: &mut Builder::Scope,
-        _context: &Beaver,
+        _context: &Arc<Beaver>,
     ) -> crate::Result<String> {
         let artifact_file = std::path::absolute(self.artifact_file(project_build_dir, ArtifactType::Executable(ExecutableArtifactType::Executable), triple)?)?;
         super::register_target(scope, project_name, &self.name, project_base_dir, &artifact_file, ExecutableArtifactType::Executable, &self.cache_dir, None)

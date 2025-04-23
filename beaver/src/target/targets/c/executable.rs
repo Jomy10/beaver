@@ -175,7 +175,7 @@ impl traits::Target for Executable {
         target_triple: &Triple,
         builder: Arc<RwLock<Builder>>,
         scope: &mut Builder::Scope,
-        context: &crate::Beaver
+        context: &Arc<Beaver>
     ) -> crate::Result<String> {
         CTarget::register_impl(
             self,

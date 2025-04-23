@@ -139,7 +139,7 @@ impl traits::Target for Library {
         triple: &Triple,
         _builder: Arc<RwLock<Builder>>,
         scope: &mut Builder::Scope,
-        context: &Beaver,
+        context: &Arc<Beaver>,
     ) -> crate::Result<String> {
         // let workspace_abs = std::path::absolute(workspace_dir)?;
         let Some(workspace_dir) = workspace_dir.to_str() else {

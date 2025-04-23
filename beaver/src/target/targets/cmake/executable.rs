@@ -112,7 +112,7 @@ impl traits::Target for Executable {
         triple: &Triple,
         builder: Arc<RwLock<Builder>>,
         scope: &mut Builder::Scope,
-        _context: &Beaver
+        _context: &Arc<Beaver>
     ) -> crate::Result<String> {
         _ = triple; // TODO
         let mut guard = builder.write()

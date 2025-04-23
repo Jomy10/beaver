@@ -93,6 +93,11 @@ lazy_static! {
     #[cfg(target_os = "macos")]
     pub static ref xcode_select: PathBuf = Tool { name: "xcode-select", ..Default::default() }.find();
 
+    pub static ref netcat: PathBuf = Tool { name: "nc", ..Default::default() }.find();
+    pub static ref test: PathBuf = Tool { name: "test", ..Default::default() }.find();
+    pub static ref cat: PathBuf = Tool { name: "cat", ..Default::default() }.find();
+    pub static ref mkfifo: PathBuf = Tool { name: "mkfifo", ..Default::default() }.find();
+
     // Tool version //
 
     /// CC

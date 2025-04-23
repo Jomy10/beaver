@@ -1,5 +1,5 @@
 use std::backtrace::BacktraceStatus;
-use std::ffi::OsString;
+use std::ffi::{CStr, OsString};
 use std::io;
 use std::path::PathBuf;
 use std::process::ExitStatus;
@@ -7,6 +7,7 @@ use std::string::FromUtf8Error;
 use std::time::{SystemTimeError, TryFromFloatSecsError};
 
 use target_lexicon::OperatingSystem;
+use utils::str::OsStrConversionError;
 
 use crate::target::{ArtifactType, Language};
 
@@ -79,6 +80,8 @@ pub enum BeaverError {
     NoTargetNamed(String, String),
     #[error("No project named {0}")]
     NoProjectNamed(String),
+    #[error("No project with id {0}")]
+    NoProjectWithId(usize),
     #[error("Library `{0}` not found with pkgconfig")]
     PkgconfigNotFound(String),
     #[error("Malformed arguments received from pkgconfig: {0}")]
@@ -121,6 +124,15 @@ pub enum BeaverError {
     InvalidArtifact(ArtifactType, &'static str),
     #[error("Target {1} does not have an artifact of type {0:?}")]
     NoArtifact(ArtifactType, String),
+    /// Custom targets have build commands
+    #[error("Target {0} has no build command")]
+    TargetHasNoBuildCommand(String),
+
+    // Custom //
+    #[error("Invalid pipe command {:x?}", .0)]
+    InvalidPipeCommand(u8),
+    #[error("Target {0} has no build command")]
+    TargetNoBuildCommand(String),
 
     // CMake //
     #[error("CMake failed")]
@@ -166,6 +178,10 @@ pub enum BeaverError {
     FromUTF8Error(#[from] FromUtf8Error),
     #[error("{0}")]
     SystemTimeError(#[from] SystemTimeError),
+    #[error(transparent)]
+    OsStringConversionError(#[from] OsStrConversionError),
+    #[error("Error from libc: {}", unsafe { CStr::from_ptr(libc::strerror(*.0)) }.to_str().unwrap())]
+    LibcError(i32),
 
     #[error("Failed to lock: {0}")]
     LockError(String),

@@ -1,9 +1,10 @@
 use std::path::PathBuf;
 
-use crate::{BeaverRubyError, RBCONTEXT};
+use crate::{BeaverRubyError, CTX};
 
 fn build_dir(str: String) -> Result<(), magnus::Error> {
-    let context = unsafe { &*RBCONTEXT.assume_init() };
+    let context = &CTX.get().unwrap().context;
+
     let path = PathBuf::from(str);
 
     context.set_build_dir(path).map_err(|err| BeaverRubyError::from(err))?;

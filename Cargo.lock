@@ -131,8 +131,10 @@ dependencies = [
  "glob 0.0.0",
  "itertools 0.14.0",
  "lazy_static",
+ "libc",
  "log",
  "pathdiff",
+ "program-communicator",
  "rayon",
  "semver",
  "seq-macro",
@@ -1000,6 +1002,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a31971752e70b8b2686d7e46ec17fb38dad4051d94024c88df49b667caea9c84"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "program-communicator"
+version = "0.0.0"
+dependencies = [
+ "colog",
+ "log",
+ "tempdir",
+ "thiserror 2.0.12",
+ "utils",
 ]
 
 [[package]]

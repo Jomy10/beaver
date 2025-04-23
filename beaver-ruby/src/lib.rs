@@ -6,3 +6,4 @@ moduse!(error);
 moduse!(execute);
 
 pub(crate) mod ruby_lib;
+pub(crate) mod ext;

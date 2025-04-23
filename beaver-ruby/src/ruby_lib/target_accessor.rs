@@ -1,7 +1,7 @@
 use beaver::target::TargetRef;
 use magnus::Module;
 
-use crate::{BeaverRubyError, RBCONTEXT};
+use crate::{BeaverRubyError, CTX};
 
 #[magnus::wrap(class = "TargetAccessor")]
 pub struct TargetAccessor {
@@ -11,7 +11,8 @@ pub struct TargetAccessor {
 
 impl TargetAccessor {
     fn run(&self, args: magnus::RArray) -> Result<(), magnus::Error> {
-        let context = unsafe { &*RBCONTEXT.assume_init() };
+        let context = &CTX.get().unwrap().context;
+
         let args = args.into_iter().map(|value| {
             match magnus::RString::from_value(value) {
                 Some(val) => val.to_string(),
