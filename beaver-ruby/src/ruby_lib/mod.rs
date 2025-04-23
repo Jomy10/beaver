@@ -8,6 +8,7 @@ pub(crate) mod dependency;
 mod build_dir;
 mod pre;
 mod command;
+mod target_triple;
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     project_accessor::register(ruby)?;
@@ -18,6 +19,7 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     build_dir::register(ruby)?;
     pre::register(ruby)?;
     command::register(ruby)?;
+    target_triple::register(ruby)?;
 
     Ok(())
 }

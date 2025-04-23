@@ -1,7 +1,7 @@
 use std::collections::LinkedList;
 use std::process::Command;
 
-use log::{trace, warn};
+use log::*;
 use magnus::rb_sys::AsRawValue;
 use magnus::value::ReprValue;
 use utils::UnsafeSendable;

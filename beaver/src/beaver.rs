@@ -62,33 +62,6 @@ struct BuildDirs {
     output: PathBuf
 }
 
-// #[derive(Debug)]
-// struct FifoPipe {
-//     pipe_file_path: PathBuf,
-//     pipe_file: CString,
-//     watcher: std::thread::JoinHandle<crate::Result<()>>
-// }
-
-// impl FifoPipe {
-//     fn end(&self) -> crate::Result<()> {
-//         let fd = unsafe { libc::open(self.pipe_file.as_ptr(), libc::O_WRONLY) };
-//         if fd < 0 {
-//             return Err(BeaverError::LibcError(std::io::Error::last_os_error().raw_os_error().unwrap()));
-//         }
-
-//         let rv = unsafe { libc::write(fd, [0].as_ptr() as *const c_void, 1) };
-//         if rv < 0 {
-//             return Err(BeaverError::LibcError(std::io::Error::last_os_error().raw_os_error().unwrap()));
-//         }
-
-//         if unsafe { libc::close(fd) } < 0 {
-//             return Err(BeaverError::LibcError(std::io::Error::last_os_error().raw_os_error().unwrap()));
-//         }
-
-//         Ok(())
-//     }
-// }
-
 pub(crate) struct CommunicationSocket(pub(crate) OnceLock<program_communicator::socket::Socket>);
 
 impl std::fmt::Debug for CommunicationSocket {
@@ -144,6 +117,11 @@ impl Beaver {
             // lock_builddir: AtomicBool::new(false),
             // build_file_create_result: OnceLock::new()
         })
+    }
+
+    /// Get the target triple we are compiling for
+    pub fn target_triple(&self) -> &Triple {
+        &self.target_triple
     }
 
     pub fn color_enabled(&self) -> bool {
