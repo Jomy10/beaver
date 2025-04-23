@@ -5,6 +5,7 @@ use beaver::target::{Dependency, Language, LibraryArtifactType};
 use beaver::project::beaver::Project as BeaverProject;
 use beaver::traits::{AnyTarget, MutableProject, Project, Target};
 use beaver::{Beaver, OptimizationMode, target::c};
+use target_lexicon::Triple;
 
 /// Test adding a project and a target
 #[test]
@@ -14,7 +15,7 @@ fn adding() {
 
     dbg!(&tmpdir);
 
-    let beaver = Beaver::new(Some(true), OptimizationMode::Debug, true, false).unwrap();
+    let beaver = Beaver::new(Some(true), OptimizationMode::Debug, true, false, Triple::host()).unwrap();
     beaver.set_build_dir(tmpdir.join("build")).unwrap();
     let project = BeaverProject::new(
         String::from("MyProject"),

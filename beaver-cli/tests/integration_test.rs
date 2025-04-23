@@ -32,6 +32,10 @@ pub(crate) fn run<'a>(dir: &Path, stdout: &'a mut String) -> (impl Iterator<Item
     let mut iter = components.into_iter().rev();
     assert_eq!(iter.next(), Some(""));
 
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    eprintln!("stdout: {}", *stdout);
+    eprintln!("stderr: {}", stderr);
+
     while let Some(val) = iter.next() {
         if val.starts_with("Cleaning...") {
             break;

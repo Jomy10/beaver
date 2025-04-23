@@ -62,10 +62,18 @@ fn main() -> Result<(), MainError> {
             .value_parser(["debug", "release"])
             .ignore_case(true)
             .help_heading("Build options"),
-        arg!(--target -t [TARGET] "The target to compile to")
-            .default_value(default_target.as_os_str())
+        Arg::new("target-triple")
+            .short('t')
+            .long("target")
+            .value_name("TARGET")
             .value_hint(ValueHint::Other)
+            .help("The target to compile to")
             .help_heading("Build options")
+            .default_value(default_target.as_os_str())
+        // arg!(-t --target [TARGET_TRIPLE] "The target to compile to")
+        //     .default_value(default_target.as_os_str())
+        //     .value_hint(ValueHint::Other)
+        //     .help_heading("Build options")
     ];
 
     let matches = Command::new("beaver")
@@ -209,7 +217,7 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
         _ => OptimizationMode::default()
     };
 
-    let target = matches.get_one::<String>("target").unwrap();
+    let target = matches.get_one::<String>("target-triple").unwrap();
     let target = Triple::from_str(target).map_err(|err| TripleParseError { inner: err })?;
 
     // Execute script
@@ -218,6 +226,7 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
         opt,
         verbosity != 0,
         *debug,
+        // Triple::host()
         target
     )?);
     let ctx = unsafe { beaver_ruby::execute_script(script_file, script_args, &beaver)? };
