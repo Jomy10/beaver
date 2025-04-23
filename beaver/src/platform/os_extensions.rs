@@ -39,7 +39,7 @@ pub fn dynlib_extension_for_os(os: &OperatingSystem) -> crate::Result<&'static s
         Nebulet	|
         Wasi |
         WasiP1 |
-        WasiP2 => Ok("wasm"),
+        WasiP2 => Ok("dyn.wasm"),
 
         Hermit | Uefi => Err(BeaverError::TargetDoesntSupportDynamicLibraries(os.clone())),
 
@@ -57,7 +57,7 @@ pub fn staticlib_extension_for_os(os: &OperatingSystem) -> crate::Result<&'stati
     match os {
         Windows => Ok("lib"),
 
-        Emscripten |
+        Emscripten => Ok("a"), // regular archive
         Nebulet	|
         Wasi |
         WasiP1 |

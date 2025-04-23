@@ -58,7 +58,7 @@ fn main() -> Result<(), MainError> {
             .default_missing_value(release_opt_mode.as_os_str())
             .value_hint(ValueHint::Other)
             .long_help("Optimization mode
-            When the argument is provided, but without a value, then the optimization mode is set to release")
+When the argument is provided, but without a value, then the optimization mode is set to release")
             .value_parser(["debug", "release"])
             .ignore_case(true)
             .help_heading("Build options"),
@@ -70,10 +70,6 @@ fn main() -> Result<(), MainError> {
             .help("The target to compile to")
             .help_heading("Build options")
             .default_value(default_target.as_os_str())
-        // arg!(-t --target [TARGET_TRIPLE] "The target to compile to")
-        //     .default_value(default_target.as_os_str())
-        //     .value_hint(ValueHint::Other)
-        //     .help_heading("Build options")
     ];
 
     let matches = Command::new("beaver")

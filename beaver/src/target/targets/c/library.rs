@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 use log::warn;
-use target_lexicon::Triple;
+use target_lexicon::{OperatingSystem, Triple};
 
 use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep};
 use crate::platform::{dynlib_extension_for_os, dynlib_linker_flags_for_os, staticlib_extension_for_os};
@@ -78,7 +78,7 @@ impl Library {
             LibraryArtifactType::Staticlib,
             LibraryArtifactType::PkgConfig,
         ]);
-        let valid_artifacts = HashSet::from([LibraryArtifactType::Dynlib, LibraryArtifactType::Staticlib, LibraryArtifactType::Framework, LibraryArtifactType::XCFramework, LibraryArtifactType::PkgConfig]);
+        let valid_artifacts = HashSet::from([LibraryArtifactType::Dynlib, LibraryArtifactType::Staticlib, LibraryArtifactType::Framework, LibraryArtifactType::XCFramework, LibraryArtifactType::PkgConfig, LibraryArtifactType::JSLib]);
         target::utils::check_artifacts(&valid_artifacts, &artifacts, "C")?;
 
         Ok(Library {
@@ -174,6 +174,13 @@ impl traits::Target for Library {
                         Ok(dir.join(format!("{}.xcframework", self.name)))
                     }
                 },
+                LibraryArtifactType::JSLib => {
+                    if target_triple.operating_system != OperatingSystem::Emscripten {
+                        Err(BeaverError::TargetDoesntSupportJSLib(target_triple.operating_system))
+                    } else {
+                        Ok(dir.join(format!("{}.js", self.name)))
+                    }
+                }
                 _ => unreachable!("Unsupported artifact for C") // TODO: validate in `new`
             },
             ArtifactType::Executable(_) => panic!("bug")
@@ -189,6 +196,11 @@ impl traits::Target for Library {
         scope: &mut Builder::Scope,
         context: &Arc<Beaver>
     ) -> crate::Result<String> {
+        let mut rules = Vec::from([self.cc_rule(), self.link_rule(), &rules::AR]);
+        if target_triple.operating_system == OperatingSystem::Emscripten && self.artifacts.contains(&LibraryArtifactType::JSLib) {
+            rules.push(self.jslib_rule()?)
+        }
+
         CTarget::register_impl(
             self,
             project_name,
@@ -197,7 +209,7 @@ impl traits::Target for Library {
             target_triple,
             builder,
             scope,
-            &[self.cc_rule(), self.link_rule(), &rules::AR],
+            &rules,
             context
         )
     }
@@ -266,7 +278,7 @@ impl CTarget for Library {
 
         let object_file_path = project_build_dir.join("objects");
         match artifact {
-            LibraryArtifactType::Dynlib | LibraryArtifactType::Staticlib => {
+            LibraryArtifactType::Dynlib | LibraryArtifactType::Staticlib | LibraryArtifactType::JSLib => {
                 let obj_ext = OsString::from(if *artifact == LibraryArtifactType::Dynlib { ".dyn.o" } else { ".o" });
 
                 let mut object_files: Vec<PathBuf> = additional_artifact_files.to_vec();
@@ -282,6 +294,9 @@ impl CTarget for Library {
 
                     object_files.push(object_path);
 
+                    // Don't create duplicate rules
+                    if *artifact == LibraryArtifactType::JSLib && self.artifacts.contains(&LibraryArtifactType::Staticlib) { continue }
+
                     builder.add_step(&BuildStep::Build {
                         rule: cc_rule,
                         output: &object_files[object_files.len() - 1],
@@ -292,22 +307,45 @@ impl CTarget for Library {
                 }
 
                 let artifact_file = traits::Target::artifact_file(self, project_build_dir, ArtifactType::Library(*artifact), target_triple)?;
+                match *artifact {
+                    LibraryArtifactType::Dynlib => {
+                        builder.add_step(&BuildStep::Build {
+                            rule: link_rule,
+                            output: &artifact_file,
+                            input: &object_files.iter().map(|path| path.as_path()).collect::<Vec<&Path>>(),
+                            dependencies: dependency_steps,
+                            options: &[("linkerFlags", linker_flags)]
+                        })?;
+                    },
+                    LibraryArtifactType::Staticlib => {
+                        builder.add_step(&BuildStep::Build {
+                            rule: &rules::AR,
+                            output: &artifact_file,
+                            input: &object_files.iter().map(|path| path.as_path()).collect::<Vec<&Path>>(),
+                            dependencies: dependency_steps,
+                            options: &[]
+                        })?;
+                    },
+                    LibraryArtifactType::JSLib => {
+                        match target_triple.operating_system {
+                            OperatingSystem::Emscripten => {
+                                builder.add_step(&BuildStep::Build {
+                                    rule: &rules::JSLIB_C,
+                                    output: &artifact_file,
+                                    input: &object_files.iter().map(|path| path.as_path()).collect::<Vec<&Path>>(),
+                                    dependencies: dependency_steps,
+                                    options: &[
+                                        ("linkerFlags", linker_flags)
+                                    ],
+                                })?;
+                            },
+                            _ => {}
+                        }
+                    }
+                    _ => unreachable!()
+                }
                 if *artifact == LibraryArtifactType::Dynlib {
-                    builder.add_step(&BuildStep::Build {
-                        rule: link_rule,
-                        output: &artifact_file,
-                        input: &object_files.iter().map(|path| path.as_path()).collect::<Vec<&Path>>(),
-                        dependencies: dependency_steps,
-                        options: &[("linkerFlags", linker_flags)]
-                    })?;
                 } else {
-                    builder.add_step(&BuildStep::Build {
-                        rule: &rules::AR,
-                        output: &artifact_file,
-                        input: &object_files.iter().map(|path| path.as_path()).collect::<Vec<&Path>>(),
-                        dependencies: dependency_steps,
-                        options: &[]
-                    })?;
                 }
 
                 let artifact_step = format!("{}$:{}$:{}", project_name, &self.name, artifact);

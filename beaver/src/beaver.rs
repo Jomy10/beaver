@@ -19,7 +19,7 @@ use crate::backend::BackendBuilder;
 use crate::cache::Cache;
 use crate::command::Commands;
 use crate::traits::{AnyExecutable, AnyLibrary, AnyProject};
-use crate::OptimizationMode;
+use crate::{tools, OptimizationMode};
 use crate::phase_hook::{Phase, PhaseHook, PhaseHooks};
 use crate::error::BeaverError;
 use crate::project::traits::Project;
@@ -105,6 +105,8 @@ impl Beaver {
         if target != Triple::host() {
             warn!("Cross-compilation is in early development, expect bugs");
         }
+
+        tools::set_target_triple(target.clone());
 
         Ok(Beaver {
             projects: RwLock::new(Vec::new()),

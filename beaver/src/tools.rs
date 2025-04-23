@@ -1,9 +1,12 @@
 use std::ffi::OsString;
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process;
+use std::process::{self, Stdio};
+use std::sync::OnceLock;
 
 use lazy_static::lazy_static;
 use log::warn;
+use target_lexicon::{OperatingSystem, Triple};
 
 struct Tool<'a> {
     name: &'a str,
@@ -56,6 +59,16 @@ impl<'a> Default for Tool<'a> {
     }
 }
 
+static TARGET_TRIPLE: OnceLock<Triple> = OnceLock::new();
+
+pub fn set_target_triple(triple: Triple) {
+    TARGET_TRIPLE.set(triple).unwrap()
+}
+
+fn target_triple() -> &'static Triple {
+    &TARGET_TRIPLE.get_or_init(|| Triple::host())
+}
+
 // Paths to executables installed on the system and used for building
 lazy_static! {
     // Tools //
@@ -66,10 +79,16 @@ lazy_static! {
 
     pub static ref ninja: PathBuf = Tool { name: "ninja", ..Default::default() }.find();
 
-    pub static ref cc: PathBuf = Tool { name: "cc", aliases: Some(&["clang", "gcc", "zig", "icx", "icc"]), env: Some("CC") }.find();
+    pub static ref cc: PathBuf = match target_triple().operating_system {
+        OperatingSystem::Emscripten => Tool { name: "emcc", ..Default::default() }.find(),
+        _ => Tool { name: "cc", aliases: Some(&["clang", "gcc", "zig", "icx", "icc"]), env: Some("CC") }.find()
+    };
     pub static ref cc_extra_args: Option<&'static [&'static str]> = if cc.file_stem().unwrap() == "zig" { Some(&["cc"]) } else { None };
 
-    pub static ref cxx: PathBuf = Tool { name: "cxx", aliases: Some(&["clang++", "g++", "zig", "icpx", "icpc"]), env: Some("CXX") }.find();
+    pub static ref cxx: PathBuf = match target_triple().operating_system {
+        OperatingSystem::Emscripten => Tool { name: "em++", ..Default::default() }.find(),
+        _ => Tool { name: "cxx", aliases: Some(&["clang++", "g++", "zig", "icpx", "icpc"]), env: Some("CXX") }.find()
+    };
     pub static ref cxx_extra_args: Option<&'static [&'static str]> = if cc.file_stem().unwrap() == "zig" { Some(&["c++"]) } else { None };
 
     pub static ref objc: &'static Path = cc.as_path();
@@ -77,7 +96,10 @@ lazy_static! {
     pub static ref gnustep_config: PathBuf = Tool { name: "gnustep-config", ..Default::default() }.find();
     // see objc_cflags & objcxx_cflags & objc_linkerflags below
 
-    pub static ref ar: PathBuf = Tool { name: "ar", aliases: None, env: Some("AR") }.find();
+    pub static ref ar: PathBuf = match target_triple().operating_system {
+        OperatingSystem::Emscripten => Tool { name: "emar", ..Default::default() }.find(),
+        _ => Tool { name: "ar", aliases: None, env: Some("AR") }.find(),
+    };
 
     pub static ref pkgconf: PathBuf = Tool { name: "pkgconf", aliases: Some(&["pkg-config", "pkgconfig", "pkg-conf"]), env: Some("PKG_CONFIG") }.find();
 
@@ -102,39 +124,69 @@ lazy_static! {
 
     /// CC
     pub static ref cc_version: CCVersion = {
-        let proc = process::Command::new(cc.as_path())
-            .args(["-dM", "-E", "-x", "-c", "/dev/null"])
-            .output()
+        let mut proc = process::Command::new(cc.as_path())
+            .stdout(Stdio::piped())
+            .stdin(Stdio::piped())
+            // .args(["-dM", "-E", "-x", "c", "/dev/null"])
+            .args(["-E", "-x", "c", "-"])
+            .spawn()
+            // .output()
             .unwrap();
 
-        let output = String::from_utf8(proc.stdout).unwrap();
-        output.split("\n")
-            .find_map(|line| {
-                if line.starts_with("#define __clang__version__") {
-                    Some(CCVersion::Clang(semver::Version::parse(&line["#define __clang__version__".len()..]).unwrap()))
-                } else if line.starts_with("#define __VERSION__") {
-                    let v = &line["#define __VERSION__".len()..];
-                    if v.starts_with("Intel") { // ICC/ICX
-                        None
-                    } else {
-                        Some(CCVersion::Gcc(semver::Version::parse(v).unwrap()))
-                    }
-                } else if line.starts_with("#define __INTEL_COMPILER") { // ICC
-                    Some(CCVersion::Icc(line["#define __INTEL_COMPILER".len()..].parse::<i32>().unwrap()))
-                } else if line.starts_with("#define __INTEL_LLVM_COMPILER") {
-                    Some(CCVersion::Icx(line["#define __INTEL_LLVM_COMPILER".len()..].parse::<i32>().unwrap()))
-                } else {
-                    None
-                }
-            });
+        let mut stdin = proc.stdin.take().expect("Failed to take stdin");
+        std::thread::spawn(move || {
+            stdin.write_all("#if defined(__EMSCRIPTEN__)\nemscripten\n__clang_major__.__clang_minor__.__clang_patchlevel__\n#elif defined(__clang_version__)\nclang\n__clang_major__.__clang_minor__.__clang_patchlevel__\n#elif defined(__INTEL_COMPILER)\nicc\n__INTEL_COMPILER\n#elif defined(__INTEL__LLVM_COMPILER)\nicx\n__INTEL_LLVM_COMPILER\n#else\ngcc\n__VERSION__\n#endif".as_bytes())
+                .expect("Failed to pipe");
+        });
 
-        todo!()
+        let output = proc.wait_with_output().expect("Failed to read stdout");
+        let output = String::from_utf8(output.stdout).unwrap();
+
+        let version = output.split("\n")
+            .filter(|line| !line.starts_with("#"))
+            .map(|line| line.replace(" ", ""))
+            .collect::<Vec<String>>();
+        let mut version = version.iter()
+            .map(|line| line.trim())
+            .filter(|line| *line != "");
+
+        let ty = version.next().unwrap();
+        let version = version.next().unwrap();
+
+        match ty {
+            "clang" => CCVersion::Clang(semver::Version::parse(version).unwrap()),
+            "gcc" => CCVersion::Gcc(semver::Version::parse(version).unwrap()),
+            "emscripten" => CCVersion::Emscripten(semver::Version::parse(version).unwrap()),
+            "icc" => CCVersion::Icc(version.parse::<i32>().unwrap()),
+            "icx" => CCVersion::Icx(version.parse::<i32>().unwrap()),
+            _ => unreachable!()
+        }
     };
 }
 
 pub enum CCVersion {
     Clang(semver::Version),
     Gcc(semver::Version),
+    Emscripten(semver::Version),
     Icc(i32),
     Icx(i32)
 }
+
+// fn find_all<'it>(strs: impl Iterator<Item = &'it str>, predicates: &[Box<dyn Fn(&str) -> bool>]) -> Vec<Option<&'it str>> {
+//     let mut matches = vec![None;predicates.len()];
+
+//     'OUTER: for str in strs {
+//         for (i, fun) in predicates.iter().enumerate() {
+//             if fun(str) {
+//                 if matches[i] == None {
+//                     matches[i] = Some(str);
+//                     if !matches.contains(&None) {
+//                         break 'OUTER;
+//                     }
+//                 }
+//             }
+//         }
+//     }
+
+//     return matches;
+// }

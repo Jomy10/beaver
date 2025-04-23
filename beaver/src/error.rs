@@ -48,6 +48,8 @@ pub enum BeaverError {
     TargetDoesntSupportDynamicLibraries(OperatingSystem),
     #[error("Target OS `{0}` doesn't support frameworks")]
     TargetDoesntSupportFrameworks(OperatingSystem),
+    #[error("Target OS `{0}` doesn't support javascript library")]
+    TargetDoesntSupportJSLib(OperatingSystem),
 
     // Arguments //
     #[error("Invalid glob pattern `{0}`: {1}")]
@@ -120,6 +122,8 @@ pub enum BeaverError {
     // Targets //
     #[error("Language '{0:?}' cannot be used for a {1} target")]
     InvalidLanguage(Language, &'static str),
+    #[error("Language '{0:?}' cannot be used for a {1} artifact")]
+    InvalidLanguageForArtifact(Language, &'static str),
     #[error("Artifact '{0:?}' cannot be used for a {1} target")]
     InvalidArtifact(ArtifactType, &'static str),
     #[error("Target {1} does not have an artifact of type {0:?}")]

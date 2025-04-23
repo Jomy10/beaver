@@ -44,6 +44,9 @@ pub enum LibraryArtifactType {
     RustLib,
     /// dylib: A dynamic rust library
     RustDynlib,
+
+    // Emscripten //
+    JSLib,
 }
 
 impl TArtifactType for LibraryArtifactType {
@@ -54,6 +57,7 @@ impl TArtifactType for LibraryArtifactType {
             "pkgconfig" | "pkg-config" | "pkgconf" | "pkg-conf" => Ok(LibraryArtifactType::PkgConfig),
             "framework" => Ok(LibraryArtifactType::Framework),
             "xcframework" => Ok(LibraryArtifactType::XCFramework),
+            "jslib" => Ok(LibraryArtifactType::JSLib),
             _ => Err(BeaverError::InvalidLibraryArtifactType(str.to_string())),
         }
     }
@@ -69,6 +73,7 @@ impl std::fmt::Display for LibraryArtifactType {
             LibraryArtifactType::XCFramework => f.write_str("xcframework"),
             LibraryArtifactType::RustLib => f.write_str("rlib"),
             LibraryArtifactType::RustDynlib => f.write_str("rust_dynlib"),
+            LibraryArtifactType::JSLib => f.write_str("jslib"),
         }
     }
 }

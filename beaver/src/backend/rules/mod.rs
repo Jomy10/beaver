@@ -105,6 +105,26 @@ lazy_static! {
         pool: None
     };
 
+    static ref JSLIB_C_CMD: String = format!("{} $linkerFlags $in -o $out", tools::cc.display());
+    pub static ref JSLIB_C: Rule = Rule {
+        name: "jslib_c",
+        options: vec![
+            ("description", "creating $out"),
+            ("command", &JSLIB_C_CMD)
+        ],
+        pool: None
+    };
+
+    static ref JSLIB_CXX_CMD: String = format!("{} $in -o $out", tools::cxx.display());
+    pub static ref JSLIB_CXX: Rule = Rule {
+        name: "jslib_cxx",
+        options: vec![
+            ("description", "creating $out"),
+            ("command", &JSLIB_C_CMD)
+        ],
+        pool: None
+    };
+
     /// Pool for external build systems
     static ref EXTERNAL_POOL: Pool = Pool {
         name: "external_build_pool",

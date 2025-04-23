@@ -37,7 +37,8 @@ pub trait Library: Target {
             PkgConfig => panic!("Can't link against pkgconfig (bug)"),
             // TODO: make this function generic for linking against a target language
             RustLib => panic!("TODO: can't be linked"),
-            RustDynlib => panic!("TODO: can't be linked")
+            RustDynlib => panic!("TODO: can't be linked"),
+            JSLib => panic!("TODO: can't be linked"),
         }
 
         Ok(())

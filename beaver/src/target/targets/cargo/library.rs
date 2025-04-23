@@ -125,7 +125,8 @@ impl traits::Target for Library {
             LibraryArtifactType::RustDynlib => dynlib_extension_for_os(&triple.operating_system)?,
             LibraryArtifactType::PkgConfig
             | LibraryArtifactType::Framework
-            | LibraryArtifactType::XCFramework => unreachable!(),
+            | LibraryArtifactType::XCFramework
+            | LibraryArtifactType::JSLib => unreachable!(),
         };
         Ok(project_build_dir.join(format!("lib{}.{}", self.name, ext)))
     }

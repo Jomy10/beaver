@@ -192,4 +192,11 @@ pub(crate) trait CTarget: traits::Target {
         }
     }
 
+    fn jslib_rule(&self) -> crate::Result<&'static Rule> {
+        match self.language() {
+            Language::C => Ok(&rules::JSLIB_C),
+            Language::CXX => Ok(&rules::JSLIB_CXX),
+            _ => return Err(BeaverError::InvalidLanguageForArtifact(self.language(), "jslib"))
+        }
+    }
 }
