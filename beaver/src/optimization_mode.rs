@@ -52,7 +52,7 @@ impl OptimizationMode {
 
     pub fn linker_flags(&self) -> &[&str] {
         match self {
-            Debug => &["-O0"],
+            Debug => &["-g", "-O0"],
             Release => linker_flags_release.as_slice()
         }
     }

@@ -30,7 +30,7 @@ impl ProjectAccessor {
         let projects = context.projects().map_err(|err| BeaverRubyError::from(err))?;
         let target = projects[self.id].find_target(&name).map_err(|err| BeaverRubyError::from(err))?;
         let Some(target) = target else {
-            return Err(BeaverRubyError::from(BeaverError::NoTargetNamed(projects[self.id].name().to_string(), name)).into());
+            return Err(BeaverRubyError::from(BeaverError::NoTargetNamed(name, projects[self.id].name().to_string())).into());
         };
 
         Ok(TargetAccessor { projid: self.id, id: target })

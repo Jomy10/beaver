@@ -135,6 +135,10 @@ impl Beaver {
         &self.target_triple
     }
 
+    pub fn opt_mode(&self) -> &OptimizationMode {
+        &self.optimize_mode
+    }
+
     pub fn color_enabled(&self) -> bool {
         self.enable_color
     }
