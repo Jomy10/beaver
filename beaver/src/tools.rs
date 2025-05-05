@@ -110,10 +110,6 @@ lazy_static! {
     pub static ref cargo: PathBuf = Tool { name: "cargo", ..Default::default() }.find();
 
     pub static ref swift: PathBuf = Tool { name: "swift", ..Default::default() }.find();
-    #[cfg(target_os = "macos")]
-    pub static ref xcrun: PathBuf = Tool { name: "xcrun", ..Default::default() }.find();
-    #[cfg(target_os = "macos")]
-    pub static ref xcode_select: PathBuf = Tool { name: "xcode-select", ..Default::default() }.find();
 
     pub static ref netcat: PathBuf = Tool { name: "nc", ..Default::default() }.find();
     pub static ref test: PathBuf = Tool { name: "test", ..Default::default() }.find();
@@ -164,6 +160,12 @@ lazy_static! {
     };
 }
 
+#[cfg(target_os = "macos")]
+lazy_static! {
+    pub static ref xcrun: PathBuf = Tool { name: "xcrun", ..Default::default() }.find();
+    pub static ref xcode_select: PathBuf = Tool { name: "xcode-select", ..Default::default() }.find();
+}
+
 pub enum CCVersion {
     Clang(semver::Version),
     Gcc(semver::Version),
@@ -171,22 +173,3 @@ pub enum CCVersion {
     Icc(i32),
     Icx(i32)
 }
-
-// fn find_all<'it>(strs: impl Iterator<Item = &'it str>, predicates: &[Box<dyn Fn(&str) -> bool>]) -> Vec<Option<&'it str>> {
-//     let mut matches = vec![None;predicates.len()];
-
-//     'OUTER: for str in strs {
-//         for (i, fun) in predicates.iter().enumerate() {
-//             if fun(str) {
-//                 if matches[i] == None {
-//                     matches[i] = Some(str);
-//                     if !matches.contains(&None) {
-//                         break 'OUTER;
-//                     }
-//                 }
-//             }
-//         }
-//     }
-
-//     return matches;
-// }

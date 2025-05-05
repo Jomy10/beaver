@@ -59,6 +59,8 @@ mod darwin {
 
 #[cfg(not(target_os = "macos"))]
 mod other {
+    use target_lexicon::Triple;
+
     pub fn swift_linker_flags(triple: &Triple) -> &'static [&'static str] {
         unimplemented!("Can't link to swift on non-apple platforms yet")
     }
