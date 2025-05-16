@@ -395,26 +395,26 @@ impl Beaver {
         return cb(&projects[project_id]);
     }
 
-    pub fn with_current_project_mut<S>(
+    pub fn with_current_project_mut<S, E: From<BeaverError>>(
         &self,
-        cb: impl FnOnce(&mut AnyProject) -> crate::Result<S>
-    ) -> crate::Result<S> {
+        cb: impl FnOnce(&mut AnyProject) -> Result<S, E>
+    ) -> Result<S, E> {
         if self.status.load(Ordering::SeqCst) != BeaverState::Initialized as u8 {
-            return Err(BeaverError::AlreadyFinalized);
+            return Err(BeaverError::AlreadyFinalized.into());
         }
         let Some(idx) = self.current_project_index() else {
-            return Err(BeaverError::NoProjects);
+            return Err(BeaverError::NoProjects.into());
         };
         let mut projects = self.projects_mut()?;
         return cb(&mut projects[idx]);
     }
 
-    pub fn with_current_project<S>(
+    pub fn with_current_project<S, E: From<BeaverError>>(
         &self,
-        cb: impl FnOnce(&AnyProject) -> crate::Result<S>
-    ) -> crate::Result<S> {
+        cb: impl FnOnce(&AnyProject) -> Result<S, E>
+    ) -> Result<S, E> {
         let Some(idx) = self.current_project_index() else {
-            return Err(BeaverError::NoProjects);
+            return Err(BeaverError::NoProjects.into());
         };
         let projects = self.projects()?;
         return cb(&projects[idx]);

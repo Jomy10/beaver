@@ -32,9 +32,10 @@ libc = { workspace = true }
 # serde_json = { workspace = true }
 cmake-file-api = { workspace = true }
 cargo-manifest = { workspace = true }
+globwalk = { workspace = true }
+atomic_refcell = { workspace = true }
 spm-manifest = { path = "../spm-manifest" }
 utils = { path = "../utils", features = ["junctions"] }
-glob = { path = "../glob" }
 beaver-macros = { path = "../beaver-macros" }
 program-communicator = { path = "../program-communicator" }
 

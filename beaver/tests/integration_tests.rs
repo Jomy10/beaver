@@ -29,7 +29,7 @@ fn adding() {
         version: None,
         license: None,
         language: Language::C,
-        sources: Files::from_pat("src/**/*.rs").unwrap(),
+        sources: Files::from_pat("src/**/*.rs", project.base_dir()).unwrap(),
         cflags: Flags::new(vec![String::from("-DDEBUG")], Vec::new()),
         headers: Headers::new(vec![PathBuf::from_str("include").unwrap()], Vec::new()),
         linker_flags: Vec::new(),

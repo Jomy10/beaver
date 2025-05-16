@@ -52,10 +52,14 @@ pub enum BeaverError {
     TargetDoesntSupportJSLib(OperatingSystem),
 
     // Arguments //
-    #[error("Invalid glob pattern `{0}`: {1}")]
-    GlobPatternError(String, glob::GlobError),
-    #[error("Error occurred resolving glob: {0}")]
-    GlobIterationError(#[from] glob::GlobIterationError),
+    // #[error("Invalid glob pattern `{0}`: {1}")]
+    // GlobPatternError(String, glob::GlobError),
+    // #[error("Error occurred resolving glob: {0}")]
+    // GlobIterationError(#[from] glob::GlobIterationError),
+    #[error("Glob error: {0}")]
+    GlobError(#[from] globwalk::GlobError),
+    #[error("Error while walking glob: {0}")]
+    GlobWalkError(#[from] globwalk::WalkError),
 
     // BackendBuilder //
     #[error("Couldn't lock BackendBuilder: {0}")]

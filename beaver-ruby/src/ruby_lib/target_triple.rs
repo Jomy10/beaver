@@ -64,7 +64,7 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     ruby.define_global_const("HOST", TripleWrapper(Triple::host()))?;
 
     // TODO: move to separate file
-    ruby.define_global_const("OPT", context.opt_mode().to_string())?;
+    ruby.define_global_const("OPT", context.opt_mode().to_string())?; // TODO: to symbol
 
     Ok(())
 }

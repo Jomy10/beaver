@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use beaver::target::custom::BuildCommand;
@@ -141,10 +141,14 @@ impl MagnusConvertExt for Language {
     }
 }
 
-impl MagnusConvertExt for Files {
-    fn try_from_value(value: magnus::Value) -> Result<Self, magnus::Error> where Self: Sized {
+pub trait MagnusFilesConvertExt {
+    fn try_from_value(value: magnus::Value, base_dir: &Path) -> Result<Self, magnus::Error> where Self: Sized;
+}
+
+impl MagnusFilesConvertExt for Files {
+    fn try_from_value(value: magnus::Value, base_dir: &Path) -> Result<Self, magnus::Error> where Self: Sized {
        if let Some(str) = magnus::RString::from_value(value) {
-            return Files::from_pat(unsafe { str.as_str()? })
+            return Files::from_pat(unsafe { str.as_str()? }, base_dir)
                 .map_err(|err| BeaverRubyError::from(err)).map_err(Into::<magnus::Error>::into);
         } else if let Some(arr) = magnus::RArray::from_value(value) {
             let rstrarr: Vec<(Option<magnus::RString>, magnus::Value)> = arr.into_iter()
@@ -158,7 +162,7 @@ impl MagnusConvertExt for Files {
                         None => Err(BeaverRubyError::IncompatibleType(*value, "String").into()),
                     }
                 }).collect::<Result<Vec<&str>, magnus::Error>>()?;
-            return Files::from_pats(&pats)
+            return Files::from_pats(&pats, base_dir)
                 .map_err(|err| BeaverRubyError::from(err)).map_err(Into::<magnus::Error>::into);
         } else {
             return Err(BeaverRubyError::IncompatibleType(value, "Array or String").into());

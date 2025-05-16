@@ -3,7 +3,6 @@ resolver = "2"
 members = [
   "beaver-cli",
   "beaver",
-  "glob",
   "utils",
   "beaver-macros",
   "beaver-ruby",
@@ -58,6 +57,9 @@ tokio = "1.43"
 itertools = "0.14"
 seq-macro = "0.3"
 libc = "0.2"
+peek-again = { version = "0.4", features = ["allow-unsafe"] }
+globwalk = "0.9"
+atomic_refcell = "0.1"
 
 cmake-file-api = "0.1"
 cargo-manifest = "0.19"

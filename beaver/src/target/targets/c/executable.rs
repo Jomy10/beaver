@@ -192,6 +192,7 @@ impl traits::Target for Executable {
 
     fn debug_attributes(&self) -> Vec<(&'static str, String)> {
         vec![
+            ("sources", format!("{:?}", self.sources.resolve().unwrap())),
             ("cflags", format!("{:?}", self.cflags)),
             ("headers", format!("{:?}", self.headers)),
             ("linker_flags", self.linker_flags.join(", ")),
@@ -255,7 +256,7 @@ impl CTarget for Executable {
         match artifact {
             ExecutableArtifactType::Executable => {
                 let mut object_files: Vec<PathBuf> = additional_artifact_files.to_vec();
-                let sources = self.sources.resolve(project_base_dir)?;
+                let sources = self.sources.resolve()?;
                 if sources.len() == 0 { warn!("No sources in C::Executable {}", self.name); }
                 for source in sources {
                     let base_source_path = source.as_path().strip_prefix(project_base_dir)

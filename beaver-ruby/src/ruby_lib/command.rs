@@ -8,7 +8,7 @@ use utils::UnsafeSendable;
 
 use crate::{BeaverRubyError, CTX};
 
-// Parse ruby function args for opt/arg
+// Parse ruy function args for opt/arg
 fn parse_ruby_args(args: &[magnus::Value]) -> Result<(Option<String>, Option<String>, Option<magnus::Value>), magnus::Error> {
     let args = magnus::scan_args::scan_args::<
         (String,), // required
