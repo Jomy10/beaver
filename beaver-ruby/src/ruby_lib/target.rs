@@ -90,7 +90,7 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
                 },
                 "settings" => {
                     let value = Vec::<c::Setting>::try_from_value(value)?;
-                    settings.set(value);
+                    settings.set(value)?;
                 },
                 keyname => { return Err(BeaverRubyError::InvalidKey(keyname.to_string()).into()); }
             }

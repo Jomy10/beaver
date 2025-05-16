@@ -57,10 +57,26 @@ fn define_project(args: magnus::RHash) -> Result<ProjectAccessor, magnus::Error>
     Ok(project_accessor)
 }
 
-// TODO: optional splat -> cmake flags
-fn import_cmake(dir: String) -> Result<(), magnus::Error> {
+// fn import_cmake(dir: String, cmake_flags: Option<magnus::RArray>) -> Result<(), magnus::Error> {
+fn import_cmake(args: &[magnus::Value]) -> Result<(), magnus::Error> {
+    let args = magnus::scan_args::scan_args::<
+        (String,), // required
+        (Option<magnus::RArray>,), // optional
+        (),
+        (),
+        (),
+        ()
+    >(args)?;
+    let dir = args.required.0;
+    let cmake_flags = args.optional.0;
     let context = &CTX.get().unwrap().context;
-    project::cmake::import(&PathBuf::from(dir), &[], &context)
+    let cmake_flags = if let Some(cmake_flags) = cmake_flags {
+        cmake_flags.into_iter().map(|v| v.to_string()).collect()
+    } else {
+        Vec::new()
+    };
+    let cmake_flags: Vec<&str> = cmake_flags.iter().map(|str| str.as_str()).collect();
+    project::cmake::import(&PathBuf::from(dir), &cmake_flags, &context)
         .map_err(|err| BeaverRubyError::from(err).into())
 }
 
@@ -81,7 +97,7 @@ fn import_spm(dir: String) -> Result<ProjectAccessor, magnus::Error> {
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     ruby.define_global_function("Project", magnus::function!(define_project, 1));
-    ruby.define_global_function("import_cmake", magnus::function!(import_cmake, 1));
+    ruby.define_global_function("import_cmake", magnus::function!(import_cmake, -1));
     ruby.define_global_function("import_cargo", magnus::function!(import_cargo, 1));
     ruby.define_global_function("import_spm", magnus::function!(import_spm, 1));
 

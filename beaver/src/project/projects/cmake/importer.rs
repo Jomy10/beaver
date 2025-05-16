@@ -52,6 +52,7 @@ pub fn import(
 
     // Execute cmake
     let cache = context.cache()?;
+    // TODO: cmake_flags_changed!
     let cmake_files_changed = cache.files_changed_in_context(&file_context)?;
     let reconfigure = cmake_files_changed || !build_dir_exists || !query_dir_exists || !reply_dir.exists();
     if reconfigure {
@@ -64,6 +65,9 @@ pub fn import(
             "-G", "Ninja"
         ];
         args.extend_from_slice(cmake_flags);
+
+        let console_style = console::Style::new().fg(console::Color::Color256(8));
+        eprintln!("{}", console_style.apply_to(format!("cmake {}", &args.join(" "))));
 
         let mut process = Command::new(&*tools::cmake)
             .args(&args)
