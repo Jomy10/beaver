@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use beaver::target::custom::BuildCommand;
 use beaver::target::parameters::{DefaultArgument, Files, Flags, Headers};
-use beaver::target::{self, Dependency, ExecutableArtifactType, Language, LibraryArtifactType, TArtifactType, Version};
+use beaver::target::{self, c, Dependency, ExecutableArtifactType, Language, LibraryArtifactType, TArtifactType, Version};
 use beaver::traits::{AnyExecutable, AnyLibrary, AnyTarget, Project};
 use beaver::{Beaver, BeaverError};
 use magnus::Object;
@@ -31,6 +31,7 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
         let mut linker_flags = Arg::<Vec<String>>::new("linker_flags");
         let mut artifacts = Arg::<DefaultArgument<Vec<ArtifactType>>>::new("artifacts");
         let mut dependencies = Arg::<Vec<Dependency>>::new("dependencies");
+        let mut settings = Arg::<Vec<c::Setting>>::new("settings");
 
         args.foreach(|key: magnus::Symbol, value: magnus::Value| {
             match key.name()?.as_ref() {
@@ -62,7 +63,7 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
                     let langval = Language::try_from_value(value)?;
                     language.set(langval)?;
                 },
-                "sources" => {
+                "sources" | "src" => {
                     let files = Files::try_from_value(value, project_base_dir)?;
                     sources.set(files)?;
                 },
@@ -74,7 +75,7 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
                     let value = Headers::try_from_value(value)?;
                     headers.set(value)?;
                 },
-                "linker_flags" => {
+                "linker_flags" | "lflags" => {
                     let flags = Vec::<String>::try_from_value(value)?;
                     linker_flags.set(flags)?;
 
@@ -86,6 +87,10 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
                 "dependencies" => {
                     let value = Vec::<Dependency>::try_from_value(value, context)?;
                     dependencies.set(value)?;
+                },
+                "settings" => {
+                    let value = Vec::<c::Setting>::try_from_value(value)?;
+                    settings.set(value);
                 },
                 keyname => { return Err(BeaverRubyError::InvalidKey(keyname.to_string()).into()); }
             }
@@ -106,6 +111,7 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
             linker_flags: linker_flags.get_opt().unwrap_or(Vec::new()),
             artifacts: artifacts.get_opt().unwrap_or(DefaultArgument::Default),
             dependencies: dependencies.get_opt().unwrap_or(Vec::new()),
+            settings: settings.get_opt().unwrap_or(Vec::new())
         })
     })
 }

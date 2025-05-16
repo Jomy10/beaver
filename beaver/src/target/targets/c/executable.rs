@@ -12,7 +12,7 @@ use crate::target::{self, traits, ArtifactType, Dependency, ExecutableArtifactTy
 use crate::traits::TargetType;
 use crate::Beaver;
 
-use super::{CTarget, TargetDescriptor};
+use super::{CTarget, Setting, TargetDescriptor};
 
 #[derive(Debug)]
 pub struct Executable {
@@ -34,6 +34,8 @@ pub struct Executable {
 
     artifacts: Vec<ExecutableArtifactType>,
     dependencies: Vec<Dependency>,
+
+    settings: Vec<Setting>,
 }
 
 impl Executable {
@@ -50,7 +52,8 @@ impl Executable {
             desc.headers,
             desc.linker_flags,
             desc.artifacts,
-            desc.dependencies
+            desc.dependencies,
+            desc.settings
         )
     }
 
@@ -67,6 +70,7 @@ impl Executable {
         linker_flags: Vec<String>,
         artifacts: DefaultArgument<Vec<ExecutableArtifactType>>,
         dependencies: Vec<Dependency>,
+        settings: Vec<Setting>
     ) -> crate::Result<Executable> {
         target::utils::check_language(&[Language::C, Language::CXX, Language::OBJC, Language::OBJCXX], &language, "C")?;
 
@@ -88,7 +92,8 @@ impl Executable {
             headers,
             linker_flags,
             artifacts,
-            dependencies
+            dependencies,
+            settings
         })
     }
 }
@@ -217,6 +222,10 @@ impl CTarget for Executable {
         &self.artifacts
     }
 
+    fn settings(&self) -> &[Setting] {
+        &self.settings
+    }
+
     /// All linker flags used by this executable when linking
     fn linker_flags<'a>(&self, dependencies: impl Iterator<Item = &'a Dependency>, languages: impl Iterator<Item = &'a Language>, triple: &Triple, context: &Beaver) -> crate::Result<(Vec<String>, Vec<PathBuf>)> {
         let mut flags: Vec<String> = self.linker_flags.clone();
@@ -231,6 +240,10 @@ impl CTarget for Executable {
         }
 
         flags.extend(context.optimize_mode.linker_flags().iter().map(|str| str.to_string()));
+
+        if (self.language == Language::OBJC || self.language == Language::OBJCXX) && self.settings.contains(&Setting::ObjCArc) {
+            flags.push("-fobjc-arc".to_string());
+        }
 
         return Ok((flags, additional_files));
     }

@@ -4,8 +4,8 @@ use lazy_static::lazy_static;
 pub(crate) mod darwin {
     lazy_static::lazy_static! {
         // only for compiling objc itself
-        pub static ref OBJC_CFLAGS: &'static [&'static str] = &["-x", "objective-c", "-fobjc-arc", "-fmodules"];
-        pub static ref OBJCXX_CFLAGS: &'static [&'static str] = &["-x", "objective-c++", "-fobjc-arc", "-fmodules"];
+        pub static ref OBJC_CFLAGS: &'static [&'static str] = &[/*, "-fobjc-arc"*/ "-fmodules"];
+        pub static ref OBJCXX_CFLAGS: &'static [&'static str] = &[/*, "-fobjc-arc"*/ "-fmodules"];
         pub static ref OBJC_LINKER_FLAGS: &'static [&'static str] = &["-lobjc"];
         pub static ref OBJCXX_LINKER_FLAGS: &'static [&'static str] = &["-lobjc"];
     }

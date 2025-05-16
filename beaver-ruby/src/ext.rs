@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 use beaver::target::custom::BuildCommand;
 use beaver::target::parameters::{Files, Flags, Headers};
-use beaver::target::{Dependency, Language, LibraryArtifactType, LibraryTargetDependency, TArtifactType, Version};
+use beaver::target::{c, Dependency, Language, LibraryArtifactType, LibraryTargetDependency, TArtifactType, Version};
 use beaver::traits::{AnyTarget, Library};
 use beaver::{Beaver, BeaverError};
 use magnus::value::ReprValue;
@@ -141,6 +141,21 @@ impl MagnusConvertExt for Language {
     }
 }
 
+impl MagnusConvertExt for c::Setting {
+    fn try_from_value(value: magnus::Value) -> Result<Self, magnus::Error> where Self: Sized {
+        let setval = if let Some(value) = magnus::RString::from_value(value) {
+            c::Setting::parse(unsafe { value.as_str()? })
+                .map_err(|err| BeaverError::CSettingParseError(value.to_string().unwrap(), err))
+        } else if let Some(sym) = magnus::Symbol::from_value(value) {
+            c::Setting::parse(sym.name()?.as_ref())
+                .map_err(|err| BeaverError::CSettingParseError(sym.name().unwrap().to_string(), err))
+        } else {
+            return Err(BeaverRubyError::IncompatibleType(value, "String or Symbol").into());
+        };
+        return setval.map_err(|err| BeaverRubyError::from(err).into());
+    }
+}
+
 pub trait MagnusFilesConvertExt {
     fn try_from_value(value: magnus::Value, base_dir: &Path) -> Result<Self, magnus::Error> where Self: Sized;
 }
@@ -258,6 +273,21 @@ impl MagnusConvertExt for BuildCommand {
                 .map(|_: magnus::Value| ())
                 .map_err(|err| BeaverError::AnyError(err.to_string()))
         })));
+    }
+}
+
+impl<T: MagnusConvertExt> MagnusConvertExt for Vec<T> {
+    fn try_from_value(value: magnus::Value) -> Result<Self, magnus::Error> where Self: Sized {
+        if let Some(arr) = magnus::RArray::from_value(value) {
+            let mut values = Vec::new();
+            values.reserve_exact(arr.len());
+            for value in arr {
+                values.push(T::try_from_value(value)?);
+            }
+            return Ok(values);
+        } else {
+            return Ok(vec![T::try_from_value(value)?]);
+        }
     }
 }
 

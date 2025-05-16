@@ -9,7 +9,7 @@ use std::time::{SystemTimeError, TryFromFloatSecsError};
 use target_lexicon::OperatingSystem;
 use utils::str::OsStrConversionError;
 
-use crate::target::{ArtifactType, Language};
+use crate::target::{self, ArtifactType, Language};
 
 #[derive(thiserror::Error)]
 pub enum BeaverError {
@@ -135,6 +135,9 @@ pub enum BeaverError {
     /// Custom targets have build commands
     #[error("Target {0} has no build command")]
     TargetHasNoBuildCommand(String),
+
+    #[error("Error while parsing C setting '{}': {:?}", .0, .1)]
+    CSettingParseError(String, target::c::SettingParseError),
 
     // Custom //
     #[error("Invalid pipe command {:x?}", .0)]

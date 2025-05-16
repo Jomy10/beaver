@@ -31,7 +31,7 @@ lazy_static! {
         pool: None
     };
 
-    static ref OBJC_CMD: String = format!("{} {} $cflags -MD -MF $out.d -c $in -o $out", tools::objc.display(), language::objc::objc_cflags().join(" "));
+    static ref OBJC_CMD: String = format!("{} {} -x objective-c $cflags -MD -MF $out.d -c $in -o $out", tools::objc.display(), language::objc::objc_cflags().join(" "));
     pub static ref OBJC: Rule = Rule {
         name: "objc",
         options: vec![
@@ -43,7 +43,7 @@ lazy_static! {
         pool: None
     };
 
-    static ref OBJCXX_CMD: String = format!("{} {} $cflags -MD -MF $out.d -c $in -o $out", tools::objcxx.display(), language::objc::objcxx_cflags().join(" "));
+    static ref OBJCXX_CMD: String = format!("{} {} -x objective-cxx $cflags -MD -MF $out.d -c $in -o $out", tools::objcxx.display(), language::objc::objcxx_cflags().join(" "));
     pub static ref OBJCXX: Rule = Rule {
         name: "objcxx",
         options: vec![

@@ -1,3 +1,4 @@
+use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
@@ -20,7 +21,57 @@ pub struct TargetDescriptor<ArtifactType> {
     pub headers: Headers,
     pub linker_flags: Vec<String>,
     pub artifacts: DefaultArgument<Vec<ArtifactType>>,
-    pub dependencies: Vec<Dependency>
+    pub dependencies: Vec<Dependency>,
+    pub settings: Vec<Setting>,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum Setting {
+    ObjCArc,
+
+    // TO BE IMPLEMENTED!
+    CStd(u32),
+    CXXStd(u32),
+}
+
+#[derive(Debug)]
+pub enum SettingParseError {
+    NotParseable,
+    ExpectedNumber,
+    NotANumber(ParseIntError)
+}
+
+impl Setting {
+    pub fn parse(str: &str) -> Result<Setting, SettingParseError> {
+        match str.to_uppercase().as_str() {
+            "OBJCARC" | "OBJC-ARC" => Ok(Setting::ObjCArc),
+            str if str.starts_with("cstd") => {
+                let mut parts = str.split("=");
+                _ = parts.next();
+                let Some(std) = parts.next() else {
+                    return Err(SettingParseError::ExpectedNumber);
+                };
+                let std = match std.parse::<u32>() {
+                    Ok(i) => i,
+                    Err(err) => return Err(SettingParseError::NotANumber(err)),
+                };
+                Ok(Setting::CStd(std))
+            },
+            str if str.starts_with("cxxstd") || str.starts_with("c++std") => {
+                let mut parts = str.split("=");
+                _ = parts.next();
+                let Some(std) = parts.next() else {
+                    return Err(SettingParseError::ExpectedNumber);
+                };
+                let std = match std.parse::<u32>() {
+                    Ok(i) => i,
+                    Err(err) => return Err(SettingParseError::NotANumber(err)),
+                };
+                Ok(Setting::CXXStd(std))
+            },
+            _ => Err(SettingParseError::NotParseable)
+        }
+    }
 }
 
 pub(crate) trait CTarget: traits::Target {
@@ -61,6 +112,10 @@ pub(crate) trait CTarget: traits::Target {
             cflags.push("-fdiagnostics-color=always".to_string());
         }
 
+        if (self.language() == Language::OBJC || self.language() == Language::OBJCXX) && self.settings().contains(&Setting::ObjCArc) {
+            cflags.push("-fobjc-arc".to_string());
+        }
+
         return Ok((cflags, add_dependency_files));
     }
 
@@ -72,6 +127,8 @@ pub(crate) trait CTarget: traits::Target {
         triple: &Triple,
         context: &Beaver
     ) -> crate::Result<(Vec<String>, Vec<PathBuf>)>;
+
+    fn settings(&self) -> &[Setting];
 
     fn register_impl<Builder: BackendBuilder<'static>>(&self,
         project_name: &str,

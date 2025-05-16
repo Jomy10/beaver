@@ -3,7 +3,7 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
-use log::warn;
+use log::{trace, warn};
 use target_lexicon::{OperatingSystem, Triple};
 
 use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep};
@@ -14,7 +14,7 @@ use crate::target::{self, ArtifactType, Dependency, Language, LibraryArtifactTyp
 use crate::traits::Library as _;
 use crate::{Beaver, BeaverError};
 
-use super::{CTarget, TargetDescriptor};
+use super::{CTarget, Setting, TargetDescriptor};
 
 //TODO #[init_descriptor(super::TargetDescriptor, false)]
 #[derive(Debug)]
@@ -37,6 +37,8 @@ pub struct Library {
 
     artifacts: Vec<LibraryArtifactType>,
     dependencies: Vec<Dependency>,
+
+    settings: Vec<crate::target::c::Setting>,
 }
 
 impl Library {
@@ -53,7 +55,8 @@ impl Library {
             desc.headers,
             desc.linker_flags,
             desc.artifacts,
-            desc.dependencies
+            desc.dependencies,
+            desc.settings
         )
     }
 
@@ -70,6 +73,7 @@ impl Library {
         linker_flags: Vec<String>,
         artifacts: DefaultArgument<Vec<LibraryArtifactType>>,
         dependencies: Vec<Dependency>,
+        settings: Vec<Setting>
     ) -> crate::Result<Library> {
         target::utils::check_language(&[Language::C, Language::CXX, Language::OBJC, Language::OBJCXX], &language, "C")?;
 
@@ -95,7 +99,8 @@ impl Library {
             headers,
             linker_flags,
             artifacts,
-            dependencies
+            dependencies,
+            settings
         })
     }
 }
@@ -241,6 +246,10 @@ impl CTarget for Library {
         &self.artifacts
     }
 
+    fn settings(&self) -> &[Setting] {
+        &self.settings
+    }
+
     /// All linker flags used by this library when linking
     fn linker_flags<'a>(&self, dependencies: impl Iterator<Item = &'a Dependency>, languages: impl Iterator<Item = &'a Language>, triple: &Triple, context: &Beaver) -> crate::Result<(Vec<String>, Vec<PathBuf>)> {
         let mut flags: Vec<String> = dynlib_linker_flags_for_os(&triple.operating_system)?.iter().map(|s| s.to_string()).collect();
@@ -257,6 +266,10 @@ impl CTarget for Library {
         }
 
         flags.extend(context.optimize_mode.linker_flags().iter().map(|str| str.to_string()));
+
+        if (self.language == Language::OBJC || self.language == Language::OBJCXX) && self.settings.contains(&Setting::ObjCArc) {
+            flags.push("-fobjc-arc".to_string());
+        }
 
         return Ok((flags, additional_files));
     }
@@ -282,7 +295,7 @@ impl CTarget for Library {
             LibraryArtifactType::Dynlib | LibraryArtifactType::Staticlib | LibraryArtifactType::JSLib => {
                 let obj_ext = OsString::from(if *artifact == LibraryArtifactType::Dynlib { ".dyn.o" } else { ".o" });
 
-                let mut object_files: Vec<PathBuf> = additional_artifact_files.to_vec();
+                let mut object_files: Vec<PathBuf> = Vec::new(); //additional_artifact_files.to_vec();
                 let sources = self.sources.resolve()?;
                 if sources.len() == 0 { warn!("No sources in C::Library {}", self.name); }
                 for source in sources {
@@ -313,12 +326,13 @@ impl CTarget for Library {
                         builder.add_step(&BuildStep::Build {
                             rule: link_rule,
                             output: &artifact_file,
-                            input: &object_files.iter().map(|path| path.as_path()).collect::<Vec<&Path>>(),
+                            input: &(object_files.iter().chain(additional_artifact_files.iter())).map(|path| path.as_path()).collect::<Vec<&Path>>(),
                             dependencies: dependency_steps,
                             options: &[("linkerFlags", linker_flags)]
                         })?;
                     },
                     LibraryArtifactType::Staticlib => {
+                        trace!("Creating staticlib for {} | object_files = {:?} | dependency_steps = {:?}", &self.name, &object_files, dependency_steps);
                         builder.add_step(&BuildStep::Build {
                             rule: &rules::AR,
                             output: &artifact_file,
@@ -333,7 +347,7 @@ impl CTarget for Library {
                                 builder.add_step(&BuildStep::Build {
                                     rule: &rules::JSLIB_C,
                                     output: &artifact_file,
-                                    input: &object_files.iter().map(|path| path.as_path()).collect::<Vec<&Path>>(),
+                                    input: &(object_files.iter().chain(additional_artifact_files.iter())).map(|path| path.as_path()).collect::<Vec<&Path>>(),
                                     dependencies: dependency_steps,
                                     options: &[
                                         ("linkerFlags", linker_flags)
@@ -345,9 +359,9 @@ impl CTarget for Library {
                     }
                     _ => unreachable!()
                 }
-                if *artifact == LibraryArtifactType::Dynlib {
-                } else {
-                }
+                // if *artifact == LibraryArtifactType::Dynlib {
+                // } else {
+                // }
 
                 let artifact_step = format!("{}$:{}$:{}", project_name, &self.name, artifact);
                 builder.add_step(&BuildStep::Phony {
