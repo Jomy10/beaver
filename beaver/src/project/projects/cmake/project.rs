@@ -16,6 +16,7 @@ pub struct Project {
     base_dir: PathBuf,
     build_dir: PathBuf,
     targets: Vec<AnyTarget>,
+    pub(crate) unmapped_cmake_ids: Vec<String>,
 }
 
 impl Project {
@@ -23,14 +24,16 @@ impl Project {
         name: String,
         base_dir: PathBuf,
         build_dir: PathBuf,
-        targets: Vec<AnyTarget>
+        targets: Vec<AnyTarget>,
+        unmapped_cmake_ids: Vec<String>,
     ) -> Self {
         Self {
             id: None,
             name,
             base_dir,
             build_dir,
-            targets
+            targets,
+            unmapped_cmake_ids
         }
     }
 }

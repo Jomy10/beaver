@@ -384,22 +384,24 @@ impl CTarget for Library {
 }
 
 impl traits::Library for Library {
-    fn public_cflags(&self, project_base_dir: &Path, _: &Path, out: &mut Vec<String>, _: &mut Vec<PathBuf>) {
+    fn public_cflags(&self, project_base_dir: &Path, _: &Path, out: &mut Vec<String>, _: &mut Vec<PathBuf>) -> crate::Result<()> {
         out.extend(self.cflags.public.iter().cloned());
         out.extend(self.headers.public(project_base_dir)
             .map(|h| format!("-I{}", h.display())));
+        Ok(())
     }
 
     fn library_artifacts(&self) -> Vec<LibraryArtifactType> {
         self.artifacts.clone()
     }
 
-    fn additional_linker_flags(&self) -> Option<&Vec<String>> {
-        Some(&self.linker_flags)
+    fn additional_linker_flags<'a>(&'a self, out: &mut Vec<String>) -> crate::Result<()> {
+        out.extend(self.linker_flags.iter().cloned()); // would like to have a Cow here, but that would require redesigning some parts, so maybe in another release
+        Ok(())
     }
 
     fn artifact_output_dir(&self,  project_build_dir: &std::path::Path, target_triple: &Triple) -> std::path::PathBuf {
-        _ = target_triple; // todo: support cross-compiling in the future
+        _ = target_triple; // todo: support cross-compiling in the future --> this is supported, target_triple isn't necessary since the project_build_dir has this variable
         project_build_dir.join("artifacts")
     }
 }

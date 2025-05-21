@@ -95,6 +95,9 @@ pub enum BeaverError {
     #[error("Malformed version requirement for pkgconfig dependency. Valid requirements are for example `>=1.3.4`, `=1.3`, `<=5`")]
     PkgconfigMalformedVersionRequirement(String),
 
+    #[error("Error parsing pkg-config file '{0}': {1}")]
+    PkgconfigParsingError(PathBuf, pkgconfig_parser::Error),
+
     // Debug fmt //
     #[error("DebugBufferWriteError: {0}")]
     DebugBufferWriteError(std::fmt::Error),
@@ -171,11 +174,17 @@ pub enum BeaverError {
     #[error("Not a swift package path: {0}")]
     NotASwiftPackagePath(PathBuf),
 
+    // Meson //
+    #[error("Meson failed to setup")]
+    MesonFailed,
+
     // General Errors //
     #[error("There are no projects defined")]
     NoProjects,
     #[error("Project `{0}` is not mutable")]
     ProjectNotMutable(String),
+    #[error("Project with name '{0}' already imported")]
+    ProjectAlreadyExists(String, usize),
     #[error("More than one executable is present in project {project}. Specify the target to run (targets in this project are {})", targets.join(" "))]
     ManyExecutable {
         project: String,

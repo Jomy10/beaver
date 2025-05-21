@@ -7,7 +7,8 @@ members = [
   "beaver-macros",
   "beaver-ruby",
   "spm-manifest",
-  "program-communicator"
+  "program-communicator",
+  "pkgconfig-parser"
 ]
 exclude = [
   "examples/cargo/hello-world"
@@ -60,6 +61,9 @@ libc = "0.2"
 peek-again = { version = "0.4", features = ["allow-unsafe"] }
 globwalk = "0.9"
 atomic_refcell = "0.1"
+pkg-config = "0.3"
+owning_ref = "0.4"
+ouroboros = "0.18"
 
 cmake-file-api = "0.1"
 cargo-manifest = "0.19"

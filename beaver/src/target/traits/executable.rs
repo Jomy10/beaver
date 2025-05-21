@@ -2,7 +2,7 @@ use std::path::Path;
 use enum_dispatch::enum_dispatch;
 use target_lexicon::Triple;
 
-use crate::target::{self, targets};
+use crate::target::{self, cmake, targets};
 use crate::target::{ArtifactType, ExecutableArtifactType, traits::Target};
 
 #[enum_dispatch]
@@ -32,7 +32,18 @@ pub trait Executable: Target {
 pub enum AnyExecutable {
     C(target::c::Executable),
     CMake(target::cmake::Executable),
+    Meson(target::meson::Executable),
     Cargo(target::cargo::Executable),
     SPM(target::spm::Executable),
     Custom(targets::custom::Executable),
+}
+
+impl AnyExecutable {
+    #[allow(unused)]
+    pub(crate) fn as_cmake(&self) -> Option<&cmake::Executable> {
+        match self {
+            AnyExecutable::CMake(executable) => Some(executable),
+            _ => None
+        }
+    }
 }

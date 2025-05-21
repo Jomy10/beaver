@@ -199,9 +199,11 @@ impl traits::Library for Library {
     }
 
     // TODO: check
-    fn additional_linker_flags(&self) -> Option<&Vec<String>> {
-        None
+    fn additional_linker_flags(&self, _: &mut Vec<String>) -> crate::Result<()> {
+        Ok(())
     }
 
-    fn public_cflags(&self, _project_base_dir: &Path, _project_build_dir: &Path, _collect_into: &mut Vec<String>, _: &mut Vec<PathBuf>) {}
+    fn public_cflags(&self, _project_base_dir: &Path, _project_build_dir: &Path, _collect_into: &mut Vec<String>, _: &mut Vec<PathBuf>) -> crate::Result<()> {
+        Ok(())
+    }
 }

@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
 use enum_dispatch::enum_dispatch;
+use log::debug;
 use target_lexicon::Triple;
 use url::Url;
 use crate::backend::BackendBuilder;
@@ -97,8 +98,13 @@ pub trait Target: Send + Sync + std::fmt::Debug {
                 Dependency::Flags { cflags: _, linker_flags: _ } => {},
                 Dependency::CMakeId(cmake_id) => {
                     context.with_cmake_project_and_library(&cmake_id, |_, target| {
-                        into_language_set.insert(target.language());
-                        target.collect_unique_dependencies_and_languages(into_set, into_language_set, context)
+                        if let Some(target) = target {
+                            into_language_set.insert(target.language());
+                            target.collect_unique_dependencies_and_languages(into_set, into_language_set, context)
+                        } else {
+                            debug!("Unmapped dependency {}", cmake_id);
+                            Ok(())
+                        }
                     })?;
                 }
             }

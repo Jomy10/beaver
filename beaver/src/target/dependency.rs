@@ -49,6 +49,7 @@ impl PkgconfigFlagOption {
 }
 
 impl Dependency {
+    // TODO: use pkg_config crate
     pub fn pkgconfig(name: &str, version_contstraint: Option<&str>, options: &[PkgconfigOption], flag_options: &[PkgconfigFlagOption]) -> crate::Result<Dependency> {
         let mut exists_args: Vec<OsString> = vec![OsString::from("--exists"), OsString::from(name), OsString::from("--print-errors")];
         for option in options {
@@ -181,7 +182,7 @@ impl Dependency {
             },
             Dependency::CMakeId(cmake_id) => {
                 return context.with_cmake_project_and_library(&cmake_id, |project, target| {
-                    Ok(Some(format!("{}$:{}$:{}", project.name(), target.name(), target.artifact)))
+                    Ok(target.map(|target| format!("{}$:{}$:{}", project.name(), target.name(), target.artifact)))
                 });
             }
         }
@@ -199,7 +200,7 @@ impl Dependency {
             },
             Dependency::CMakeId(cmake_id) => {
                 return context.with_cmake_project_and_library(&cmake_id, |project, target| {
-                    Ok(Some(format!("{}:{}:{}", project.name(), target.name(), target.artifact)))
+                    Ok(target.map(|target| format!("{}:{}:{}", project.name(), target.name(), target.artifact)))
                 });
             }
         }
@@ -209,8 +210,7 @@ impl Dependency {
         match self {
             Dependency::Library(dep) => {
                 context.with_project_and_target(&dep.target, |proj, target| {
-                    target.as_library().unwrap().public_cflags(proj.base_dir(), proj.build_dir(), out, additional_file_dependencies);
-                    Ok(())
+                    target.as_library().unwrap().public_cflags(proj.base_dir(), proj.build_dir(), out, additional_file_dependencies)
                 })
             },
             Dependency::Flags { cflags, linker_flags: _ } => {
@@ -220,9 +220,14 @@ impl Dependency {
                 Ok(())
             },
             Dependency::CMakeId(cmake_id) => {
-                return context.with_cmake_project_and_library(&cmake_id, |project, target| {
-                    Ok(target.public_cflags(project.base_dir(), project.build_dir(), out, additional_file_dependencies))
-                });
+                context.with_cmake_project_and_library(&cmake_id, |project, target| {
+                    if let Some(target) = target {
+                        target.public_cflags(project.base_dir(), project.build_dir(), out, additional_file_dependencies)
+                    } else {
+                        debug!("dependency unused: {}", cmake_id);
+                        Ok(())
+                    }
+                })
             }
         }
     }
@@ -243,9 +248,14 @@ impl Dependency {
                 Ok(())
             },
             Dependency::CMakeId(cmake_id) => {
-                return context.with_cmake_project_and_library(&cmake_id, |project, target| {
-                    target.link_against_library(project.build_dir(), target.artifact, &triple, out, additional_files)
-                });
+                context.with_cmake_project_and_library(&cmake_id, |project, target| {
+                    if let Some(target) = target {
+                        target.link_against_library(project.build_dir(), target.artifact, &triple, out, additional_files)
+                    } else {
+                        debug!("dependency unused: {}", cmake_id);
+                        Ok(())
+                    }
+                })
             }
         }
     }

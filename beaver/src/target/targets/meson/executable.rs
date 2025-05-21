@@ -5,58 +5,52 @@ use target_lexicon::Triple;
 use url::Url;
 
 use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep};
-use crate::target::{ArtifactType, Dependency, Language, LibraryArtifactType, Version};
-use crate::traits::{self, TargetType};
+use crate::target::{traits, ArtifactType, Dependency, ExecutableArtifactType, Language, Version};
+use crate::traits::TargetType;
 use crate::{Beaver, BeaverError};
 
 #[derive(Debug)]
-pub struct Library {
+pub struct Executable {
     project_id: Option<usize>,
     id: Option<usize>,
 
-    cmake_id: String,
+    meson_id: String,
     name: String,
+    version: Version,
     language: Language,
-    pub(crate) artifact: LibraryArtifactType,
-    artifact_path: PathBuf,
-    linker_flags: Vec<String>,
-    cflags: Vec<String>,
-    dependencies: Vec<Dependency>,
+    artifact_type: ExecutableArtifactType,
+    artifact: PathBuf,
 }
 
-impl Library {
+impl Executable {
     pub fn new(
-        cmake_id: String,
+        meson_id: String,
         name: String,
+        version: Version,
         language: Language,
-        artifact: LibraryArtifactType,
-        artifact_path: PathBuf,
-        cflags: Vec<String>,
-        linker_flags: Vec<String>,
-        dependencies: Vec<Dependency>
+        artifact_type: ExecutableArtifactType,
+        artifact: PathBuf,
     ) -> Self {
         Self {
             project_id: None,
             id: None,
-            cmake_id,
+            meson_id,
             name,
+            version,
             language,
+            artifact_type,
             artifact,
-            artifact_path,
-            cflags,
-            linker_flags,
-            dependencies
         }
     }
 }
 
-impl Library {
-    pub fn cmake_id(&self) -> &str {
-        &self.cmake_id
+impl Executable {
+    pub fn meson_id(&self) -> &str {
+        &self.meson_id
     }
 }
 
-impl traits::Target for Library {
+impl traits::Target for Executable {
     fn name(&self) ->  &str {
         &self.name
     }
@@ -70,7 +64,7 @@ impl traits::Target for Library {
     }
 
     fn version(&self) -> Option<&Version> {
-        None
+        Some(&self.version)
     }
 
     fn license(&self) -> Option<&str> {
@@ -98,43 +92,33 @@ impl traits::Target for Library {
     }
 
     fn artifacts(&self) -> Vec<ArtifactType> {
-        vec![ArtifactType::Library(self.artifact)]
+        vec![ArtifactType::Executable(self.artifact_type)]
     }
 
     fn dependencies(&self) ->  &[Dependency] {
-        &self.dependencies
+        &[]
     }
 
     fn r#type(&self) -> TargetType {
-        TargetType::Library
+        TargetType::Executable
     }
 
     fn artifact_file(&self, _project_build_dir: &Path, _artifact: ArtifactType, _triple: &Triple) -> crate::Result<PathBuf> {
-        Ok(self.artifact_path.clone())
+        Ok(self.artifact.clone())
     }
 
     fn register<Builder: BackendBuilder<'static>>(
         &self,
         project_name: &str,
-        project_base_dir: &Path,
+        _project_base_dir: &Path,
         project_build_dir: &Path,
         triple: &Triple,
-        builder: Arc<RwLock<Builder>>,
+        _builder: Arc<RwLock<Builder>>,
         scope: &mut Builder::Scope,
-        context: &Arc<Beaver>
+        _context: &Arc<Beaver>
     ) -> crate::Result<String> {
-        _ = context;
-        _ = project_base_dir;
-
-        let mut guard = builder.write()
-            .map_err(|err| BeaverError::BackendLockError(err.to_string()))?;
-        guard.add_rule_if_not_exists(&rules::NINJA);
-
-        // let mut scope = guard.new_scope();
-        drop(guard);
-
         #[cfg(debug_assertions)] {
-            scope.add_comment(&format!("{}:{}", &self.name, self.artifact))?;
+            scope.add_comment(&format!("{}:{}", &self.name, self.artifact_type))?;
         }
 
         let Some(project_build_dir_str) = project_build_dir.as_os_str().to_str() else {
@@ -144,24 +128,23 @@ impl traits::Target for Library {
         let target_cmd_name = format!("{}$:{}", project_name, &self.name);
 
         scope.add_step(&BuildStep::Cmd {
-            rule: &rules::NINJA,
+            rule: &rules::MESON,
             name: &target_cmd_name,
             dependencies: &[],
             options: &[
-                ("ninjaBaseDir", project_build_dir_str),
-                ("ninjaFile", "build.ninja"),
-                ("targets", &self.name)
+                ("mesonBuildDir", project_build_dir_str),
+                ("target", &self.name)
             ]
         })?;
 
-        let target_cmd = format!("{}$:{}", &target_cmd_name, self.artifact);
+        let target_cmd = format!("{}$:{}", &target_cmd_name, self.artifact_type);
         scope.add_step(&BuildStep::Phony {
             name: &target_cmd,
             args: &[&target_cmd_name],
             dependencies: &[]
         })?;
 
-        let artifact_file = self.artifact_file(project_build_dir, ArtifactType::Library(self.artifact), triple)?;
+        let artifact_file = self.artifact_file(project_build_dir, ArtifactType::Executable(self.artifact_type), triple)?;
         let artifact_file = crate::path::path_to_str(&artifact_file)?;
         scope.add_step(&BuildStep::Phony {
             name: artifact_file,
@@ -174,26 +157,14 @@ impl traits::Target for Library {
 
     /// Debug attributes to print when using `--debug`
     fn debug_attributes(&self) -> Vec<(&'static str,String)> {
-        vec![]
+        vec![
+            ("meson_id", self.meson_id.clone())
+        ]
     }
 }
 
-impl traits::Library for Library {
-    fn library_artifacts(&self) -> Vec<LibraryArtifactType> {
-        vec![self.artifact]
-    }
-
-    fn public_cflags(&self, _project_base_dir: &Path, _project_build_dir: &Path, collect_into: &mut Vec<String>, _: &mut Vec<PathBuf>) -> crate::Result<()> {
-        collect_into.extend(self.cflags.iter().cloned());
-        Ok(())
-    }
-
-    fn additional_linker_flags(&self, out: &mut Vec<String>) -> crate::Result<()> {
-        out.extend(self.linker_flags.iter().cloned());
-        Ok(())
-    }
-
-    fn artifact_output_dir(&self, _project_build_dir: &Path, _triple: &Triple) -> PathBuf {
-        self.artifact_path.parent().unwrap().to_path_buf()
+impl traits::Executable for Executable {
+    fn executable_artifacts(&self) ->  Vec<ExecutableArtifactType> {
+        vec![self.artifact_type]
     }
 }

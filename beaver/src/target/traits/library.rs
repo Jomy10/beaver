@@ -13,9 +13,10 @@ pub trait Library: Target {
     fn link_against_library(&self, project_build_dir: &Path, artifact: LibraryArtifactType, target_triple: &Triple, out: &mut Vec<String>, additional_files: &mut Vec<PathBuf>) -> crate::Result<()> {
         use LibraryArtifactType::*;
 
-        if let Some(linker_flags) = self.additional_linker_flags() {
-            out.extend(linker_flags.iter().cloned());
-        }
+        self.additional_linker_flags(out)?;
+        // if let Some(linker_flags) = self.additional_linker_flags() {
+        //     out.extend(linker_flags.iter().cloned());
+        // }
 
         match artifact {
             Dynlib => {
@@ -46,7 +47,7 @@ pub trait Library: Target {
 
     fn library_artifacts(&self) -> Vec<LibraryArtifactType>;
 
-    fn additional_linker_flags(&self) -> Option<&Vec<String>>;
+    fn additional_linker_flags(&self, collect_into: &mut Vec<String>) -> crate::Result<()>;
 
     /// - Collects the public C flags of this target into `collect_into`.
     /// - Collects additional files to which the dependant should depend on into `additional_file_dependencies`.
@@ -57,7 +58,7 @@ pub trait Library: Target {
         project_build_dir: &Path,
         collect_into: &mut Vec<String>,
         additional_file_dependencies: &mut Vec<PathBuf>
-    );
+    ) -> crate::Result<()>;
 
     fn default_library_artifact(&self) -> Option<LibraryArtifactType> {
         let artifacts = self.library_artifacts();
@@ -79,7 +80,18 @@ pub trait Library: Target {
 pub enum AnyLibrary {
     C(targets::c::Library),
     CMake(targets::cmake::Library),
+    Meson(targets::meson::Library),
     Cargo(targets::cargo::Library),
     SPM(targets::spm::Library),
     Custom(targets::custom::Library),
+}
+
+impl AnyLibrary {
+    #[allow(unused)]
+    pub(crate) fn as_cmake(&self) -> Option<&targets::cmake::Library> {
+        match self {
+            AnyLibrary::CMake(library) => Some(library),
+            _ => None
+        }
+    }
 }

@@ -69,6 +69,7 @@ fn target_triple() -> &'static Triple {
     &TARGET_TRIPLE.get_or_init(|| Triple::host())
 }
 
+// TODO: these should all be pub(crate) instead of pub
 // Paths to executables installed on the system and used for building
 lazy_static! {
     // Tools //
@@ -110,6 +111,8 @@ lazy_static! {
     pub static ref cargo: PathBuf = Tool { name: "cargo", ..Default::default() }.find();
 
     pub static ref swift: PathBuf = Tool { name: "swift", ..Default::default() }.find();
+
+    pub static ref meson: PathBuf = Tool { name: "meson", ..Default::default() }.find();
 
     pub static ref netcat: PathBuf = Tool { name: "nc", ..Default::default() }.find();
     pub static ref test: PathBuf = Tool { name: "test", ..Default::default() }.find();

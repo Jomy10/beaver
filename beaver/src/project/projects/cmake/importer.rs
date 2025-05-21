@@ -4,7 +4,7 @@ use std::process::Command;
 
 use cmake_file_api::objects::{codemodel_v2, CMakeFilesV1, CodeModelV2};
 use itertools::Itertools;
-use log::{trace, warn};
+use log::*;
 
 use crate::project::projects;
 use crate::target::cmake;
@@ -108,6 +108,7 @@ pub fn import(
     trace!("CMake importer: reading replies to targets and projects");
 
     for project in cmake_config.projects.iter() {
+        let mut unmapped_cmake_targets = Vec::new();
         let mut targets: Vec<AnyTarget> = Vec::new();
 
         for target_index in project.target_indexes.iter() {
@@ -125,22 +126,34 @@ pub fn import(
                 },
                 name => {
                     if reconfigure {
-                        warn!("CMake target type '{}' will not be mapped to a target (currently unsupported)", name)
+                        warn!("CMake target type '{}' will not be mapped to a target (currently unsupported) ({} not imported)", name, target.name);
                     }
+                    unmapped_cmake_targets.push(target.id.clone());
                     continue
                 }
             }
         }
 
         trace!("CMake importer: adding project {}", &project.name);
+        trace!("The following cmake targets are unmapped: {:?}", unmapped_cmake_targets);
 
         let project = projects::cmake::Project::new(
             project.name.clone(),
             base_dir.to_path_buf(),
             build_dir.clone(),
-            targets
+            targets,
+            unmapped_cmake_targets
         );
-        context.add_project(project)?;
+        match context.add_project(project) {
+            Ok(_) => Ok(()),
+            Err(err) => match err {
+                BeaverError::ProjectAlreadyExists(name, projid) => {
+                    debug!("TODO: handle duplicate projects in CMake");
+                    Err(BeaverError::ProjectAlreadyExists(name, projid))
+                },
+                _ => Err(err),
+            },
+        }?
     }
 
     Ok(())

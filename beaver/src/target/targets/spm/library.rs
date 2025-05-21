@@ -132,15 +132,17 @@ impl traits::Library for Library {
         vec![self.artifact]
     }
 
-    fn additional_linker_flags(&self) -> Option<&Vec<String>> {
-        None
+    fn additional_linker_flags(&self, _: &mut Vec<String>) -> crate::Result<()> {
+        Ok(())
     }
 
-    fn public_cflags(&self, _project_base_dir: &Path, project_build_dir: &Path, collect_into: &mut Vec<String>, additional_file_dependencies: &mut Vec<PathBuf>) {
+    fn public_cflags(&self, _project_base_dir: &Path, project_build_dir: &Path, collect_into: &mut Vec<String>, additional_file_dependencies: &mut Vec<PathBuf>) -> crate::Result<()> {
         let include_path = self.swift_objc_header_search_path(project_build_dir);
         collect_into.push(format!("-I{}", include_path.display()));
 
         additional_file_dependencies.push(self.swift_objc_header_path(project_build_dir));
+
+        Ok(())
     }
 }
 

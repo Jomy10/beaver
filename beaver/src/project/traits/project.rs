@@ -100,6 +100,7 @@ pub trait MutableProject {
 pub enum AnyProject {
     Beaver(project::beaver::Project),
     CMake(project::cmake::Project),
+    Meson(project::meson::Project),
     Cargo(project::cargo::Project),
     SPM(project::spm::Project),
 }

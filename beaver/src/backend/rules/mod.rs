@@ -192,4 +192,14 @@ lazy_static! {
         ],
         pool: None
     };
+
+    static ref MESON_CMD: String = format!("{} compile -C $mesonBuildDir -j 0 $target", tools::meson.display());
+    pub static ref MESON: Rule = Rule {
+        name: "meson",
+        options: vec![
+            ("description", "building $name"),
+            ("command", &MESON_CMD)
+        ],
+        pool: Some(&EXTERNAL_POOL),
+    };
 }

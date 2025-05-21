@@ -308,6 +308,9 @@ impl Beaver {
         _ = self.lock_build_dir()?;
         let mut project: AnyProject = project.into();
         let mut projects = self.projects_mut()?;
+        if let Some(proj) = projects.iter().find(|proj| proj.name() == project.name()) {
+            return Err(BeaverError::ProjectAlreadyExists(project.name().to_string(), proj.id().unwrap()));
+        }
         let idx = projects.len();
         project.set_id(idx)?;
         projects.push(project);
@@ -336,8 +339,11 @@ impl Beaver {
     pub fn with_cmake_project_and_library<S>(
         &self,
         cmake_id: &str,
-        cb: impl FnOnce(&CMakeProject, &CMakeLibrary) -> crate::Result<S>
+        // The argument is optional because a CMake target may be unmapped
+        cb: impl FnOnce(&CMakeProject, Option<&CMakeLibrary>) -> crate::Result<S>
     ) -> crate::Result<S> {
+        use itertools::Itertools;
+
         let projects = self.projects()?;
         for project in projects.iter() {
             match project {
@@ -347,18 +353,22 @@ impl Beaver {
                         match target {
                             AnyTarget::Library(lib) => match lib {
                                 AnyLibrary::CMake(lib) => if lib.cmake_id() == cmake_id {
-                                    return cb(&project, &lib);
+                                    return cb(&project, Some(&lib));
                                 },
                                 _ => continue,
                             },
                             _ => continue,
                         }
                     }
+                    if project.unmapped_cmake_ids.iter().map(|str| str.as_str()).contains(cmake_id) {
+                        return cb(&project, None);
+                    }
                 },
                 _ => continue,
             }
         }
 
+        debug!("CMake ID not found {}\nin projects: {:#?}", cmake_id, projects);
         return Err(BeaverError::NoCMakeTarget(cmake_id.to_string()));
     }
 

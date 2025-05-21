@@ -240,14 +240,13 @@ impl traits::Library for Library {
         self.artifacts.iter().map(|(art, _)| *art).collect()
     }
 
-    fn additional_linker_flags(&self) -> Option<&Vec<String>> {
-        Some(&self.linker_flags)
+    fn additional_linker_flags(&self, out: &mut Vec<String>) -> crate::Result<()> {
+        out.extend(self.linker_flags.iter().cloned());
+        Ok(())
     }
 
-    #[doc = " - Collects the public C flags of this target into `collect_into`."]
-    #[doc = " - Collects additional files to which the dependant should depend on into `additional_file_dependencies`."]
-    #[doc = "   This could be for example generated files that are generated when this target is built."]
-    fn public_cflags(&self, _project_base_dir: &Path, _project_build_dir: &Path, collect_into: &mut Vec<String>, _additional_file_dependencies: &mut Vec<PathBuf>) {
-        collect_into.extend(self.public_cflags.iter().map(|str| str.clone()))
+    fn public_cflags(&self, _project_base_dir: &Path, _project_build_dir: &Path, collect_into: &mut Vec<String>, _additional_file_dependencies: &mut Vec<PathBuf>) -> crate::Result<()> {
+        collect_into.extend(self.public_cflags.iter().map(|str| str.clone()));
+        Ok(())
     }
 }

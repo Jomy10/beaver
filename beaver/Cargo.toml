@@ -28,16 +28,20 @@ tokio = { workspace = true, features = ["rt", "macros"] }
 itertools = { workspace = true }
 seq-macro = { workspace = true }
 libc = { workspace = true }
-# serde = { workspace = true, features = ["derive"] }
-# serde_json = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
 cmake-file-api = { workspace = true }
 cargo-manifest = { workspace = true }
 globwalk = { workspace = true }
 atomic_refcell = { workspace = true }
+pkg-config = { workspace = true }
+owning_ref = { workspace = true }
+ouroboros = { workspace = true }
 spm-manifest = { path = "../spm-manifest" }
 utils = { path = "../utils", features = ["junctions"] }
 beaver-macros = { path = "../beaver-macros" }
 program-communicator = { path = "../program-communicator" }
+pkgconfig-parser = { path = "../pkgconfig-parser" }
 
 [dev-dependencies]
 tempdir = { workspace = true }
