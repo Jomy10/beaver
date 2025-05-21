@@ -5,5 +5,6 @@ C::Executable(
   language: :objc,
   sources: "main.m",
   headers: ".",
-  dependencies: [framework("Foundation")]
+  dependencies: [framework("Foundation")],
+  settings: [:arc]
 )

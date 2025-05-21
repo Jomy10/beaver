@@ -44,7 +44,7 @@ pub enum SettingParseError {
 impl Setting {
     pub fn parse(str: &str) -> Result<Setting, SettingParseError> {
         match str.to_uppercase().as_str() {
-            "OBJCARC" | "OBJC-ARC" | "OBJC_ARC" => Ok(Setting::ObjCArc),
+            "OBJCARC" | "OBJC-ARC" | "OBJC_ARC" | "ARC" => Ok(Setting::ObjCArc),
             str if str.starts_with("cstd") => {
                 let mut parts = str.split("=");
                 _ = parts.next();

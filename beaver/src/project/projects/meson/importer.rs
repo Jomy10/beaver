@@ -18,7 +18,7 @@ pub fn import(
     let base_dir_str = base_dir.to_string_lossy();
     let file_context = context.optimize_mode.to_string() + ":" + base_dir_str.as_ref();
 
-    let build_dir = meson_configure(&base_dir, base_dir_str.as_ref(), &file_context, meson_configure_args, context)?;
+    let (build_dir, reconfigured) = meson_configure(&base_dir, base_dir_str.as_ref(), &file_context, meson_configure_args, context)?;
     let meson_info = build_dir.join("meson-info");
 
     trace!("Meson importer: storing cache");
@@ -79,7 +79,9 @@ pub fn import(
                     Some(target.map(|target| AnyTarget::Library(AnyLibrary::Meson(target))))
                 },
                 _ => {
-                    warn!("Unsupported meson target type {}", target_info.ty);
+                    if reconfigured {
+                        warn!("Unsupported meson target type {}", target_info.ty);
+                    }
                     None
                 }
             }
@@ -121,7 +123,7 @@ fn meson_configure(
     file_context: &str,
     meson_configure_args: &[&str],
     context: &Beaver
-) -> crate::Result<PathBuf> {
+) -> crate::Result<(PathBuf, bool)> {
     let build_dir = context.get_build_dir_for_external_build_system2(base_dir_str)?;
 
     let cache = context.cache()?;
@@ -156,7 +158,7 @@ fn meson_configure(
         }
     }
 
-    Ok(build_dir)
+    Ok((build_dir, reconfigure))
 }
 
 #[derive(serde::Deserialize)]
