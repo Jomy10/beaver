@@ -23,11 +23,19 @@ impl TargetAccessor {
 
         Ok(())
     }
+
+    fn build(&self) -> Result<(), magnus::Error> {
+        let context = &CTX.get().unwrap().context;
+
+        context.build(TargetRef { target: self.id, project: self.projid })
+            .map_err(|err| BeaverRubyError::from(err).into())
+    }
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     let class = ruby.define_class("TargetAccessor", ruby.class_object())?;
     class.define_method("run", magnus::method!(TargetAccessor::run, 1))?;
+    class.define_method("build", magnus::method!(TargetAccessor::build, 0))?;
 
     return Ok(());
 }
