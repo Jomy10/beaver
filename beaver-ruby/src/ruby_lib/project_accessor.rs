@@ -35,11 +35,18 @@ impl ProjectAccessor {
 
         Ok(TargetAccessor { projid: self.id, id: target })
     }
+
+    fn build_dir(&self) -> Result<magnus::RString, magnus::Error> {
+        let context = &CTX.get().unwrap().context;
+        let projects = context.projects().map_err(|err| BeaverRubyError::from(err))?;
+        Ok(magnus::RString::new(projects[self.id].build_dir().as_os_str().to_str().expect("Non-UTF8 path")))
+    }
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     let class = ruby.define_class("ProjectAccessor", ruby.class_object())?;
     class.define_method("target", magnus::method!(ProjectAccessor::target, 1))?;
+    class.define_method("build_dir", magnus::method!(ProjectAccessor::build_dir, 0))?;
 
     ruby.define_global_function("project", magnus::function!(ProjectAccessor::access, 1));
 
