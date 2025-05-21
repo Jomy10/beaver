@@ -240,7 +240,7 @@ impl traits::Library for Library {
         self.artifacts.iter().map(|(art, _)| *art).collect()
     }
 
-    fn additional_linker_flags(&self, out: &mut Vec<String>) -> crate::Result<()> {
+    fn additional_linker_flags(&self, _: &Path, _: &Triple, out: &mut Vec<String>) -> crate::Result<()> {
         out.extend(self.linker_flags.iter().cloned());
         Ok(())
     }

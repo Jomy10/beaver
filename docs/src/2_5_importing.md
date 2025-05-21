@@ -18,7 +18,8 @@ Projects from other build systems can be imported into beaver. This is done with
 the function `import_{build-system-name}`.
 
 Currently supported build systems:
-- CMake: `import_cmake [path-to-project]`
+- CMake: `import_cmake [path-to-project] [cmake-arguments]`
+- Meson: `import_meson [path-to-project] [meson-arguments]`
 - Cargo: `import_cargo [path-to-project]`
 - Swift Package Manager: `import_spm [path-to-project]`
 

@@ -199,7 +199,7 @@ impl traits::Library for Library {
     }
 
     // TODO: check
-    fn additional_linker_flags(&self, _: &mut Vec<String>) -> crate::Result<()> {
+    fn additional_linker_flags(&self, _: &Path, _: &Triple, _: &mut Vec<String>) -> crate::Result<()> {
         Ok(())
     }
 

@@ -374,10 +374,10 @@ impl CTarget for Library {
                 return Ok(artifact_step);
             },
             LibraryArtifactType::PkgConfig => {
-                todo!()
+                todo!("Pkg-config artifacts are coming soon")
             },
-            LibraryArtifactType::Framework => todo!(),
-            LibraryArtifactType::XCFramework => todo!(),
+            LibraryArtifactType::Framework => todo!("Framework artifacts are coming soon"),
+            LibraryArtifactType::XCFramework => todo!("XCFramework artifacts are coming soon"),
             _ => unreachable!("Invalid artifact")
         }
     }
@@ -395,7 +395,7 @@ impl traits::Library for Library {
         self.artifacts.clone()
     }
 
-    fn additional_linker_flags<'a>(&'a self, out: &mut Vec<String>) -> crate::Result<()> {
+    fn additional_linker_flags<'a>(&'a self, _: &Path, _: &Triple, out: &mut Vec<String>) -> crate::Result<()> {
         out.extend(self.linker_flags.iter().cloned()); // would like to have a Cow here, but that would require redesigning some parts, so maybe in another release
         Ok(())
     }

@@ -224,11 +224,15 @@ impl traits::Library for Library {
         }).map_err(|err| BeaverError::PkgconfigParsingError(pkg_config.borrow_file().clone(), err.clone()))
     }
 
-    fn additional_linker_flags(&self, out: &mut Vec<String>) -> crate::Result<()> {
+    fn additional_linker_flags(&self, project_build_dir: &Path, triple: &Triple, out: &mut Vec<String>) -> crate::Result<()> {
         let Some(pkg_config) = &self.pkg_config else {
             info!("Linking with Meson targets requires pkg-config to be configured. Target {} does not have pkg-config configured and might not be linked properly, you might need to manually link the target.", &self.name);
             return Ok(());
         };
+
+        if self.artifact_type == LibraryArtifactType::Dynlib {
+            out.push(format!("-Wl,-rpath,{}", self.artifact_output_dir(project_build_dir, triple).display()));
+        }
 
         pkg_config.with_pkg_config(|pkg_config| {
             pkg_config.as_ref().map(|pkg_config| {

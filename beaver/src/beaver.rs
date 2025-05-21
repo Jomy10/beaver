@@ -887,8 +887,13 @@ impl Beaver {
     }
 }
 
-impl std::fmt::Display for Beaver {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+#[derive(Default)]
+pub struct PrintOptions {
+    pub artifacts: bool
+}
+
+impl Beaver {
+    pub fn print(&self, f: &mut std::fmt::Formatter<'_>, options: PrintOptions) -> std::fmt::Result {
         let projects = self.projects.read().unwrap();
         for project in projects.iter() {
             if project.id().unwrap() == self.project_index.load(Ordering::SeqCst) as usize && self.enable_color {
@@ -900,11 +905,39 @@ impl std::fmt::Display for Beaver {
 
             for target in project.targets().unwrap().iter() {
                 f.write_fmt(format_args!("  {}", target.name()))?;
+                if options.artifacts {
+                    f.write_fmt(format_args!(" ({})", target.artifacts().iter().map(|artifact| match artifact {
+                        ArtifactType::Library(library_artifact_type) => library_artifact_type.to_string(),
+                        ArtifactType::Executable(executable_artifact_type) => executable_artifact_type.to_string(),
+                    }).collect::<Vec<_>>().join(", ")))?;
+                }
                 f.write_str("\n")?;
             }
         }
 
-        return Ok(());
+        Ok(())
+    }
+}
+
+impl std::fmt::Display for Beaver {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.print(f, PrintOptions::default())
+        // let projects = self.projects.read().unwrap();
+        // for project in projects.iter() {
+        //     if project.id().unwrap() == self.project_index.load(Ordering::SeqCst) as usize && self.enable_color {
+        //         f.write_fmt(format_args!("{}", style(project.name()).blue()))?;
+        //     } else {
+        //         f.write_str(project.name())?;
+        //     }
+        //     f.write_str("\n")?;
+
+        //     for target in project.targets().unwrap().iter() {
+        //         f.write_fmt(format_args!("  {}", target.name()))?;
+        //         f.write_str("\n")?;
+        //     }
+        // }
+
+        // return Ok(());
     }
 }
 

@@ -1,11 +1,15 @@
+#![feature(formatting_options)]
+
 use std::collections::LinkedList;
 use std::ffi::OsString;
+use std::fmt::FormattingOptions;
+use std::io::Write;
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 
 use beaver::target::TargetRef;
-use beaver::{Beaver, BeaverError, OptimizationMode};
+use beaver::{Beaver, BeaverError, OptimizationMode, PrintOptions};
 use clap::{arg, Arg, ArgAction, ArgMatches, Command, ValueHint};
 use lazy_static::lazy_static;
 use log::warn;
@@ -131,7 +135,8 @@ When the argument is provided, but without a value, then the optimization mode i
 
         .subcommand(Command::new("list")
             .about("List projects and targets from the script file")
-            .long_about("List projects and targets from the script file. This will execute the script file, but not any pre-phase hooks"))
+            .long_about("List projects and targets from the script file. This will execute the script file, but not any pre-phase hooks")
+            .arg(arg!(-a --artifacts "Display the types of artifacts each target produces")))
 
         .get_matches();
 
@@ -280,7 +285,14 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
             }
         },
         Some(("list", _)) => {
-            print!("{}", beaver)
+            let matches = matches.subcommand_matches("list").unwrap();
+            let artifacts = matches.get_flag("artifacts");
+            let print_options = PrintOptions {
+                artifacts
+            };
+            let mut stdout = StdoutWrapper(std::io::stdout().lock());
+            let mut formatter = FormattingOptions::new().create_formatter(&mut stdout);
+            beaver.print(&mut formatter, print_options)?;
         },
         Some(("clean", matches)) => {
             if let Some(_projects) = matches.get_many::<String>("projects") {
@@ -302,4 +314,13 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
     drop(ctx);
 
     Ok(())
+}
+
+struct StdoutWrapper<'a>(std::io::StdoutLock<'a>);
+
+impl<'a> std::fmt::Write for StdoutWrapper<'a> {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        self.0.write(s.as_bytes()).unwrap();
+        Ok(())
+    }
 }

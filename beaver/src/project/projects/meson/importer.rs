@@ -1,13 +1,14 @@
-use std::{io, fs};
+use std::{cmp, fs, io};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use log::*;
 
 use crate::target::{ExecutableArtifactType, Language, LibraryArtifactType, Version};
-use crate::traits::{AnyExecutable, AnyLibrary, AnyTarget};
+use crate::traits::{AnyExecutable, AnyLibrary, AnyTarget, Target};
 use crate::{target, tools, Beaver, BeaverError};
 
+// TODO: reconfigure if configure_args changed
 pub fn import(
     base_dir: &Path,
     meson_configure_args: &[&str],
@@ -41,7 +42,7 @@ pub fn import(
                 .find_map(|source| match source {
                     TargetSource::Source(source) => Some(&source.language),
                     _ => None
-                }).map(|language| Language::parse(&language.as_str()).expect("Invalid language"))
+                }).map(|language| if language == "unknown" { Language::C } else { Language::parse(&language.as_str()).expect(&format!("Invalid language '{}'", language)) })
                 .unwrap_or(Language::C);
             match target_info.ty.as_str() {
                 "executable" => {
@@ -83,7 +84,21 @@ pub fn import(
                 }
             }
         }).collect();
-    let targets = targets?;
+    let mut targets = targets?;
+    let mut to_remove = Vec::new();
+    for (i1, t1) in targets.iter().enumerate() {
+        for (i2, t2) in targets.iter().enumerate() {
+            if i1 == i2 { continue }
+
+            if t1.name() == t2.name() {
+                to_remove.push(cmp::max(i1, i2))
+            }
+        }
+    }
+    for i in to_remove.iter().rev() {
+        let target = targets.remove(*i);
+        warn!("Didn't import target {} ({:?}) because it is already defined.", target.name(), target.artifacts().first().unwrap());
+    }
 
     trace!("Meson importer: setting up project");
 
@@ -99,6 +114,7 @@ pub fn import(
     Ok(context.current_project_index().unwrap())
 }
 
+// TODO: if fails, remove cache
 fn meson_configure(
     base_dir: &Path,
     base_dir_str: &str,
@@ -117,9 +133,11 @@ fn meson_configure(
 
         let build_dir = build_dir.to_str().expect("Non-UTF8 file path");
 
+        let color_arg = format!("-Db_colorout={}", if context.color_enabled() { "always" } else { "never" }); // TODO: cache this option
         let mut args = vec![
             "setup",
             "--reconfigure",
+            &color_arg,
             &build_dir
         ];
         args.extend_from_slice(meson_configure_args);

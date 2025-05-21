@@ -95,9 +95,24 @@ fn import_spm(dir: String) -> Result<ProjectAccessor, magnus::Error> {
     return Ok(project_accessor);
 }
 
-fn import_meson(dir: String) -> Result<(), magnus::Error> {
+fn import_meson(args: &[magnus::Value]) -> Result<(), magnus::Error> {
+    let args = magnus::scan_args::scan_args::<
+        (String,), // required
+        (Option<magnus::RArray>,), // optional
+        (),
+        (),
+        (),
+        ()
+    >(args)?;
+    let dir = args.required.0;
+    let meson_flags = if let Some(flags) = args.optional.0 {
+        flags.into_iter().map(|v| v.to_string()).collect()
+    } else {
+        Vec::new()
+    };
+    let meson_flags: Vec<_> = meson_flags.iter().map(|str| str.as_str()).collect();
     let context = &CTX.get().unwrap().context;
-    project::meson::import(&PathBuf::from(dir), &[], &context)
+    project::meson::import(&PathBuf::from(dir), &meson_flags, &context)
         .map_err(|err| magnus::Error::from(BeaverRubyError::from(err)))?;
     Ok(())
 }
@@ -107,7 +122,7 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     ruby.define_global_function("import_cmake", magnus::function!(import_cmake, -1));
     ruby.define_global_function("import_cargo", magnus::function!(import_cargo, 1));
     ruby.define_global_function("import_spm", magnus::function!(import_spm, 1));
-    ruby.define_global_function("import_meson", magnus::function!(import_meson, 1));
+    ruby.define_global_function("import_meson", magnus::function!(import_meson, -1));
 
     Ok(())
 }

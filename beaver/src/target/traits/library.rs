@@ -13,7 +13,7 @@ pub trait Library: Target {
     fn link_against_library(&self, project_build_dir: &Path, artifact: LibraryArtifactType, target_triple: &Triple, out: &mut Vec<String>, additional_files: &mut Vec<PathBuf>) -> crate::Result<()> {
         use LibraryArtifactType::*;
 
-        self.additional_linker_flags(out)?;
+        self.additional_linker_flags(project_build_dir, target_triple, out)?;
         // if let Some(linker_flags) = self.additional_linker_flags() {
         //     out.extend(linker_flags.iter().cloned());
         // }
@@ -47,7 +47,7 @@ pub trait Library: Target {
 
     fn library_artifacts(&self) -> Vec<LibraryArtifactType>;
 
-    fn additional_linker_flags(&self, collect_into: &mut Vec<String>) -> crate::Result<()>;
+    fn additional_linker_flags(&self, project_build_dir: &Path, triple: &Triple, collect_into: &mut Vec<String>) -> crate::Result<()>;
 
     /// - Collects the public C flags of this target into `collect_into`.
     /// - Collects additional files to which the dependant should depend on into `additional_file_dependencies`.

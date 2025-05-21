@@ -4,7 +4,8 @@ Capable build system and command runner for any project.
 
 Projects can be built programmatically because configuration is written in Ruby.
 
-It is an excellent replacement for make and cmake.
+It is an excellent replacement for make and cmake. Beaver also integrates with
+other build systems so you can have dependencies that use other build systems.
 
 ## Example
 
@@ -56,7 +57,9 @@ cargo +nightly install --git https://github.com/jomy10/beaver
 
 ## Documentation
 
-Coming soon
+You can view the [examples](examples) and there is basic documentation in the [docs](docs) directory.
+
+More extensive documentation is coming soon when the project is more stable.
 
 ## Contributing
 
