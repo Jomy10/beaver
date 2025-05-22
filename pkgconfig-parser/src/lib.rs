@@ -9,6 +9,7 @@ pub struct PkgConfig<'a> {
     name: Option<Cow<'a, str>>,
     description: Option<Cow<'a, str>>,
     version: Option<Cow<'a, str>>,
+    requires: Option<Cow<'a, str>>,
     libs: Option<Cow<'a, str>>,
     cflags: Option<Cow<'a, str>>
 }
@@ -43,6 +44,7 @@ impl<'a> PkgConfig<'a> {
                     "Version" => pkg_config.version = Some(Self::parse_value(param_value, &variables)?),
                     "Libs" => pkg_config.libs = Some(Self::parse_value(param_value, &variables)?),
                     "Cflags" => pkg_config.cflags = Some(Self::parse_value(param_value, &variables)?),
+                    "Requires" => pkg_config.requires = Some(Self::parse_value(param_value, &variables)?),
                     _ => {
                         info!("Unparsed pkg-config parameter '{}: {}'", param_name, param_value);
                     }
@@ -91,6 +93,10 @@ impl<'a> PkgConfig<'a> {
 
     pub fn version(&self) -> &Option<Cow<'a, str>> {
         &self.version
+    }
+
+    pub fn requires(&self) -> &Option<Cow<'a, str>> {
+        &self.requires
     }
 
     pub fn libs(&self) -> &Option<Cow<'a, str>> {

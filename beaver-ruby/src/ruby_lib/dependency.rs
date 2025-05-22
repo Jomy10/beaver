@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use beaver::target::{Dependency, LibraryArtifactType, LibraryTargetDependency, PkgconfigFlagOption, PkgconfigOption};
 
 use crate::{BeaverRubyError, CTX};
@@ -91,6 +93,12 @@ impl DependencyWrapper {
         return Self::parse_pkgconfig(&name, args.splat).map_err(|err| err.into());
     }
 
+    fn new_pkgconfig_direct(file: String) -> Result<DependencyWrapper, magnus::Error> {
+        let file = PathBuf::from(file);
+        let dependencies = Dependency::pkgconfig_from_file(&file).map_err(|err| BeaverRubyError::from(err))?;
+        Ok(DependencyWrapper(dependencies))
+    }
+
     fn new_system(name: magnus::Value) -> Result<DependencyWrapper, magnus::Error> {
         let name = Self::get_name(name)?;
         return Ok(DependencyWrapper(Dependency::system(&name)));
@@ -112,6 +120,7 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     ruby.define_global_function("static", magnus::function!(DependencyWrapper::new_static, 1));
     ruby.define_global_function("dynamic", magnus::function!(DependencyWrapper::new_dynamic, 1));
     ruby.define_global_function("pkgconfig", magnus::function!(DependencyWrapper::new_pkgconfig, -1));
+    ruby.define_global_function("pkgconfig_direct", magnus::function!(DependencyWrapper::new_pkgconfig_direct, 1));
     ruby.define_global_function("system_lib", magnus::function!(DependencyWrapper::new_system, 1));
     ruby.define_global_function("framework", magnus::function!(DependencyWrapper::new_framework, 1));
     ruby.define_global_function("flags", magnus::function!(DependencyWrapper::new_flags, 2));

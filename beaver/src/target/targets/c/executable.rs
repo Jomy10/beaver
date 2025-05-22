@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
@@ -144,8 +145,8 @@ impl traits::Target for Executable {
         self.artifacts.iter().map(|a| ArtifactType::Executable(*a)).collect()
     }
 
-    fn dependencies(&self) -> &[crate::target::Dependency] {
-        &self.dependencies
+    fn dependencies(&self) -> crate::Result<Cow<'_, [Dependency]>> {
+        Ok(Cow::Borrowed(&self.dependencies))
     }
 
     fn r#type(&self) -> TargetType {

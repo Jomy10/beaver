@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
@@ -46,7 +47,7 @@ pub trait Target: Send + Sync + std::fmt::Debug {
     }
 
     fn artifacts(&self) -> Vec<ArtifactType>;
-    fn dependencies(&self) -> &[Dependency];
+    fn dependencies(&self) -> crate::Result<Cow<'_, [Dependency]>>;
 
     fn r#type(&self) -> TargetType;
 
@@ -82,32 +83,8 @@ pub trait Target: Send + Sync + std::fmt::Debug {
         into_language_set: &mut HashSet<Language>,
         context: &Beaver
     ) -> crate::Result<()> {
-        for dep in self.dependencies().iter() {
-            // insert dep
-            if into_set.contains(dep) { continue }
-            into_set.insert(dep.clone());
-
-            // collect dep's dependencies
-            match dep {
-                Dependency::Library(target_dep) => {
-                    context.with_project_and_target(&target_dep.target, |_, target| {
-                        into_language_set.insert(target.language());
-                        target.collect_unique_dependencies_and_languages(into_set, into_language_set, context)
-                    })?;
-                },
-                Dependency::Flags { cflags: _, linker_flags: _ } => {},
-                Dependency::CMakeId(cmake_id) => {
-                    context.with_cmake_project_and_library(&cmake_id, |_, target| {
-                        if let Some(target) = target {
-                            into_language_set.insert(target.language());
-                            target.collect_unique_dependencies_and_languages(into_set, into_language_set, context)
-                        } else {
-                            debug!("Unmapped dependency {}", cmake_id);
-                            Ok(())
-                        }
-                    })?;
-                }
-            }
+        for dep in self.dependencies()?.iter() {
+            collect_dependency_and_languages(dep, into_set, into_language_set, context)?;
         }
 
         return Ok(());
@@ -115,6 +92,41 @@ pub trait Target: Send + Sync + std::fmt::Debug {
 
     /// Debug attributes to print when using `--debug`
     fn debug_attributes(&self) -> Vec<(&'static str, String)>;
+}
+
+fn collect_dependency_and_languages(dep: &Dependency, into_set: &mut HashSet<Dependency>, into_language_set: &mut HashSet<Language>, context: &Beaver) -> crate::Result<()> {
+    // insert dep
+    if into_set.contains(dep) { return Ok(()); }
+    into_set.insert(dep.clone());
+
+    // collect dep's dependencies
+    match dep {
+        Dependency::Library(target_dep) => {
+            context.with_project_and_target(&target_dep.target, |_, target| {
+                into_language_set.insert(target.language());
+                target.collect_unique_dependencies_and_languages(into_set, into_language_set, context)
+            })?;
+        },
+        Dependency::Flags { cflags: _, linker_flags: _ } => {},
+        Dependency::CMakeId(cmake_id) => {
+            context.with_cmake_project_and_library(&cmake_id, |_, target| {
+                if let Some(target) = target {
+                    into_language_set.insert(target.language());
+                    target.collect_unique_dependencies_and_languages(into_set, into_language_set, context)
+                } else {
+                    debug!("Unmapped dependency {}", cmake_id);
+                    Ok(())
+                }
+            })?;
+        },
+        Dependency::Multi(deps) => {
+            for dep in deps {
+                collect_dependency_and_languages(dep, into_set, into_language_set, context)?;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 #[enum_dispatch(Target)]

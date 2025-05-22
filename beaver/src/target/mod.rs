@@ -8,3 +8,4 @@ pub use language::Language;
 moduse!(artifact);
 moduse!(dependency);
 moduse!(targets);
+moduse!(pkgconfig_util);

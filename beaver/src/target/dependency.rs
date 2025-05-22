@@ -1,6 +1,6 @@
 use std::ffi::OsString;
 use std::io::Read;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use log::*;
@@ -20,6 +20,7 @@ pub enum Dependency {
     },
     /// reference to a CMake id
     CMakeId(String),
+    Multi(Vec<Dependency>),
 }
 
 // Initializers //
@@ -151,6 +152,25 @@ impl Dependency {
             linker_flags: Some(vec!["-framework".to_string(), name.to_string()])
         }
     }
+
+    pub fn pkgconfig_from_file(file: &Path) -> crate::Result<Dependency> {
+        let contents = std::fs::read_to_string(file)?;
+        let pkgconf = pkgconfig_parser::PkgConfig::parse(&contents)
+            .map_err(|err| BeaverError::PkgconfigParsingError(file.to_path_buf(), err))?;
+
+        let mut deps = vec![
+            Dependency::Flags {
+                cflags: pkgconf.cflags().as_ref().map(|cflags| shlex::split(cflags.as_ref()).unwrap()),
+                linker_flags: pkgconf.libs().as_ref().map(|lflags| shlex::split(lflags.as_ref()).unwrap())
+            }
+        ];
+
+        if let Some(mut dependencies) = crate::target::pkgconfig_collect_dependencies(&pkgconf)? {
+            deps.append(&mut dependencies);
+        }
+
+        Ok(Dependency::Multi(deps))
+    }
 }
 
 // LibraryTarget //
@@ -184,6 +204,9 @@ impl Dependency {
                 return context.with_cmake_project_and_library(&cmake_id, |project, target| {
                     Ok(target.map(|target| format!("{}$:{}$:{}", project.name(), target.name(), target.artifact)))
                 });
+            },
+            Dependency::Multi(_deps) => {
+                return Ok(None); // TODO
             }
         }
     }
@@ -202,6 +225,9 @@ impl Dependency {
                 return context.with_cmake_project_and_library(&cmake_id, |project, target| {
                     Ok(target.map(|target| format!("{}:{}:{}", project.name(), target.name(), target.artifact)))
                 });
+            },
+            Dependency::Multi(_deps) => {
+                return Ok(None); // TODO
             }
         }
     }
@@ -228,6 +254,9 @@ impl Dependency {
                         Ok(())
                     }
                 })
+            },
+            Dependency::Multi(deps) => {
+                deps.iter().map(|dep| dep.public_cflags(context, out, additional_file_dependencies)).collect()
             }
         }
     }
@@ -256,6 +285,9 @@ impl Dependency {
                         Ok(())
                     }
                 })
+            },
+            Dependency::Multi(deps) => {
+                deps.iter().map(|dep| dep.linker_flags(triple, context, out, additional_files)).collect()
             }
         }
     }

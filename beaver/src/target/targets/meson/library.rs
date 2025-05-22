@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
@@ -135,8 +136,23 @@ impl traits::Target for Library {
         vec![ArtifactType::Library(self.artifact_type)]
     }
 
-    fn dependencies(&self) ->  &[Dependency] {
-        &[]
+    fn dependencies(&self) -> crate::Result<Cow<'_, [Dependency]>> {
+        let Some(pkg_config) = &self.pkg_config else {
+            return Ok(Cow::Borrowed(&[]));
+        };
+
+        let dependencies: Result<Option<Vec<Dependency>>, BeaverError> = pkg_config.with_pkg_config(|pkg_config_res| {
+           pkg_config_res.as_ref()
+                .map_err(|err| BeaverError::PkgconfigParsingError(pkg_config.borrow_file().to_path_buf(), err.clone()))
+                .and_then(|pkg_config| crate::target::pkgconfig_collect_dependencies(pkg_config))
+        });
+        let dependencies = dependencies?;
+
+        let Some(dependencies) = dependencies else {
+            return Ok(Cow::Borrowed(&[]));
+        };
+
+        Ok(Cow::Owned(dependencies))
     }
 
     fn r#type(&self) -> TargetType {

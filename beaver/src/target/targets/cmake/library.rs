@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
@@ -101,8 +102,8 @@ impl traits::Target for Library {
         vec![ArtifactType::Library(self.artifact)]
     }
 
-    fn dependencies(&self) ->  &[Dependency] {
-        &self.dependencies
+    fn dependencies(&self) -> crate::Result<Cow<'_, [Dependency]>> {
+        Ok(Cow::Borrowed(&self.dependencies))
     }
 
     fn r#type(&self) -> TargetType {

@@ -149,7 +149,7 @@ pub(crate) trait CTarget: traits::Target {
         let mut scope = guard.new_scope();
         drop(guard);
 
-        let dependency_steps = self.dependencies().iter()
+        let dependency_steps = self.dependencies()?.iter()
             .filter_map(|dep| {
                 match dep.ninja_name(context) {
                     Err(err) => Some(Err(err)),

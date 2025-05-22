@@ -873,7 +873,7 @@ impl Beaver {
                 for attr in target.debug_attributes() {
                     str.write_fmt(format_args!("    {}: {}\n", attr.0, attr.1)).map_err(|err| BeaverError::DebugBufferWriteError(err))?;
                 }
-                for dependency in target.dependencies() {
+                for dependency in target.dependencies()?.as_ref() {
                     if let Some(name) = dependency.ninja_name_not_escaped(self)? {
                         str.write_fmt(format_args!("    -> {}\n", name)).map_err(|err| BeaverError::DebugBufferWriteError(err))?;
                     } else {

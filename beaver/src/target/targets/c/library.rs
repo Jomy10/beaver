@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -150,8 +151,8 @@ impl traits::Target for Library {
         self.artifacts.iter().map(|a| ArtifactType::Library(*a)).collect()
     }
 
-    fn dependencies(&self) -> &[crate::target::Dependency] {
-        &self.dependencies
+    fn dependencies(&self) -> crate::Result<Cow<'_, [Dependency]>> {
+        Ok(Cow::Borrowed(&self.dependencies))
     }
 
     fn r#type(&self) -> TargetType {
