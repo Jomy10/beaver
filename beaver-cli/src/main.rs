@@ -136,7 +136,8 @@ When the argument is provided, but without a value, then the optimization mode i
         .subcommand(Command::new("list")
             .about("List projects and targets from the script file")
             .long_about("List projects and targets from the script file. This will execute the script file, but not any pre-phase hooks")
-            .arg(arg!(-a --artifacts "Display the types of artifacts each target produces")))
+            .arg(arg!(-a --artifacts "Display the types of artifacts each target produces"))
+            .arg(arg!(-d --dependencies "Display the dependencies of each target")))
 
         .get_matches();
 
@@ -287,8 +288,10 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
         Some(("list", _)) => {
             let matches = matches.subcommand_matches("list").unwrap();
             let artifacts = matches.get_flag("artifacts");
+            let dependencies = matches.get_flag("dependencies");
             let print_options = PrintOptions {
-                artifacts
+                artifacts,
+                dependencies
             };
             let mut stdout = StdoutWrapper(std::io::stdout().lock());
             let mut formatter = FormattingOptions::new().create_formatter(&mut stdout);

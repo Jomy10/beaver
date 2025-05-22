@@ -24,7 +24,7 @@ use crate::phase_hook::{Phase, PhaseHook, PhaseHooks};
 use crate::error::BeaverError;
 use crate::project::traits::Project;
 use crate::target::traits::{AnyTarget, Target};
-use crate::target::{ArtifactType, ExecutableArtifactType, TargetRef};
+use crate::target::{ArtifactType, Dependency, ExecutableArtifactType, TargetRef};
 use crate::target::cmake::Library as CMakeLibrary;
 use crate::project::cmake::Project as CMakeProject;
 
@@ -889,7 +889,8 @@ impl Beaver {
 
 #[derive(Default)]
 pub struct PrintOptions {
-    pub artifacts: bool
+    pub artifacts: bool,
+    pub dependencies: bool
 }
 
 impl Beaver {
@@ -912,11 +913,56 @@ impl Beaver {
                     }).collect::<Vec<_>>().join(", ")))?;
                 }
                 f.write_str("\n")?;
+                if options.dependencies {
+                    match target.dependencies() {
+                        Ok(dependencies) => {
+                            if dependencies.len() > 0 {
+                                f.write_str("    Dependencies:\n")?;
+                                for dependency in dependencies.iter() {
+                                    self.print_fmt_dependency(f, dependency, &options)?;
+                                }
+                            }
+                        },
+                        Err(err) => f.write_fmt(format_args!("    Couldn't fetch dependencies: {}", err))?
+                    }
+                }
             }
         }
 
         Ok(())
     }
+
+    fn print_fmt_dependency(&self, f: &mut std::fmt::Formatter<'_>, dependency: &Dependency, options: &PrintOptions) -> std::fmt::Result {
+        match dependency {
+            Dependency::Library(library_target_dependency) => {
+                let target_name = self.with_project_and_target(&library_target_dependency.target, |_, target| {
+                    Ok(target.name().to_string())
+                }).unwrap();
+                f.write_fmt(format_args!("      - {}", target_name))?;
+                if options.artifacts {
+                    f.write_fmt(format_args!(" ({})", library_target_dependency.artifact))?;
+                }
+                f.write_char('\n')?;
+            },
+            Dependency::Flags { cflags, linker_flags } => {
+                f.write_fmt(format_args!("      - {{ cflags: {}, lflags: {} }}\n", cflags.clone().unwrap_or(vec![]).join(", "), linker_flags.clone().unwrap_or(vec![]).join(", ")))?;
+            },
+            Dependency::CMakeId(id) => {
+                let target_name = self.with_cmake_project_and_library(id, |_, target| {
+                    Ok(target.unwrap().name().to_string())
+                }).unwrap();
+                f.write_fmt(format_args!("      - {}\n", target_name))?;
+            },
+            Dependency::Multi(items) => {
+                for item in items {
+                    self.print_fmt_dependency(f, item, options)?;
+                }
+            },
+        }
+
+        Ok(())
+    }
+
 }
 
 impl std::fmt::Display for Beaver {
