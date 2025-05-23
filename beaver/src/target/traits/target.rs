@@ -9,7 +9,7 @@ use target_lexicon::Triple;
 use url::Url;
 use crate::backend::BackendBuilder;
 use crate::target::{self, ArtifactType, Dependency, Language, TargetRef, Version};
-use crate::Beaver;
+use crate::{Beaver, BeaverError};
 
 use super::{AnyExecutable, AnyLibrary};
 
@@ -102,7 +102,7 @@ fn collect_dependency_and_languages(dep: &Dependency, into_set: &mut HashSet<Dep
     // collect dep's dependencies
     match dep {
         Dependency::Library(target_dep) => {
-            context.with_project_and_target(&target_dep.target, |_, target| {
+            context.with_project_and_target::<(), BeaverError>(&target_dep.target, |_, target| {
                 into_language_set.insert(target.language());
                 target.collect_unique_dependencies_and_languages(into_set, into_language_set, context)
             })?;

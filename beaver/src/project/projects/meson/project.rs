@@ -35,8 +35,12 @@ impl Project {
             name,
             base_dir,
             build_dir,
-            targets,
+            targets: targets,
         }
+    }
+
+    pub(crate) fn targets_mut(&mut self) -> &mut Vec<AnyTarget> {
+        &mut self.targets
     }
 }
 
@@ -68,6 +72,7 @@ impl traits::Project for Project {
 
     fn targets<'a>(&'a self) -> crate::Result<Box<dyn Deref<Target = Vec<AnyTarget>> + 'a>> {
         Ok(Box::new(&self.targets))
+        // Ok(Box::new(&self.targets))
     }
 
     fn find_target(&self, name: &str) -> crate::Result<Option<usize>> {

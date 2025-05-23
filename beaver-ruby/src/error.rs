@@ -108,6 +108,8 @@ pub enum BeaverRubyError {
     NoPATH,
     #[error("No command named '{0}' found in PATH")]
     NoCommand(String),
+    #[error("`set_pkgconfig` can only be called on Meson targets")]
+    SetPkgconfigOnNonMesonTarget,
 }
 
 unsafe impl Send for BeaverRubyError {}

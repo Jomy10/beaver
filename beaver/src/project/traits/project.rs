@@ -88,7 +88,9 @@ pub trait Project: Send + Sync + std::fmt::Debug {
             .map_err(BeaverError::from)
     }
 
-    fn as_mutable(&self) -> Option<&dyn MutableProject>;
+    fn as_mutable(&self) -> Option<&dyn MutableProject> {
+        None
+    }
 }
 
 pub trait MutableProject {

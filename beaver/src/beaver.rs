@@ -323,7 +323,7 @@ impl Beaver {
         Ok(self.projects()?.iter().find(|project| project.name() == name).map(|project| project.id().unwrap()))
     }
 
-    pub fn with_project_and_target<S>(
+    pub fn with_project_and_target<S, E: From<BeaverError>>(
         &self,
         target: &TargetRef,
         cb: impl FnOnce(&AnyProject, &AnyTarget) -> crate::Result<S>
@@ -333,6 +333,34 @@ impl Beaver {
         let targets = project.targets()?;
         let target = targets.get(target.target).expect("Invalid TargetRef");
         return cb(project, target).map_err(|err| err.into());
+    }
+
+    pub fn with_project_and_target_mut<S, E: From<BeaverError>>(
+        &self,
+        target: &TargetRef,
+        cb: impl FnOnce(&AnyProject, &mut AnyTarget) -> Result<S, E>
+    ) -> Result<S, E> {
+        let mut projects = self.projects_mut()?;
+
+        let project_mut = projects.get_mut(target.project).expect("Invalid TargetRef"); // We assume a TargetRef is always acquired from a target that exists
+        // We obtain a pointer, because we know we will only mutate one of its targets, not any of its other traits
+        // We can then safely pass this as a reference to the callback, because they're scoped to this function
+        let project_ptr: *const AnyProject = &*project_mut;
+        match project_mut {
+            AnyProject::Beaver(project) => {
+                cb(unsafe { &*project_ptr }, project.targets_mut()?
+                    .get_mut(target.target)
+                    .expect("Invalid TargetRef"))
+            },
+            AnyProject::CMake(project) => Err(BeaverError::ProjectNotTargetMutable(project.name().to_string()).into()),
+            AnyProject::Cargo(project) => Err(BeaverError::ProjectNotTargetMutable(project.name().to_string()).into()),
+            AnyProject::SPM(project) => Err(BeaverError::ProjectNotTargetMutable(project.name().to_string()).into()),
+            AnyProject::Meson(project) => {
+                cb(unsafe { &*project_ptr }, project.targets_mut()
+                    .get_mut(target.target)
+                    .expect("Invalid TargetRef"))
+            }
+        }
     }
 
     /// Access a CMakeProject and a library with the given `cmake_id`
@@ -698,7 +726,7 @@ impl Beaver {
 
         self.run_phase_hook(Phase::Run)?;
 
-        let artifact_file = self.with_project_and_target(&target, |project, target| {
+        let artifact_file = self.with_project_and_target::<PathBuf, BeaverError>(&target, |project, target| {
             let artifact_type = ArtifactType::Executable(ExecutableArtifactType::Executable);
             if !target.artifacts().contains(&artifact_type) {
                 return Err(BeaverError::NoExecutableArtifact(target.name().to_string()));
@@ -935,7 +963,7 @@ impl Beaver {
     fn print_fmt_dependency(&self, f: &mut std::fmt::Formatter<'_>, dependency: &Dependency, options: &PrintOptions) -> std::fmt::Result {
         match dependency {
             Dependency::Library(library_target_dependency) => {
-                let target_name = self.with_project_and_target(&library_target_dependency.target, |_, target| {
+                let target_name = self.with_project_and_target::<String, BeaverError>(&library_target_dependency.target, |_, target| {
                     Ok(target.name().to_string())
                 }).unwrap();
                 f.write_fmt(format_args!("      - {}", target_name))?;

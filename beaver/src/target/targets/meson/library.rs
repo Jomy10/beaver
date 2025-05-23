@@ -83,6 +83,25 @@ impl Library {
             pkg_config: pc
         })
     }
+
+    pub fn set_pkg_config_path(&mut self, path: PathBuf) -> crate::Result<()> {
+        if !path.exists() {
+            return Err(BeaverError::InvalidPkgConfigPath(path));
+        }
+
+        let pc = fs::read_to_string(&path)?;
+        let pkg_config  = OwnedPkgConfigBuilder {
+            file: path,
+            data: pc,
+            pkg_config_builder: |data| {
+                PkgConfig::parse(data)
+            }
+        }.build();
+
+        self.pkg_config = Some(pkg_config);
+
+        Ok(())
+    }
 }
 
 impl Library {
@@ -241,6 +260,7 @@ impl traits::Library for Library {
     }
 
     fn additional_linker_flags(&self, project_build_dir: &Path, triple: &Triple, out: &mut Vec<String>) -> crate::Result<()> {
+        debug!("Getting linker flags for {} of type {}", self.name, self.artifact_type);
         if self.artifact_type == LibraryArtifactType::Dynlib {
             out.push(format!("-Wl,-rpath,{}", self.artifact_output_dir(project_build_dir, triple).display()));
         }

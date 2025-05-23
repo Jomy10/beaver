@@ -177,12 +177,16 @@ pub enum BeaverError {
     // Meson //
     #[error("Meson failed to setup")]
     MesonFailed,
+    #[error("Provided pkgconfig path does not exist {}", .0.display())]
+    InvalidPkgConfigPath(PathBuf),
 
     // General Errors //
     #[error("There are no projects defined")]
     NoProjects,
     #[error("Project `{0}` is not mutable")]
     ProjectNotMutable(String),
+    #[error("Project `{0}`'s targets are not mutable")]
+    ProjectNotTargetMutable(String),
     #[error("Project with name '{0}' already imported")]
     ProjectAlreadyExists(String, usize),
     #[error("More than one executable is present in project {project}. Specify the target to run (targets in this project are {})", targets.join(" "))]

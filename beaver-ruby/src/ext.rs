@@ -49,7 +49,7 @@ fn parse_lib_dependency_from_str(dep: &str, artifact: Option<LibraryArtifactType
     let target_ref = context.parse_target_ref(dep)?;
     let artifact: Result<LibraryArtifactType, BeaverRubyError> = match artifact {
         Some(artifact) => Ok(artifact),
-        None => context.with_project_and_target(&target_ref, |_, target| {
+        None => context.with_project_and_target::<LibraryArtifactType, BeaverError>(&target_ref, |_, target| {
             if let AnyTarget::Library(target) = target {
                 match target.default_library_artifact() {
                     Some(artifact) => Ok(artifact),

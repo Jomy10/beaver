@@ -193,7 +193,7 @@ impl Dependency {
     pub(crate) fn ninja_name(&self, context: &Beaver) -> crate::Result<Option<String>> {
         match self {
             Dependency::Library(dep) => {
-                return context.with_project_and_target(&dep.target, |project, target| {
+                return context.with_project_and_target::<Option<String>, BeaverError>(&dep.target, |project, target| {
                     Ok(Some(format!("{}$:{}$:{}", project.name(), target.name(), dep.artifact)))
                 });
             },
@@ -214,7 +214,7 @@ impl Dependency {
     pub(crate) fn ninja_name_not_escaped(&self, context: &Beaver) -> crate::Result<Option<String>> {
         match self {
             Dependency::Library(dep) => {
-                return context.with_project_and_target(&dep.target, |project, target| {
+                return context.with_project_and_target::<Option<String>, BeaverError>(&dep.target, |project, target| {
                     Ok(Some(format!("{}:{}:{}", project.name(), target.name(), dep.artifact)))
                 });
             },
@@ -235,7 +235,7 @@ impl Dependency {
     pub(crate) fn public_cflags(&self, context: &Beaver, out: &mut Vec<String>, additional_file_dependencies: &mut Vec<PathBuf>) -> crate::Result<()> {
         match self {
             Dependency::Library(dep) => {
-                context.with_project_and_target(&dep.target, |proj, target| {
+                context.with_project_and_target::<(), BeaverError>(&dep.target, |proj, target| {
                     target.as_library().unwrap().public_cflags(proj.base_dir(), proj.build_dir(), out, additional_file_dependencies)
                 })
             },
@@ -264,7 +264,7 @@ impl Dependency {
     pub(crate) fn linker_flags(&self, triple: &Triple, context: &Beaver, out: &mut Vec<String>, additional_files: &mut Vec<PathBuf>) -> crate::Result<()> {
         match self {
             Dependency::Library(dep) => {
-                context.with_project_and_target(&dep.target, |proj, target| {
+                context.with_project_and_target::<(), BeaverError>(&dep.target, |proj, target| {
                     target.as_library().unwrap().link_against_library(proj.build_dir(), dep.artifact, &triple, out, additional_files)
                     // out.append(&mut target.as_library().unwrap().link_against_library(proj.build_dir(), dep.artifact, &triple)?);
                 })
