@@ -68,7 +68,7 @@ impl traits::Project for Project {
         panic!("CMake Project's build dir cannot be updated")
     }
 
-    fn targets<'a>(&'a self) -> std::result::Result<Box<(dyn Deref<Target = Vec<AnyTarget>> + 'a)>, BeaverError> {
+    fn targets<'a>(&'a self) -> std::result::Result<Box<dyn Deref<Target = Vec<AnyTarget>> + 'a>, BeaverError> {
         Ok(Box::new(&self.targets))
     }
 

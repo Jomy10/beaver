@@ -167,12 +167,18 @@ impl traits::Target for Executable {
             let response_file = std::env::temp_dir().join("beaver_pipe_".to_string() + &uuid::Uuid::new_v4().to_string());
             let response_file = response_file.to_str().unwrap();
 
-            let mut cmd = format!("{} {} && ", tools::mkfifo.to_str().unwrap(), response_file);
+            let mut cmd = String::new();
             context.comm_socket.0
                 .get().expect("communication not initialized")
-                .sh_write_str_netcat(&tools::netcat, &format!("build {}:{} {}", self.project_id().unwrap(), self.id().unwrap(), response_file), &mut cmd)
+                // .sh_add_response_waiter(&tools::cat)
+                .sh_write_str_netcat_and_wait(
+                    &tools::mkfifo, &tools::cat,
+                    &tools::netcat, &format!("build {}:{} {}", self.project_id().unwrap(), self.id().unwrap(), response_file),
+                    response_file,
+                    true,
+                    &mut cmd
+                )
                 .map_err(|err| BeaverError::AnyError(err.to_string()))?;
-            cmd += &format!(" && {} $$({} \"{}\") -eq 0", tools::test.to_str().unwrap(), tools::cat.to_str().unwrap(), response_file);
 
             scope.add_step(&BuildStep::Cmd {
                 rule: &rules::CUSTOM,

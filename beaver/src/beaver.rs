@@ -470,7 +470,7 @@ impl Beaver {
                 self.with_project_named(project_name, |project| {
                     match project.find_target(target_name) {
                         Err(err) => Err(err),
-                        Ok(target_idx) => Ok(TargetRef { project: project.id().unwrap(), target: target_idx.unwrap() })
+                        Ok(target_idx) => Ok(TargetRef { project: project.id().unwrap(), target: target_idx.expect("Target doesn't exist") })
                     }
                 })
             }
@@ -521,7 +521,7 @@ impl Beaver {
                     let target_id = target.next().unwrap().parse::<usize>().unwrap();
                     assert!(target.next().is_none());
 
-                    *callback_path = Some(PathBuf::from(&str[target_end+1..]));
+                    *callback_path = Some(PathBuf::from(&str[target_end+1..].trim()));
 
                     trace!(target: "communication", "parameters: project_id={} target_id={} callback_path={:?}", project_id, target_id, callback_path);
 
@@ -986,6 +986,9 @@ impl Beaver {
                     self.print_fmt_dependency(f, item, options)?;
                 }
             },
+            Dependency::File(file) => {
+                f.write_fmt(format_args!("      - {:?}\n", file))?;
+            }
         }
 
         Ok(())

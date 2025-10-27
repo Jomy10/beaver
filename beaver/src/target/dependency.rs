@@ -21,6 +21,8 @@ pub enum Dependency {
     /// reference to a CMake id
     CMakeId(String),
     Multi(Vec<Dependency>),
+    /// A file dependency, this can refer to any file (that isn't a source file)
+    File(PathBuf),
 }
 
 // Initializers //
@@ -49,6 +51,7 @@ impl PkgconfigFlagOption {
     }
 }
 
+// Constructors
 impl Dependency {
     // TODO: use pkg_config crate
     pub fn pkgconfig(name: &str, version_contstraint: Option<&str>, options: &[PkgconfigOption], flag_options: &[PkgconfigFlagOption]) -> crate::Result<Dependency> {
@@ -153,7 +156,7 @@ impl Dependency {
         }
     }
 
-    pub fn pkgconfig_from_file(file: &Path) -> crate::Result<Dependency> {
+    pub fn pkgconfig_from_file(file: &Path, prepend_search_path: Option<&Path>) -> crate::Result<Dependency> {
         let contents = std::fs::read_to_string(file)?;
         let pkgconf = pkgconfig_parser::PkgConfig::parse(&contents)
             .map_err(|err| BeaverError::PkgconfigParsingError(file.to_path_buf(), err))?;
@@ -165,7 +168,7 @@ impl Dependency {
             }
         ];
 
-        if let Some(mut dependencies) = crate::target::pkgconfig_collect_dependencies(&pkgconf)? {
+        if let Some(mut dependencies) = crate::target::pkgconfig_collect_dependencies(&pkgconf, prepend_search_path)? {
             deps.append(&mut dependencies);
         }
 
@@ -207,6 +210,11 @@ impl Dependency {
             },
             Dependency::Multi(_deps) => {
                 return Ok(None); // TODO
+            },
+            Dependency::File(file) => {
+                file.to_str()
+                    .ok_or(BeaverError::NonUTF8OsStr(file.as_os_str().to_os_string()))
+                    .map(|str| Some(str.to_string()))
             }
         }
     }
@@ -228,6 +236,11 @@ impl Dependency {
             },
             Dependency::Multi(_deps) => {
                 return Ok(None); // TODO
+            },
+            Dependency::File(file) => {
+                file.to_str()
+                    .ok_or(BeaverError::NonUTF8OsStr(file.as_os_str().to_os_string()))
+                    .map(|str| Some(str.to_string()))
             }
         }
     }
@@ -257,7 +270,8 @@ impl Dependency {
             },
             Dependency::Multi(deps) => {
                 deps.iter().map(|dep| dep.public_cflags(context, out, additional_file_dependencies)).collect()
-            }
+            },
+            Dependency::File(_) => Ok(())
         }
     }
 
@@ -288,7 +302,8 @@ impl Dependency {
             },
             Dependency::Multi(deps) => {
                 deps.iter().map(|dep| dep.linker_flags(triple, context, out, additional_files)).collect()
-            }
+            },
+            Dependency::File(_) => Ok(())
         }
     }
 }

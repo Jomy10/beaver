@@ -29,6 +29,29 @@ pub struct Socket {
 }
 
 impl Socket {
+    pub fn sh_write_str_netcat_and_wait(&self, mkfifo: &Path, cat: &Path, netcat: &Path, netcat_send_data: &str, response_file: &Path, escape_dollar: bool, out: &mut String) -> std::fmt::Result {
+        use std::fmt::Write;
+
+        let response_file = response_file.to_str().unwrap();
+        let response_result_file = format!("{}_result", response_file);
+        let mkfifo = mkfifo.to_str().unwrap();
+        let cat = cat.to_str().unwrap();
+        let dollar = if escape_dollar { "$$" } else { "$" };
+
+        // Set up waiting for response
+        out.write_fmt(format_args!("{} {} && {} {} > {} & beaver_cat_pid={}! && ",
+            mkfifo, response_file,
+            cat, response_file, &response_result_file,
+            dollar
+        ))?;
+
+        // Send message
+        self.sh_write_str_netcat(netcat, netcat_send_data, out)?;
+
+        // wait for response proces to end
+        out.write_fmt(format_args!(" && wait {}beaver_cat_pid && test {}({} {}) -eq 0", dollar, dollar, cat, response_result_file))
+    }
+
     pub fn sh_write_str_netcat(&self, netcat: &Path, data: &str, out: &mut String) -> std::fmt::Result {
         use std::fmt::Write;
 

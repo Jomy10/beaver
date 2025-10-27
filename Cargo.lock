@@ -153,6 +153,7 @@ dependencies = [
  "pkgconfig-parser",
  "program-communicator",
  "rayon",
+ "scoped-env",
  "semver",
  "seq-macro",
  "serde",
@@ -1341,6 +1342,12 @@ checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
 ]
+
+[[package]]
+name = "scoped-env"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a86338a78d9058ae1bb70bf4ec558e9c51c611b443a356f7d041d29bb6c1c026"
 
 [[package]]
 name = "scopeguard"

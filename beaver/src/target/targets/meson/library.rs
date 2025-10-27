@@ -160,10 +160,12 @@ impl traits::Target for Library {
             return Ok(Cow::Borrowed(&[]));
         };
 
+        let base_path = pkg_config.borrow_file().parent().unwrap();
+
         let dependencies: Result<Option<Vec<Dependency>>, BeaverError> = pkg_config.with_pkg_config(|pkg_config_res| {
            pkg_config_res.as_ref()
                 .map_err(|err| BeaverError::PkgconfigParsingError(pkg_config.borrow_file().to_path_buf(), err.clone()))
-                .and_then(|pkg_config| crate::target::pkgconfig_collect_dependencies(pkg_config))
+                .and_then(|pkg_config| crate::target::pkgconfig_collect_dependencies(pkg_config, Some(base_path)))
         });
         let dependencies = dependencies?;
 

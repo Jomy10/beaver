@@ -10,6 +10,7 @@ mod unix {
     use std::path::Path;
 
     pub trait SocketUnixExt {
+        fn sh_write_str_netcat_and_wait(&self, mkfifo: &Path, cat: &Path, netcat: &Path, netcat_send_data: &str, response_file: impl AsRef<Path>, escape_dollar: bool, out: &mut String) -> std::fmt::Result;
         fn sh_write_str_netcat(&self, netcat: &Path, data: &str, out: &mut String) -> std::fmt::Result;
         fn wait(self) -> Result<(), Box<dyn Error + Send>>;
     }
@@ -26,6 +27,10 @@ mod unix {
 
     #[cfg(unix)]
     impl SocketUnixExt for Socket {
+        fn sh_write_str_netcat_and_wait(&self, mkfifo: &Path, cat: &Path, netcat: &Path, netcat_send_data: &str, response_file: impl AsRef<Path>, escape_dollar: bool, out: &mut String) -> std::fmt::Result {
+            self.0.sh_write_str_netcat_and_wait(mkfifo, cat, netcat, netcat_send_data, response_file.as_ref(), escape_dollar, out)
+        }
+
         fn sh_write_str_netcat(&self, netcat: &Path, data: &str, out: &mut String) -> std::fmt::Result {
             self.0.sh_write_str_netcat(netcat, data, out)
         }

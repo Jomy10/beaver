@@ -64,6 +64,7 @@ atomic_refcell = "0.1"
 pkg-config = "0.3"
 owning_ref = "0.4"
 ouroboros = "0.18"
+scoped-env = "2.1"
 
 cmake-file-api = "0.1"
 cargo-manifest = "0.19"

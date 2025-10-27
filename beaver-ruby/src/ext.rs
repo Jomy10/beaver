@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::Arc;
 
 use beaver::target::custom::BuildCommand;
 use beaver::target::parameters::{Files, Flags, Headers};
@@ -12,7 +13,7 @@ use magnus::value::ReprValue;
 use utils::UnsafeSendable;
 
 use crate::ruby_lib::dependency::DependencyWrapper;
-use crate::BeaverRubyError;
+use crate::{BeaverRubyError, block_execute_on};
 
 /// Parses a ruby string or array into a vector of strings
 pub(crate) fn parse_to_string_vec(value: magnus::Value) -> crate::Result<Vec<String>> {
@@ -266,12 +267,22 @@ impl MagnusConvertExt for BuildCommand {
             return Err(BeaverRubyError::IncompatibleType(value, "Proc").into());
         };
 
-        let proc = UnsafeSendable::new(proc);
+        let proc = Arc::new(UnsafeSendable::new(proc));
+        let ctx = crate::CTX.get().unwrap().clone();
         return Ok(BuildCommand(Box::new(move || {
+            let proc = proc.clone();
+            block_execute_on(&ctx.sender.clone(), Box::new(move || {
+                    unsafe { proc.value().call([] as [magnus::Value; 0]) }
+                        .map(|_: magnus::Value| ())
+                        .map_err(|err| BeaverError::AnyError(err.to_string()))
+                        .map_err(|err| BeaverRubyError::BeaverError(err))
+            })).map_err(|err| match err {
+                BeaverRubyError::BeaverError(err) => err,
+                err => BeaverError::AnyError(err.to_string())
+            })
+            // ctx.sender.send(Box::new(move || {
+            // }))
             // TODO: run on ruby thread
-            unsafe { proc.value().call([] as [magnus::Value; 0]) }
-                .map(|_: magnus::Value| ())
-                .map_err(|err| BeaverError::AnyError(err.to_string()))
         })));
     }
 }

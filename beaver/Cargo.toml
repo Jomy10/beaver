@@ -37,6 +37,7 @@ atomic_refcell = { workspace = true }
 pkg-config = { workspace = true }
 owning_ref = { workspace = true }
 ouroboros = { workspace = true }
+scoped-env = { workspace = true }
 spm-manifest = { path = "../spm-manifest" }
 utils = { path = "../utils", features = ["junctions"] }
 beaver-macros = { path = "../beaver-macros" }

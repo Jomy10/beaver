@@ -95,7 +95,7 @@ impl DependencyWrapper {
 
     fn new_pkgconfig_direct(file: String) -> Result<DependencyWrapper, magnus::Error> {
         let file = PathBuf::from(file);
-        let dependencies = Dependency::pkgconfig_from_file(&file).map_err(|err| BeaverRubyError::from(err))?;
+        let dependencies = Dependency::pkgconfig_from_file(&file, None).map_err(|err| BeaverRubyError::from(err))?;
         Ok(DependencyWrapper(dependencies))
     }
 
@@ -112,6 +112,10 @@ impl DependencyWrapper {
     fn new_flags(cflags: Option<Vec<String>>, linker_flags: Option<Vec<String>>) -> Result<DependencyWrapper, magnus::Error> {
         return Ok(DependencyWrapper(Dependency::Flags { cflags, linker_flags }));
     }
+
+    fn new_file(file: String) -> Result<DependencyWrapper, magnus::Error> {
+        return Ok(DependencyWrapper(Dependency::File(PathBuf::from(file))));
+    }
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
@@ -124,6 +128,7 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     ruby.define_global_function("system_lib", magnus::function!(DependencyWrapper::new_system, 1));
     ruby.define_global_function("framework", magnus::function!(DependencyWrapper::new_framework, 1));
     ruby.define_global_function("flags", magnus::function!(DependencyWrapper::new_flags, 2));
+    ruby.define_global_function("file_dep", magnus::function!(DependencyWrapper::new_file, 1));
 
     Ok(())
 }

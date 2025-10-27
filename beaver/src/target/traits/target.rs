@@ -123,6 +123,9 @@ fn collect_dependency_and_languages(dep: &Dependency, into_set: &mut HashSet<Dep
             for dep in deps {
                 collect_dependency_and_languages(dep, into_set, into_language_set, context)?;
             }
+        },
+        Dependency::File(_) => {
+            into_set.insert(dep.clone());
         }
     }
 

@@ -11,8 +11,8 @@ Custom::Library(
   },
   build: proc {
     puts "Building SomeLibrary"
-    sh "clang -c lib.c -o lib.o"
-    sh "ar -rcs build/libsomelib.a lib.o"
+    sh "clang -c lib.c -o build/lib.o"
+    sh "ar -rcs build/libsomelib.a build/lib.o"
   }
 )
 
