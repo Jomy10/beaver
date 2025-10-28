@@ -20,7 +20,7 @@ impl DependencyWrapper {
 
     fn new_static(obj: magnus::Value) -> Result<DependencyWrapper, magnus::Error> {
         // let context = unsafe { &*RBCONTEXT.assume_init_ref() };
-        let context = &CTX.get().unwrap().context;
+        let context = &CTX.get().unwrap().context();
 
         let name = Self::get_name(obj)?;
         let target_ref = context.parse_target_ref(&name).map_err(|err| BeaverRubyError::from(err))?;
@@ -33,7 +33,7 @@ impl DependencyWrapper {
     }
 
     fn new_dynamic(obj: magnus::Value) -> Result<DependencyWrapper, magnus::Error> {
-        let context = &CTX.get().unwrap().context;
+        let context = &CTX.get().unwrap().context();
 
         let name = Self::get_name(obj)?;
         let target_ref = context.parse_target_ref(&name).map_err(|err| BeaverRubyError::from(err))?;

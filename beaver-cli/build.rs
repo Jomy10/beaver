@@ -30,7 +30,7 @@ fn run_ruby(s: &str) -> String {
         .expect("Failed to run ruby")
     ;
     if !out.status.success() {
-        println!("{:?}", out);
+        eprintln!("{:?}", out);
         panic!("Error: {}", String::from_utf8(out.stderr).unwrap_or("no stderr".to_string()));
     }
     return String::from_utf8(out.stdout).expect("Output is not valid utf8");

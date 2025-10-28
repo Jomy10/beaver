@@ -14,7 +14,7 @@ pub struct TargetAccessor {
 
 impl TargetAccessor {
     fn run(&self, args: magnus::RArray) -> Result<(), magnus::Error> {
-        let context = &CTX.get().unwrap().context;
+        let context = &CTX.get().unwrap().context();
 
         let args = args.into_iter().map(|value| {
             match magnus::RString::from_value(value) {
@@ -28,7 +28,7 @@ impl TargetAccessor {
     }
 
     fn build(&self) -> Result<(), magnus::Error> {
-        let context = &CTX.get().unwrap().context;
+        let context = &CTX.get().unwrap().context.upgrade().expect("Beaver dropped before ruby");
 
         context.build(TargetRef { target: self.id, project: self.projid })
             .map_err(|err| BeaverRubyError::from(err).into())
@@ -36,7 +36,7 @@ impl TargetAccessor {
 
     /// Set the name of the pkgconfig file, or the path to the pkgconfig file for a Meson target
     fn set_pkgconfig(&self, name: String) -> Result<(), magnus::Error> {
-        let context = &CTX.get().unwrap().context;
+        let context = &CTX.get().unwrap().context();
 
         context.with_project_and_target_mut::<(), BeaverRubyError>(&TargetRef { target: self.id, project: self.projid }, |project, target| {
             let path = if name.ends_with(".pc") {

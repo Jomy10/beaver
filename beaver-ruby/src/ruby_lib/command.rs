@@ -191,7 +191,7 @@ fn flag(ruby: &magnus::Ruby, args: &[magnus::Value]) -> Result<magnus::Value, ma
 }
 
 fn cmd(args: &[magnus::Value]) -> Result<(), magnus::Error> {
-    let context = &CTX.get().unwrap().context;
+    let context = &CTX.get().unwrap().context();
 
     let args = magnus::scan_args::scan_args::<
         (String,), // required

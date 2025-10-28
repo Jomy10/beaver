@@ -92,6 +92,57 @@ impl Cache {
         Ok(any_changed)
     }
 
+    /// Same as `files_changed_in_context`, but also checks if files have been
+    /// added or removed, and updates the files
+    pub fn files_changed_in_context2<'a, T: AsRef<Path>>(&self, context: &str, mut files: Vec<T>) -> crate::Result<bool> {
+        trace!("Checking file context {}", context);
+
+        let mut context_prefix = context.len().as_bytes().to_vec();
+        context_prefix.extend(context.as_bytes());
+
+        let mut concrete_file_batch = sled::Batch::default();
+        let mut any_changed = false;
+
+        for file in self.concrete_files.scan_prefix(context_prefix) {
+            let (keyd, datad) = file?;
+            let key = ConcreteFileKey::from_bytes(&keyd);
+            let ccheck_id = ConcreteFileData::check_id_from_bytes(&datad);
+
+            let Some(matching_index) = files.iter().enumerate().position(|(_, f)| f.as_ref().to_string_lossy() == key.filename) else {
+                // file was removed (so remove it in cache)
+                concrete_file_batch.remove(keyd);
+                any_changed = true;
+                continue;
+            };
+
+            let check_id = self.update_file(key.filename)?;
+            if *ccheck_id != check_id {
+                concrete_file_batch.insert(keyd, ConcreteFileData { check_id }.as_bytes());
+                any_changed = true;
+            }
+
+            files.swap_remove(matching_index);
+        }
+
+        for remaining_file in files {
+            let file = remaining_file.as_ref()
+                .to_str()
+                .ok_or(BeaverError::NonUTF8OsStr(remaining_file.as_ref().as_os_str().to_os_string()))?;
+            let key = ConcreteFileKey {
+                context,
+                filename: file,
+            };
+            let check_id = self.update_file(file)?;
+            let data = ConcreteFileData { check_id };
+            concrete_file_batch.insert(key.to_bytes(), data.as_bytes());
+            any_changed = true;
+        }
+
+        self.concrete_files.apply_batch(concrete_file_batch)?;
+
+        Ok(any_changed)
+    }
+
     /// set all files in a context, removing any old files
     pub fn set_all_files<'a>(&self, files: impl Iterator<Item = &'a Path>, context: &str) -> crate::Result<()> {
         trace!("Adding file context {}", context);
@@ -156,5 +207,11 @@ impl Cache {
         self.concrete_files.apply_batch(remove_batch)?;
 
         Ok(())
+    }
+}
+
+impl Drop for Cache {
+    fn drop(&mut self) {
+        self._db.flush().unwrap();
     }
 }

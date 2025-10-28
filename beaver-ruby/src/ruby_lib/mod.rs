@@ -9,6 +9,7 @@ mod build_dir;
 mod pre;
 mod command;
 mod target_triple;
+mod cache;
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     project_accessor::register(ruby)?;
@@ -20,6 +21,7 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     pre::register(ruby)?;
     command::register(ruby)?;
     target_triple::register(ruby)?;
+    cache::register(ruby)?;
 
     Ok(())
 }

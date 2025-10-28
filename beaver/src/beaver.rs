@@ -580,9 +580,12 @@ impl Beaver {
     }
 
     pub(crate) fn enable_communication(self: &Arc<Self>) -> crate::Result<()> {
-        let self2 = self.clone();
+        let self2 = Arc::downgrade(self);
         let _ = self.comm_socket.0.set(program_communicator::socket::listen("beaver_custom_targets", move |reader| {
             let mut callback_path: Option<PathBuf> = None;
+            let Some(self2) = self2.upgrade() else {
+                return Ok(ReceiveResult::Close);
+            };
             match self2.handle_communication(reader, &mut callback_path) {
                 Ok(res) => {
                     trace!(target: "communication", "message result = {:?}", res);
@@ -758,6 +761,9 @@ impl Beaver {
 
     pub fn clean(self: &Arc<Self>) -> crate::Result<()> {
         info!("Cleaning all projects...");
+
+        // TODO:
+        // self.cache()?.clean();
 
         if self.projects()?.len() == 0 {
             info!("Nothing to clean (no projects defined)");
@@ -1020,11 +1026,13 @@ impl std::fmt::Display for Beaver {
 
 impl Drop for Beaver {
     fn drop(&mut self) {
-        if let Some(socket) = self.comm_socket.0.take() {
-            socket.send("close").unwrap();
-            #[cfg(unix)] {
-                use program_communicator::socket::SocketUnixExt;
-                socket.wait().unwrap();
+        if self.comm_socket.0.get().is_some() {
+            if let Some(socket) = self.comm_socket.0.take() {
+                socket.send("close").unwrap();
+                #[cfg(unix)] {
+                    use program_communicator::socket::SocketUnixExt;
+                    socket.wait().unwrap();
+                }
             }
         }
     }

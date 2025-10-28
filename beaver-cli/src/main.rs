@@ -12,7 +12,7 @@ use beaver::target::TargetRef;
 use beaver::{Beaver, BeaverError, OptimizationMode, PrintOptions};
 use clap::{arg, Arg, ArgAction, ArgMatches, Command, ValueHint};
 use lazy_static::lazy_static;
-use log::warn;
+use log::*;
 use target_lexicon::Triple;
 
 include!(concat!(env!("OUT_DIR"), "/rb_const_gen.rs"));
@@ -231,11 +231,12 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
         // Triple::host()
         target
     )?);
-    let ctx = unsafe { beaver_ruby::execute_script(script_file, script_args, &beaver)? };
+    let beaver_weak = Arc::downgrade(&beaver);
+    let ctx = unsafe { beaver_ruby::execute_script(script_file, script_args, &beaver_weak)? };
 
     if *debug {
         let mut str = String::new();
-        ctx.context.fmt_debug(&mut str)?;
+        beaver.fmt_debug(&mut str)?;
         eprintln!("{}", str);
     }
 
@@ -313,6 +314,12 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
         warn!("Unused arguments: {:?}", *ctx.args());
     }
 
+    // println!("beaver strong count: {}", Arc::strong_count(&beaver));
+    // unsafe { beaver_ruby::cleanup() };
+    let beaver = match Arc::try_unwrap(beaver) {
+        Ok(beaver) => beaver,
+        Err(_) => panic!("Couldn't close beaver gracefully: more than one strong reference remains")
+    };
     drop(beaver);
     drop(ctx);
 

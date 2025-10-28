@@ -117,7 +117,7 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
 }
 
 fn def_c_library(args: magnus::RHash) -> Result<TargetAccessor, magnus::Error> {
-    let context = &CTX.get().unwrap().context;
+    let context = &CTX.get().unwrap().context();
 
     let ctarget_desc: target::c::TargetDescriptor<LibraryArtifactType> = c_target_parse_ruby_args(args, &context)?;
     let library = AnyLibrary::C(target::c::Library::new_desc(ctarget_desc).map_err(BeaverRubyError::from)?);
@@ -138,7 +138,7 @@ fn def_c_library(args: magnus::RHash) -> Result<TargetAccessor, magnus::Error> {
 }
 
 fn def_c_executable(args: magnus::RHash) -> Result<TargetAccessor, magnus::Error> {
-    let context = &CTX.get().unwrap().context;
+    let context = &CTX.get().unwrap().context();
 
     let ctarget_desc: target::c::TargetDescriptor<ExecutableArtifactType> = c_target_parse_ruby_args(args, &context)?;
     let exe = AnyExecutable::C(target::c::Executable::new_desc(ctarget_desc).map_err(BeaverRubyError::from)?);
@@ -160,7 +160,7 @@ fn def_c_executable(args: magnus::RHash) -> Result<TargetAccessor, magnus::Error
 
 fn def_custom_library(args: magnus::RHash) -> Result<TargetAccessor, magnus::Error> {
     // let context: &Arc<Beaver> = unsafe { &*RBCONTEXT.assume_init_ref() };
-    let context = &CTX.get().unwrap().context;
+    let context = &CTX.get().unwrap().context();
 
     context.with_current_project_mut(|project| {
         let project_base_dir = project.base_dir();

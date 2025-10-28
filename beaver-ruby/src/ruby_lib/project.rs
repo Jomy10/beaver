@@ -9,7 +9,7 @@ use super::project_accessor::ProjectAccessor;
 use super::Arg;
 
 fn define_project(args: magnus::RHash) -> Result<ProjectAccessor, magnus::Error> {
-    let context = &CTX.get().unwrap().context;
+    let context = &CTX.get().unwrap().context();
 
     let mut name: Arg<String> = Arg::new("name");
     let mut base_dir: Arg<PathBuf> = Arg::new("base_dir");
@@ -69,7 +69,7 @@ fn import_cmake(args: &[magnus::Value]) -> Result<(), magnus::Error> {
     >(args)?;
     let dir = args.required.0;
     let cmake_flags = args.optional.0;
-    let context = &CTX.get().unwrap().context;
+    let context = &CTX.get().unwrap().context();
     let cmake_flags = if let Some(cmake_flags) = cmake_flags {
         cmake_flags.into_iter().map(|v| v.to_string()).collect()
     } else {
@@ -82,13 +82,13 @@ fn import_cmake(args: &[magnus::Value]) -> Result<(), magnus::Error> {
 
 // TODO: optional splat -> cargo flags
 fn import_cargo(dir: String) -> Result<(), magnus::Error> {
-    let context = &CTX.get().unwrap().context;
+    let context = &CTX.get().unwrap().context();
     project::cargo::import(&PathBuf::from(dir), vec![], &context)
         .map_err(|err| BeaverRubyError::from(err).into())
 }
 
 fn import_spm(dir: String) -> Result<ProjectAccessor, magnus::Error> {
-    let context = &CTX.get().unwrap().context;
+    let context = &CTX.get().unwrap().context();
     let id = project::spm::import(&PathBuf::from(dir), &context)
         .map_err(BeaverRubyError::from)?;
     let project_accessor = ProjectAccessor { id };
@@ -111,7 +111,7 @@ fn import_meson(args: &[magnus::Value]) -> Result<(), magnus::Error> {
         Vec::new()
     };
     let meson_flags: Vec<_> = meson_flags.iter().map(|str| str.as_str()).collect();
-    let context = &CTX.get().unwrap().context;
+    let context = &CTX.get().unwrap().context();
     project::meson::import(&PathBuf::from(dir), &meson_flags, &context)
         .map_err(|err| magnus::Error::from(BeaverRubyError::from(err)))?;
     Ok(())

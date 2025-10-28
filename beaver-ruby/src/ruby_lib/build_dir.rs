@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use crate::{BeaverRubyError, CTX};
 
 fn build_dir(str: String) -> Result<(), magnus::Error> {
-    let context = &CTX.get().unwrap().context;
+    let context = &CTX.get().unwrap().context();
 
     let path = PathBuf::from(str);
 

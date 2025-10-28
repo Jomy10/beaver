@@ -48,7 +48,7 @@ impl TripleWrapper {
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
-    let context = &CTX.get().unwrap().context;
+    let context = &CTX.get().unwrap().context();
 
     let triple_class = ruby.define_class("Triple", ruby.class_object())?;
     triple_class.define_method("to_s", magnus::method!(TripleWrapper::to_s, 0))?;

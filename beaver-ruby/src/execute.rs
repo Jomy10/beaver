@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::LinkedList;
 use std::ops::Deref;
 use std::path::Path;
-use std::sync::{mpsc, Arc, OnceLock};
+use std::sync::{self, Arc, OnceLock, mpsc};
 use std::thread::ThreadId;
 
 use beaver::Beaver;
@@ -11,7 +11,7 @@ use log::*;
 use crate::{ruby_lib, BeaverRubyError};
 
 pub struct BeaverRubyContext<'a> {
-    pub context: Arc<Beaver>,
+    pub context: sync::Weak<Beaver>,
     #[allow(unused)]
     cleanup: magnus::embed::Cleanup,
     pub(crate) args: RefCell<LinkedList<String>>,
@@ -56,13 +56,17 @@ impl<'a> BeaverRubyContext<'a> {
             async_execute_on(&self.sender, worker)
         }
     }
+
+    pub fn context(&self) -> Arc<Beaver> {
+        self.context.upgrade().expect("Beaver dropped before ruby")
+    }
 }
 
 impl<'a> Drop for BeaverRubyContext<'a> {
     fn drop(&mut self) {
-        if Arc::strong_count(&self.context) != 1 {
-            panic!("Beaver outlives ruby context")
-        }
+        // if Arc::strong_count(&self.context) != 1 {
+        //     panic!("Beaver outlives ruby context")
+        // }
     }
 }
 
@@ -70,6 +74,16 @@ impl<'a> Drop for BeaverRubyContext<'a> {
 // pub(crate) static mut RBCONTEXT: MaybeUninit<Arc<Beaver>> = MaybeUninit::uninit();
 /// Used in BeaverRubyError to ensure a Ruby value doesn't outlive BeaverRubyContext
 pub(crate) static CTX: OnceLock<Arc<BeaverRubyContext<'static>>> = OnceLock::new();
+
+/// This function should ONLY be called at the end of the program.
+/// This deallocates the beaver context that beaver uses. If it can't
+/// use it anymore, the program will crash
+// pub unsafe fn cleanup() {
+//     let ctx = Arc::into_raw(CTX.get().unwrap().clone());
+//     unsafe { Arc::decrement_strong_count(ctx) };
+//     let ctx = unsafe { Arc::from_raw(ctx) };
+//     drop(ctx);
+// }
 
 pub type RubyThreadWorker<'a> = Box<dyn FnOnce() -> Result<(), BeaverRubyError> + Send + 'a>;
 pub(crate) type RubyThreadSender<'a> = mpsc::Sender<(RubyThreadWorker<'a>, Option<mpsc::Sender<Result<(), BeaverRubyError>>>)>;
@@ -88,7 +102,7 @@ pub(crate) fn async_execute_on<'a>(sender: &RubyThreadSender<'a>, worker: RubyTh
 }
 
 /// This function is not thread safe and should only be called once
-pub unsafe fn execute_script<P: AsRef<Path>>(script_file: P, args: LinkedList<String>, context: &Arc<Beaver>) -> crate::Result<Arc<BeaverRubyContext<'static>>> {
+pub unsafe fn execute_script<P: AsRef<Path>>(script_file: P, args: LinkedList<String>, context: &sync::Weak<Beaver>) -> crate::Result<Arc<BeaverRubyContext<'static>>> {
     let (tx, rx) = mpsc::channel::<(RubyThreadWorker, Option<mpsc::Sender<Result<(), BeaverRubyError>>>)>();
 
     let (thread_tx, thread_rx) = mpsc::channel::<ThreadId>();

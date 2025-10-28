@@ -14,7 +14,7 @@ fn pre(args: &[magnus::Value]) -> Result<(), magnus::Error> {
         magnus::block::Proc,
     >(args)?;
 
-    let context = &CTX.get().unwrap().context;
+    let context = &CTX.get().unwrap().context();
 
     let phase = args.required.0;
     let phase: Phase = if let Some(str) = magnus::RString::from_value(phase) {

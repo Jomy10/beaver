@@ -268,8 +268,12 @@ impl MagnusConvertExt for BuildCommand {
         };
 
         let proc = Arc::new(UnsafeSendable::new(proc));
-        let ctx = crate::CTX.get().unwrap().clone();
+        let weak_ctx = Arc::downgrade(crate::CTX.get().unwrap());
         return Ok(BuildCommand(Box::new(move || {
+            let Some(ctx) = weak_ctx.upgrade() else {
+                 return Err(BeaverError::AnyError("Ruby context has been dropped".to_string()));
+            };
+
             let proc = proc.clone();
             block_execute_on(&ctx.sender.clone(), Box::new(move || {
                     unsafe { proc.value().call([] as [magnus::Value; 0]) }
