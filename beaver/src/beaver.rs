@@ -762,8 +762,7 @@ impl Beaver {
     pub fn clean(self: &Arc<Self>) -> crate::Result<()> {
         info!("Cleaning all projects...");
 
-        // TODO:
-        // self.cache()?.clean();
+        self.cache()?.reset()?;
 
         if self.projects()?.len() == 0 {
             info!("Nothing to clean (no projects defined)");
@@ -1005,22 +1004,6 @@ impl Beaver {
 impl std::fmt::Display for Beaver {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.print(f, PrintOptions::default())
-        // let projects = self.projects.read().unwrap();
-        // for project in projects.iter() {
-        //     if project.id().unwrap() == self.project_index.load(Ordering::SeqCst) as usize && self.enable_color {
-        //         f.write_fmt(format_args!("{}", style(project.name()).blue()))?;
-        //     } else {
-        //         f.write_str(project.name())?;
-        //     }
-        //     f.write_str("\n")?;
-
-        //     for target in project.targets().unwrap().iter() {
-        //         f.write_fmt(format_args!("  {}", target.name()))?;
-        //         f.write_str("\n")?;
-        //     }
-        // }
-
-        // return Ok(());
     }
 }
 

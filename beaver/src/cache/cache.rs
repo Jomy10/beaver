@@ -11,7 +11,7 @@ use super::data::*;
 
 #[derive(Debug)]
 pub struct Cache {
-    _db: sled::Db,
+    db: sled::Db,
     /// One file per actual file
     files: sled::Tree,
     /// Files occur multiple times, at most once per context
@@ -26,7 +26,7 @@ impl Cache {
         let concrete_files = db.open_tree(b"concrete_files")?;
 
         Ok(Self {
-            _db: db,
+            db: db,
             files,
             concrete_files,
             file_update_list: Mutex::new(HashSet::new())
@@ -208,10 +208,20 @@ impl Cache {
 
         Ok(())
     }
+
+    /// Remove all data from the database
+    pub fn reset(&self) -> Result<(), BeaverError> {
+        self.concrete_files.clear()?;
+        self.files.clear()?;
+        let mut guard = self.file_update_list.lock().map_err(|err| BeaverError::LockError(err.to_string()))?;
+        guard.clear();
+        self.db.clear()?;
+        return Ok(());
+    }
 }
 
 impl Drop for Cache {
     fn drop(&mut self) {
-        self._db.flush().unwrap();
+        self.db.flush().unwrap();
     }
 }
