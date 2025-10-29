@@ -211,6 +211,9 @@ pub enum BeaverError {
     LockError(String),
     #[error("IO Error: {}{}", .0, if .1.status() == BacktraceStatus::Captured { format!("\n{}", .1) } else { String::from("") })]
     IOError(#[from] std::io::Error, std::backtrace::Backtrace),
+    /// IOError with extra information
+    #[error("IO Error: {} ({}){}", .0, .1, if .2.status() == BacktraceStatus::Captured { format!("\n{}", .2) } else { String::from("") })]
+    ExtendedIOError(std::io::Error, String, std::backtrace::Backtrace),
     #[error("{0}")]
     AnyError(String),
     #[error("A child process exited with a non-zero exit code: {0}")]
@@ -230,6 +233,12 @@ pub enum BeaverError {
 }
 
 pub type Result<Success> = std::result::Result<Success, BeaverError>;
+
+impl BeaverError {
+    pub fn io(err: std::io::Error, message: impl Into<String>) -> Self {
+        Self::ExtendedIOError(err, message.into(), std::backtrace::Backtrace::capture())
+    }
+}
 
 impl std::fmt::Debug for BeaverError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

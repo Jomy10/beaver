@@ -18,7 +18,10 @@ pub fn import(
     cmake_flags: &[&str],
     context: &Beaver
 ) -> crate::Result<()> {
-    let base_dir = std::path::absolute(base_dir)?;
+    let base_dir = std::path::absolute(base_dir)
+        .map_err(|err| BeaverError::io(err, format!("while getting absolute path for {:?}", base_dir)))?;
+
+    trace!("Importing CMake project at {:?}", base_dir);
 
     let base_dir_str = base_dir.to_string_lossy();
     let file_context = context.optimize_mode.cmake_name().to_string() + ":" + base_dir_str.as_ref();
@@ -27,7 +30,8 @@ pub fn import(
 
     let build_dir_exists = build_dir.exists();
     if !build_dir_exists {
-        fs::create_dir_all(&build_dir)?;
+        fs::create_dir_all(&build_dir)
+            .map_err(|err| BeaverError::io(err, format!("while creating directory {:?}", build_dir)))?;
     }
 
     // Make requests
@@ -37,22 +41,24 @@ pub fn import(
 
     let query_dir_exists = query_dir.exists();
     if !query_dir_exists {
-        fs::create_dir_all(&query_dir)?;
+        fs::create_dir_all(&query_dir)
+            .map_err(|err| BeaverError::io(err, format!("while creating directory {:?}", query_dir)))?;
     }
 
     let codemodel_req = query_dir.join("codemodel-v2");
     if !codemodel_req.exists() {
-        fs::File::create(codemodel_req)?;
+        fs::File::create(&codemodel_req)
+            .map_err(|err| BeaverError::io(err, format!("while creating or opening for writing of {:?}", codemodel_req)))?;
     }
 
     let cmake_files_req = query_dir.join("cmakeFiles-v1");
     if !cmake_files_req.exists() {
-        fs::File::create(cmake_files_req)?;
+        fs::File::create(&cmake_files_req)
+            .map_err(|err| BeaverError::io(err, format!("while creating or opening for writing of {:?}", cmake_files_req)))?;
     }
 
     // Execute cmake
     let cache = context.cache()?;
-    // TODO: cmake_flags_changed!
     let cmake_files_changed = cache.files_changed_in_context(&file_context)?;
     let reconfigure = cmake_files_changed || !build_dir_exists || !query_dir_exists || !reply_dir.exists();
     if reconfigure {

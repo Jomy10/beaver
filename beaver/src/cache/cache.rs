@@ -23,7 +23,12 @@ pub struct Cache {
 
 impl Cache {
     pub fn new(file: &Path) -> crate::Result<Self> {
-        let db = sled::open(file)?;
+        trace!("Opening or creating cache at {:?}", file);
+        let db = sled::open(file)
+            .map_err(|err| match err {
+                sled::Error::Io(error) => BeaverError::io(error, format!("while opening {:?}", file)),
+                err => BeaverError::SledError(err)
+            })?;
         let files = db.open_tree(b"files")?;
         let concrete_files = db.open_tree(b"concrete_files")?;
         let variables = db.open_tree(b"variables")?;

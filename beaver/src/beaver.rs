@@ -280,7 +280,8 @@ impl Beaver {
     }
 
     pub fn cache(&self) -> Result<&Cache, BeaverError> {
-        self.cache.get_or_try_init(|| { // TODO: on base build dir
+        self.cache.get_or_try_init(|| {
+            trace!("Getting build dir");
             let build_dir = self.get_base_build_dir()?;
             Cache::new(&build_dir.join("cache"))
         })

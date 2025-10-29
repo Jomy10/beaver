@@ -221,7 +221,7 @@ fn def_custom_library(args: magnus::RHash) -> Result<TargetAccessor, magnus::Err
                     let value = Headers::try_from_value(value)?;
                     headers.set(value)?;
                 },
-                "linker_flags" => {
+                "linker_flags" | "ldflags" | "lflags" => {
                     let flags = Vec::<String>::try_from_value(value)?;
                     linker_flags.set(flags)?;
 

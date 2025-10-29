@@ -1,7 +1,5 @@
 Project(name: "Test")
 
-p get("command failed")
-
 pre "build" do
   if files_changed("input.txt") || get("command failed") == "true"
     begin
