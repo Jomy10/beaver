@@ -17,6 +17,8 @@ pub struct Cache {
     /// Files occur multiple times, at most once per context
     concrete_files: sled::Tree,
     file_update_list: Mutex<HashSet<String>>,
+    /// Custom key value store
+    variables: sled::Tree,
 }
 
 impl Cache {
@@ -24,12 +26,14 @@ impl Cache {
         let db = sled::open(file)?;
         let files = db.open_tree(b"files")?;
         let concrete_files = db.open_tree(b"concrete_files")?;
+        let variables = db.open_tree(b"variables")?;
 
         Ok(Self {
             db: db,
             files,
             concrete_files,
-            file_update_list: Mutex::new(HashSet::new())
+            file_update_list: Mutex::new(HashSet::new()),
+            variables
         })
     }
 
@@ -207,6 +211,18 @@ impl Cache {
         self.concrete_files.apply_batch(remove_batch)?;
 
         Ok(())
+    }
+
+    pub fn store(&self, var_name: &str, val: &str) -> crate::Result<()> {
+        self.variables.insert(var_name, val)?;
+        Ok(())
+    }
+
+    pub fn get(&self, var_name: &str) -> crate::Result<Option<String>> {
+        self.variables.get(var_name)?
+            .map(|v| String::from_utf8(v.as_bytes().to_vec()))
+            .map_or(Ok(None), |v| v.map(Some))
+            .map_err(|err| err.into())
     }
 
     /// Remove all data from the database
