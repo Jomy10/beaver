@@ -23,22 +23,23 @@ fn files_changed(ruby: &magnus::Ruby, args: &[magnus::Value]) -> Result<bool, ma
         .map_err(|err| BeaverRubyError::from(err).into())
 }
 
-fn store(var_name: magnus::RString, val: magnus::RString) -> Result<(), magnus::Error> {
+fn store(var_name: magnus::RString, val: magnus::value::Value) -> Result<(), magnus::Error> {
     let context = &crate::CTX.get().unwrap().context();
     let var_name = unsafe { var_name.as_str()? };
+    let val: magnus::RString = val.funcall("to_s", ())?;
     let val = unsafe { val.as_str()? };
     context.store(var_name, val)
         .map_err(|err| BeaverRubyError::from(err).into())
 }
 
-fn get(ruby: &magnus::Ruby, var_name: magnus::RString) -> Result<magnus::RObject, magnus::Error> {
+fn get(ruby: &magnus::Ruby, var_name: magnus::RString) -> Result<magnus::value::Value, magnus::Error> {
     let context = &crate::CTX.get().unwrap().context();
     let var_name = unsafe { var_name.as_str()? };
     context.get(var_name)
         .map_err(|err| BeaverRubyError::from(err).into())
         .map(|val| match val {
-            Some(str) => magnus::RObject::from_value(magnus::RString::new(&str).into_value()).unwrap(),
-            None => magnus::RObject::from_value(ruby.qnil().into_value()).unwrap()
+            Some(str) => magnus::RString::new(&str).into_value(),
+            None => ruby.qnil().into_value()
         })
 }
 
