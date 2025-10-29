@@ -75,7 +75,7 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
                     let value = Headers::try_from_value(value)?;
                     headers.set(value)?;
                 },
-                "linker_flags" | "lflags" => {
+                "linker_flags" | "ldflags" | "lflags" => {
                     let flags = Vec::<String>::try_from_value(value)?;
                     linker_flags.set(flags)?;
 

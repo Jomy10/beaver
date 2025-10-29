@@ -160,6 +160,9 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
 
     #[cfg(debug_assertions)] { clog.filter(None, log::LevelFilter::Trace); }
     #[cfg(not(debug_assertions))] { clog.filter(None, log::LevelFilter::Warn); }
+    if let Ok(value) = std::env::var("BEAVER_LOG") {
+        clog.filter(None, log::LevelFilter::from_str(&value)?);
+    }
 
     clog.filter(Some("sled"), log::LevelFilter::Warn);
 

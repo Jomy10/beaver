@@ -2,11 +2,13 @@ use std::path::PathBuf;
 
 use magnus::{IntoValue, RString};
 use magnus::value::ReprValue;
+use log::*;
 
 use crate::BeaverRubyError;
 
 /// Check if any of the files changed since the last invocation of this command
 fn files_changed(ruby: &magnus::Ruby, args: &[magnus::Value]) -> Result<bool, magnus::Error> {
+    trace!("Checking files changed {:?}", args);
     let caller_location: magnus::RArray = ruby.module_kernel().funcall("caller_locations", (0,))?;
     let flattened_locations: magnus::RString = caller_location.funcall("to_s", ())?;
 
