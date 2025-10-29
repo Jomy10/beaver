@@ -8,16 +8,23 @@ use crate::BeaverRubyError;
 
 /// Check if any of the files changed since the last invocation of this command
 fn files_changed(ruby: &magnus::Ruby, args: &[magnus::Value]) -> Result<bool, magnus::Error> {
-    trace!("Checking files changed {:?}", args);
     let caller_location: magnus::RArray = ruby.module_kernel().funcall("caller_locations", (0,))?;
     let flattened_locations: magnus::RString = caller_location.funcall("to_s", ())?;
 
-    let files: Vec<PathBuf> = args.iter()
+    let mut files: Vec<PathBuf> = args.iter()
         .map(|arg| RString::from_value(*arg)
             .ok_or(BeaverRubyError::IncompatibleType(*arg, "String"))
             .and_then(|rstr| rstr.to_string().map_err(|err| BeaverRubyError::from(err)))
             .map(|str| PathBuf::from(str))
-        ).collect::<Result<_, _>>()?;
+        )
+        .collect::<Result<_, _>>()?;
+    for i in (0..(files.len())).rev() {
+        let file = &files[i];
+        if !file.exists() {
+            warn!("File {:?} doesn't exist, it will be ignored in `files_changed`", &file);
+            files.remove(i);
+        }
+    }
 
     let ctx = &crate::CTX.get().unwrap();
 
