@@ -106,3 +106,12 @@ pub enum AnyProject {
     Cargo(project::cargo::Project),
     SPM(project::spm::Project),
 }
+
+impl AnyProject {
+    pub fn is_mutable(&self) -> bool {
+        match self {
+            AnyProject::Beaver(_) => true,
+            _ => false
+        }
+    }
+}
