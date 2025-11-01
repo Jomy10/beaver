@@ -314,9 +314,12 @@ impl Beaver {
         }
         let idx = projects.len();
         project.set_id(idx)?;
+        let project_is_mutable = project.is_mutable();
         projects.push(project);
         drop(projects);
-        self.set_current_project_index(idx);
+        if project_is_mutable {
+            self.set_current_project_index(idx);
+        }
         return Ok(idx);
     }
 
