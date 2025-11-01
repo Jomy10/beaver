@@ -978,8 +978,14 @@ impl Beaver {
                 }
                 f.write_char('\n')?;
             },
-            Dependency::Flags { cflags, linker_flags } => {
-                f.write_fmt(format_args!("      - {{ cflags: {}, lflags: {} }}\n", cflags.clone().unwrap_or(vec![]).join(", "), linker_flags.clone().unwrap_or(vec![]).join(", ")))?;
+            Dependency::Flags { cflags, linker_flags, headers } => {
+                use itertools::Itertools;
+
+                f.write_fmt(format_args!("      - {{ cflags: {}, lflags: {}, headers: {} }}\n",
+                    cflags.as_ref().unwrap_or(&vec![]).join(", "),
+                    linker_flags.as_ref().unwrap_or(&vec![]).join(", "),
+                    headers.as_ref().map(|paths| paths.iter().map(|path| path.to_str().unwrap()).join(", ")).unwrap_or(String::from(""))
+                ))?;
             },
             Dependency::CMakeId(id) => {
                 let target_name = self.with_cmake_project_and_library(id, |_, target| {

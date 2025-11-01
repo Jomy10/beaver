@@ -107,7 +107,7 @@ fn collect_dependency_and_languages(dep: &Dependency, into_set: &mut HashSet<Dep
                 target.collect_unique_dependencies_and_languages(into_set, into_language_set, context)
             })?;
         },
-        Dependency::Flags { cflags: _, linker_flags: _ } => {},
+        Dependency::Flags { cflags: _, linker_flags: _, headers: _ } => {},
         Dependency::CMakeId(cmake_id) => {
             context.with_cmake_project_and_library(&cmake_id, |_, target| {
                 if let Some(target) = target {

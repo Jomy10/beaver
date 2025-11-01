@@ -81,7 +81,7 @@ impl Library {
         let artifacts = artifacts.or_default(vec![
             LibraryArtifactType::Dynlib,
             LibraryArtifactType::Staticlib,
-            LibraryArtifactType::PkgConfig,
+            // LibraryArtifactType::PkgConfig,
         ]);
         let valid_artifacts = HashSet::from([LibraryArtifactType::Dynlib, LibraryArtifactType::Staticlib, LibraryArtifactType::Framework, LibraryArtifactType::XCFramework, LibraryArtifactType::PkgConfig, LibraryArtifactType::JSLib]);
         target::utils::check_artifacts(&valid_artifacts, &artifacts, "C")?;

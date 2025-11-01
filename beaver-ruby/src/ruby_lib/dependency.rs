@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
 use beaver::target::{Dependency, LibraryArtifactType, LibraryTargetDependency, PkgconfigFlagOption, PkgconfigOption};
+use magnus::value::ReprValue;
 
+use crate::ext::parse_to_string_vec;
 use crate::{BeaverRubyError, CTX};
 
 #[magnus::wrap(class = "Dependency")]
@@ -109,8 +111,25 @@ impl DependencyWrapper {
         return Ok(DependencyWrapper(Dependency::framework(&name)));
     }
 
-    fn new_flags(cflags: Option<Vec<String>>, linker_flags: Option<Vec<String>>) -> Result<DependencyWrapper, magnus::Error> {
-        return Ok(DependencyWrapper(Dependency::Flags { cflags, linker_flags }));
+    fn new_flags(object: magnus::RHash) -> Result<DependencyWrapper, magnus::Error> {
+        let mut cflags: Option<Vec<String>> = None;
+        let mut linker_flags: Option<Vec<String>> = None;
+        let mut headers: Option<Vec<PathBuf>> = None;
+
+        object.foreach(|key: magnus::Value, val: magnus::Value| {
+            let key = unsafe { key.to_s() }?;
+
+            match key.as_ref() {
+                "cflags" => cflags = Some(parse_to_string_vec(val)?),
+                "linker_flags" | "lflags" | "ldflags" => linker_flags = Some(parse_to_string_vec(val)?),
+                "headers" => headers = Some(parse_to_string_vec(val)?.iter().map(|str| PathBuf::from(str)).collect()),
+                _ => return Err(BeaverRubyError::ArgumentError(format!("Unexpected key \"{}\" in `flags` (expected \"cflags\", \"linker_flags\", \"headers\")", key)).into())
+            }
+
+            Ok(magnus::r_hash::ForEach::Continue)
+        })?;
+
+        return Ok(DependencyWrapper(Dependency::Flags { cflags, linker_flags, headers }));
     }
 
     fn new_file(file: String) -> Result<DependencyWrapper, magnus::Error> {
@@ -127,7 +146,7 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     ruby.define_global_function("pkgconfig_direct", magnus::function!(DependencyWrapper::new_pkgconfig_direct, 1));
     ruby.define_global_function("system_lib", magnus::function!(DependencyWrapper::new_system, 1));
     ruby.define_global_function("framework", magnus::function!(DependencyWrapper::new_framework, 1));
-    ruby.define_global_function("flags", magnus::function!(DependencyWrapper::new_flags, 2));
+    ruby.define_global_function("flags", magnus::function!(DependencyWrapper::new_flags, 1));
     ruby.define_global_function("file_dep", magnus::function!(DependencyWrapper::new_file, 1));
 
     Ok(())

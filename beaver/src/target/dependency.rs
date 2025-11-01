@@ -17,6 +17,7 @@ pub enum Dependency {
     Flags {
         cflags: Option<Vec<String>>,
         linker_flags: Option<Vec<String>>,
+        headers: Option<Vec<PathBuf>>,
     },
     /// reference to a CMake id
     CMakeId(String),
@@ -142,17 +143,18 @@ impl Dependency {
             return Err(BeaverError::PkgconfigMalformed(string));
         };
 
-        Ok(Dependency::Flags { cflags: Some(cflags), linker_flags: Some(linker_flags) })
+        Ok(Dependency::Flags { cflags: Some(cflags), linker_flags: Some(linker_flags), headers: None })
     }
 
     pub fn system(name: &str) -> Dependency {
-        Dependency::Flags { cflags: None, linker_flags: Some(vec![format!("-l{}", name)]) }
+        Dependency::Flags { cflags: None, linker_flags: Some(vec![format!("-l{}", name)]), headers: None }
     }
 
     pub fn framework(name: &str) -> Dependency {
         Dependency::Flags {
             cflags: None,
-            linker_flags: Some(vec!["-framework".to_string(), name.to_string()])
+            linker_flags: Some(vec!["-framework".to_string(), name.to_string()]),
+            headers: None
         }
     }
 
@@ -164,7 +166,8 @@ impl Dependency {
         let mut deps = vec![
             Dependency::Flags {
                 cflags: pkgconf.cflags().as_ref().map(|cflags| shlex::split(cflags.as_ref()).unwrap()),
-                linker_flags: pkgconf.libs().as_ref().map(|lflags| shlex::split(lflags.as_ref()).unwrap())
+                linker_flags: pkgconf.libs().as_ref().map(|lflags| shlex::split(lflags.as_ref()).unwrap()),
+                headers: None,
             }
         ];
 
@@ -200,7 +203,7 @@ impl Dependency {
                     Ok(Some(format!("{}$:{}$:{}", project.name(), target.name(), dep.artifact)))
                 });
             },
-            Dependency::Flags { cflags: _, linker_flags: _ } => {
+            Dependency::Flags { cflags: _, linker_flags: _, headers: _ } => {
                 return Ok(None);
             },
             Dependency::CMakeId(cmake_id) => {
@@ -226,7 +229,7 @@ impl Dependency {
                     Ok(Some(format!("{}:{}:{}", project.name(), target.name(), dep.artifact)))
                 });
             },
-            Dependency::Flags { cflags: _, linker_flags: _ } => {
+            Dependency::Flags { cflags: _, linker_flags: _, headers: _ } => {
                 return Ok(None);
             },
             Dependency::CMakeId(cmake_id) => {
@@ -252,9 +255,18 @@ impl Dependency {
                     target.as_library().unwrap().public_cflags(proj.base_dir(), proj.build_dir(), out, additional_file_dependencies)
                 })
             },
-            Dependency::Flags { cflags, linker_flags: _ } => {
+            Dependency::Flags { cflags, linker_flags: _, headers } => {
                 if let Some(cflags) = cflags {
                     out.extend_from_slice(cflags.as_slice());
+                }
+                if let Some(headers) = headers {
+                    context.with_current_project::<(), BeaverError>(|proj| {
+                        for header in headers {
+                            out.push(format!("-I{}", proj.base_dir().join(header).to_str()
+                                .ok_or_else(|| BeaverError::NonUTF8OsStr(proj.base_dir().join(header).into_os_string()))?));
+                        }
+                        Ok(())
+                    })?;
                 }
                 Ok(())
             },
@@ -283,7 +295,7 @@ impl Dependency {
                     // out.append(&mut target.as_library().unwrap().link_against_library(proj.build_dir(), dep.artifact, &triple)?);
                 })
             },
-            Dependency::Flags { cflags: _, linker_flags } => {
+            Dependency::Flags { cflags: _, linker_flags, headers: _ } => {
                 if let Some(linker_flags) = linker_flags {
                     out.extend_from_slice(linker_flags.as_slice());
                 }
