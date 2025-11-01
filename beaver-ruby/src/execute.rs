@@ -102,7 +102,7 @@ pub(crate) fn async_execute_on<'a>(sender: &RubyThreadSender<'a>, worker: RubyTh
 }
 
 /// This function is not thread safe and should only be called once
-pub unsafe fn execute_script<P: AsRef<Path>>(script_file: P, args: LinkedList<String>, context: &sync::Weak<Beaver>) -> crate::Result<Arc<BeaverRubyContext<'static>>> {
+pub unsafe fn execute_script<P: AsRef<Path>>(script_file: P, args: LinkedList<String>, context: &sync::Weak<Beaver>, subcommand: &str) -> crate::Result<Arc<BeaverRubyContext<'static>>> {
     let (tx, rx) = mpsc::channel::<(RubyThreadWorker, Option<mpsc::Sender<Result<(), BeaverRubyError>>>)>();
 
     let (thread_tx, thread_rx) = mpsc::channel::<ThreadId>();
@@ -131,6 +131,7 @@ pub unsafe fn execute_script<P: AsRef<Path>>(script_file: P, args: LinkedList<St
     let context = context.clone();
     let ruby_thread_id = thread_rx.recv().unwrap();
     let script_file = script_file.as_ref().to_owned();
+    let subcommand = subcommand.to_string();
     block_execute_on(&tx.clone(), Box::new(move || {
         let cleanup = unsafe { magnus::embed::init() };
         let ruby = magnus::Ruby::get()?;
@@ -149,6 +150,8 @@ pub unsafe fn execute_script<P: AsRef<Path>>(script_file: P, args: LinkedList<St
         ruby.script(script_file.file_name().map_or("beaver", |str| str.to_str().unwrap_or("beaver")));
 
         ruby_lib::register(&ruby)?;
+
+        ruby.define_global_const("COMMAND", subcommand)?;
 
         ruby.require(std::path::absolute(script_file)?)?;
 

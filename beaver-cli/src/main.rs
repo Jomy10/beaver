@@ -225,6 +225,9 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
     let target = matches.get_one::<String>("target-triple").unwrap();
     let target = Triple::from_str(target).map_err(|err| TripleParseError { inner: err })?;
 
+    let subcommand_match = matches.subcommand();
+    let subcommand = subcommand_match.map(|(subcommand, _)| subcommand).unwrap_or("build");
+
     // Execute script
     let beaver = Arc::new(Beaver::new(
         Some(color),
@@ -235,7 +238,7 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
         target
     )?);
     let beaver_weak = Arc::downgrade(&beaver);
-    let ctx = unsafe { beaver_ruby::execute_script(script_file, script_args, &beaver_weak)? };
+    let ctx = unsafe { beaver_ruby::execute_script(script_file, script_args, &beaver_weak, subcommand)? };
 
     if *debug {
         let mut str = String::new();
@@ -244,7 +247,7 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
     }
 
     // Execute subcommand
-    match matches.subcommand() {
+    match subcommand_match {
         None => { // build / cmd
             match matches.get_many::<String>("targets") {
                 Some(targets) => {
