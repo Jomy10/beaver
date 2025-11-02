@@ -2,13 +2,14 @@ use std::path::PathBuf;
 
 use beaver::project;
 use beaver::traits::AnyProject;
+use magnus::value::ReprValue;
 
 use crate::{BeaverRubyError, CTX};
 
 use super::project_accessor::ProjectAccessor;
 use super::Arg;
 
-fn define_project(args: magnus::RHash) -> Result<ProjectAccessor, magnus::Error> {
+fn define_project(ruby: &magnus::Ruby, args: magnus::RHash) -> Result<ProjectAccessor, magnus::Error> {
     let context = &CTX.get().unwrap().context();
 
     let mut name: Arg<String> = Arg::new("name");
@@ -42,11 +43,12 @@ fn define_project(args: magnus::RHash) -> Result<ProjectAccessor, magnus::Error>
         Ok(magnus::r_hash::ForEach::Continue)
     })?;
 
-    let curdir = std::env::current_dir().map_err(|err| BeaverRubyError::from(err))?;
+    // let curdir = std::env::current_dir().map_err(|err| BeaverRubyError::from(err))?;
+    let script_dir = ruby.module_kernel().funcall("__dir__", ())?;
 
     let project: AnyProject = AnyProject::Beaver(project::beaver::Project::new(
         name.get()?,
-        base_dir.get_opt().unwrap_or(curdir),
+        base_dir.get_opt().unwrap_or(script_dir),
         &context.get_build_dir().map_err(|err| BeaverRubyError::from(err))?
     ).map_err(|err| BeaverRubyError::from(err))?);
 
