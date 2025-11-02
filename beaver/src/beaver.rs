@@ -927,7 +927,8 @@ impl Beaver {
 #[derive(Default)]
 pub struct PrintOptions {
     pub artifacts: bool,
-    pub dependencies: bool
+    pub dependencies: bool,
+    pub sources: bool,
 }
 
 impl Beaver {
@@ -960,7 +961,25 @@ impl Beaver {
                                 }
                             }
                         },
-                        Err(err) => f.write_fmt(format_args!("    Couldn't fetch dependencies: {}", err))?
+                        Err(err) => f.write_fmt(format_args!("    Couldn't fetch dependencies: {}\n", err))?
+                    }
+                }
+                if options.sources {
+                    if let Some(sources) = match target {
+                        AnyTarget::Library(lib) => match lib {
+                            AnyLibrary::C(library) => library.debug_attributes().iter()
+                                .find(|(k, _)| *k == "sources")
+                                .map(|(_, v)| v.clone()),
+                            _ => None,
+                        },
+                        AnyTarget::Executable(exe) => match exe {
+                            AnyExecutable::C(executable) => executable.debug_attributes().iter()
+                                .find(|(k, _)| *k == "sources")
+                                .map(|(_, v)| v.clone()),
+                            _ => None,
+                        },
+                    } {
+                        f.write_fmt(format_args!("    Sources: {}\n", sources))?;
                     }
                 }
             }

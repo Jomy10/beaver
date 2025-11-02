@@ -222,7 +222,7 @@ impl traits::Target for Library {
 
     fn debug_attributes(&self) -> Vec<(&'static str, String)> {
         vec![
-            ("sources", format!("{:?}", self.sources.resolve())),
+            ("sources", format!("{:?}", self.sources.resolve().unwrap())),
             ("cflags", format!("{:?}", self.cflags)),
             ("headers", format!("{:?}", self.headers)),
             ("linker_flags", self.linker_flags.join(", ")),
