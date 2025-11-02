@@ -13,6 +13,7 @@ pub struct TargetAccessor {
 }
 
 impl TargetAccessor {
+    // TODO: make argument optional
     fn run(&self, args: magnus::RArray) -> Result<(), magnus::Error> {
         let context = &CTX.get().unwrap().context();
 

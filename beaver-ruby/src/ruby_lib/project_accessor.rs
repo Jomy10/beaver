@@ -25,6 +25,13 @@ impl ProjectAccessor {
         return Ok(ProjectAccessor { id: project.id().unwrap() });
     }
 
+    fn access_current() -> Result<ProjectAccessor, magnus::Error> {
+        let context = &CTX.get().unwrap().context();
+        let current_project = context.current_project_index()
+            .ok_or_else(|| BeaverRubyError::from(BeaverError::NoProjects))?;
+        return Ok(ProjectAccessor { id: current_project });
+    }
+
     fn target(&self, name: String) -> Result<TargetAccessor, magnus::Error> {
         let context = &CTX.get().unwrap().context();
         let projects = context.projects().map_err(|err| BeaverRubyError::from(err))?;
@@ -39,7 +46,23 @@ impl ProjectAccessor {
     fn build_dir(&self) -> Result<magnus::RString, magnus::Error> {
         let context = &CTX.get().unwrap().context();
         let projects = context.projects().map_err(|err| BeaverRubyError::from(err))?;
-        Ok(magnus::RString::new(projects[self.id].build_dir().as_os_str().to_str().expect("Non-UTF8 path")))
+        Ok(magnus::RString::new(projects[self.id].build_dir().as_os_str().to_str()
+            .ok_or_else(|| BeaverRubyError::from(BeaverError::NonUTF8OsStr(projects[self.id].base_dir().as_os_str().to_os_string())))?
+        ))
+    }
+
+    fn base_dir(&self) -> Result<magnus::RString, magnus::Error> {
+        let context = &CTX.get().unwrap().context();
+        let projects = context.projects().map_err(|err| BeaverRubyError::from(err))?;
+        Ok(magnus::RString::new(projects[self.id].base_dir().as_os_str().to_str()
+            .ok_or_else(|| BeaverRubyError::from(BeaverError::NonUTF8OsStr(projects[self.id].base_dir().as_os_str().to_os_string())))?
+        ))
+    }
+
+    fn name(&self) -> Result<magnus::RString, magnus::Error> {
+        let context = &CTX.get().unwrap().context();
+        let projects = context.projects().map_err(|err| BeaverRubyError::from(err))?;
+        Ok(magnus::RString::new(projects[self.id].name()))
     }
 }
 
@@ -47,8 +70,11 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     let class = ruby.define_class("ProjectAccessor", ruby.class_object())?;
     class.define_method("target", magnus::method!(ProjectAccessor::target, 1))?;
     class.define_method("build_dir", magnus::method!(ProjectAccessor::build_dir, 0))?;
+    class.define_method("base_dir", magnus::method!(ProjectAccessor::base_dir, 0))?;
+    class.define_method("name", magnus::method!(ProjectAccessor::name, 0))?;
 
     ruby.define_global_function("project", magnus::function!(ProjectAccessor::access, 1));
+    ruby.define_global_function("current_project", magnus::function!(ProjectAccessor::access_current, 0));
 
     Ok(())
 }
