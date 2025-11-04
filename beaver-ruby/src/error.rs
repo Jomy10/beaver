@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::num::{ParseFloatError, ParseIntError};
 use std::process::ExitStatus;
 use std::str::ParseBoolError;
@@ -110,6 +111,9 @@ pub enum BeaverRubyError {
     NoCommand(String),
     #[error("`set_pkgconfig` can only be called on Meson targets")]
     SetPkgconfigOnNonMesonTarget,
+
+    #[error("{0:?}")]
+    JoinError(Box<dyn Any + Send + 'static>),
 }
 
 unsafe impl Send for BeaverRubyError {}

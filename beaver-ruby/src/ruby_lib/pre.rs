@@ -8,7 +8,7 @@ fn pre(args: &[magnus::Value]) -> Result<(), magnus::Error> {
         (magnus::Value,), // required (phase name)
         (),
         // (magnus::Value,), // TODO: check optional (proc)
-        (), // splay
+        (), // splat
         (), // trailing
         (), // keyword
         magnus::block::Proc,

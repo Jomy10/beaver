@@ -28,6 +28,46 @@ impl TargetAccessor {
         Ok(())
     }
 
+    /// Run the process on a separate thread
+    fn run_thread(&self, args: magnus::RArray) -> Result<magnus::Thread, magnus::Error> {
+        let context = &CTX.get().unwrap().context();
+
+        let args = args.into_iter().map(|value| {
+            match magnus::RString::from_value(value) {
+                Some(val) => val.to_string(),
+                None => Err(BeaverRubyError::IncompatibleType(value, "String").into()),
+            }
+        }).collect::<Result<Vec<String>, magnus::Error>>()?;
+
+        let projid = self.projid;
+        let id = self.id;
+        let context = context.clone();
+        let handle = std::thread::spawn(move || {
+            context.run(TargetRef { project: projid, target: id }, args)
+                .map_err(|err| BeaverRubyError::from(err))
+        });
+
+        let ruby = magnus::Ruby::get().unwrap();
+
+        let thr = ruby.thread_create_from_fn(|ruby| {
+            loop {
+                if handle.is_finished() {
+                    let v = match handle.join() {
+                        Ok(v) => v.map_err(|err| err.into()),
+                        Err(err) => Err(BeaverRubyError::JoinError(err)),
+                    }?;
+                    return Ok(v);
+                } else {
+                    ruby.thread_sleep(std::time::Duration::from_millis(10))?;
+                }
+            }
+        });
+
+        thr.run()?;
+
+        return Ok(thr);
+    }
+
     fn build(&self) -> Result<(), magnus::Error> {
         let context = &CTX.get().unwrap().context.upgrade().expect("Beaver dropped before ruby");
 
@@ -64,6 +104,7 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     class.define_method("run", magnus::method!(TargetAccessor::run, 1))?;
     class.define_method("build", magnus::method!(TargetAccessor::build, 0))?;
     class.define_method("set_pkgconfig", magnus::method!(TargetAccessor::set_pkgconfig, 1))?;
+    class.define_method("run_thread", magnus::method!(TargetAccessor::run_thread, 1))?;
 
     return Ok(());
 }
