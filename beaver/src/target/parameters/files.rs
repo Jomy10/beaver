@@ -3,7 +3,9 @@ use std::sync::OnceLock;
 
 use globwalk::GlobWalker;
 use atomic_refcell::AtomicRefCell;
-use log::trace;
+use log::*;
+
+use crate::BeaverError;
 
 pub struct Files {
     walker: AtomicRefCell<Option<GlobWalker>>,
@@ -18,10 +20,34 @@ impl Files {
     pub fn from_pats(pats: &[&str], base_dir: &Path) -> crate::Result<Files> {
         trace!("Creating globwalk in {} with globs {:?}", base_dir.display(), pats);
 
-        let walker = globwalk::GlobWalkerBuilder::from_patterns(base_dir, pats)
-            .follow_links(false)
-            .build()?;
-        Ok(Files{ walker: AtomicRefCell::new(Some(walker)), files_storage: OnceLock::new() })
+        if pats.iter().find(|p| Path::new(p).is_absolute()).is_some() {
+            let base_dir_str = base_dir.to_str().ok_or_else(|| BeaverError::NonUTF8OsStr(base_dir.as_os_str().to_os_string()))?;
+
+            let (abs, mut rel): (Vec<&str>, Vec<&str>) = pats.iter().partition(|p| Path::new(p).is_absolute());
+            let mut absolute = Vec::new();
+            for abs in abs.iter() {
+                if let Some(relative) = abs.strip_prefix(base_dir_str) {
+                    rel.push(relative)
+                } else {
+                    absolute.push(abs);
+                }
+            }
+
+            if absolute.len() > 0 {
+                warn!("Sources outside of project's base directory are ignored {:?}", absolute);
+                debug!("Sources outside of the the project base directory are currently not supported");
+            }
+
+            let walker = globwalk::GlobWalkerBuilder::from_patterns(base_dir, rel.as_slice())
+                .follow_links(false)
+                .build()?;
+            Ok(Files { walker: AtomicRefCell::new(Some(walker)), files_storage: OnceLock::new() })
+        } else {
+            let walker = globwalk::GlobWalkerBuilder::from_patterns(base_dir, pats)
+                .follow_links(false)
+                .build()?;
+            Ok(Files{ walker: AtomicRefCell::new(Some(walker)), files_storage: OnceLock::new() })
+        }
     }
 
     pub(crate) fn resolve(&self) -> crate::Result<&Vec<PathBuf>> {
