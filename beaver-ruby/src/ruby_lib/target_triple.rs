@@ -1,5 +1,5 @@
 use magnus::Module;
-use target_lexicon::Triple;
+use target_lexicon::{OperatingSystem, Triple};
 
 use crate::CTX;
 
@@ -45,6 +45,50 @@ impl TripleWrapper {
             target_lexicon::PointerWidth::U64 => magnus::Fixnum::from_u64(64).unwrap(),
         }
     }
+
+    fn is_posix_certified(&self) -> bool {
+        use target_lexicon::OperatingSystem::*;
+
+        match self.0.operating_system {
+            Aix |
+            Solaris |
+            VxWorks
+            => true,
+
+            MacOSX(version) => version.map(|v| v.major >= 10 && v.minor >= 5).unwrap_or(true),
+            _ => false
+        }
+    }
+
+    /// posix or moslty posix-compliant operating systems
+    fn is_posix(&self) -> bool {
+        use target_lexicon::OperatingSystem::*;
+
+        match self.0.operating_system {
+            Aix |
+            Darwin(_) |
+            IOS(_) |
+            MacOSX(_) |
+            Emscripten |
+            Dragonfly |
+            Freebsd |
+            Netbsd |
+            Openbsd |
+            Fuchsia |
+            Haiku |
+            L4re |
+            Linux |
+            Redox |
+            Solaris |
+            OperatingSystem::Cygwin |
+            Wasi => true,
+            _ => false
+        }
+    }
+
+    fn is_darwin(&self) -> bool {
+        self.0.operating_system.is_like_darwin()
+    }
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
@@ -59,6 +103,9 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     triple_class.define_method("binary_format", magnus::method!(TripleWrapper::binary_format, 0))?;
     triple_class.define_method("endianness", magnus::method!(TripleWrapper::endianness, 0))?;
     triple_class.define_method("pointer_width", magnus::method!(TripleWrapper::pointer_width, 0))?;
+    triple_class.define_method("posix?", magnus::method!(TripleWrapper::is_posix, 0))?;
+    triple_class.define_method("posix_certified?", magnus::method!(TripleWrapper::is_posix_certified, 0))?;
+    triple_class.define_method("darwin?", magnus::method!(TripleWrapper::is_darwin, 0))?;
 
     ruby.define_global_const("TARGET", TripleWrapper(context.target_triple().clone()))?;
     ruby.define_global_const("HOST", TripleWrapper(Triple::host()))?;

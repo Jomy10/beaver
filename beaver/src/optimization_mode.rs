@@ -18,6 +18,7 @@ pub enum OptimizationMode {
 
 use OptimizationMode::*;
 
+// TODO: -march=native -msse4.1 -> C settings (in project?) (https://www.youtube.com/watch?v=egG5Kraswhc)
 lazy_static! {
     static ref cflags_release: Vec<&'static str> = {
         let mut v = ["-O3", "-flto", "-DNDEBUG"].to_vec();

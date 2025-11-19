@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::path::PathBuf;
 
 use beaver::target::TargetRef;
@@ -5,6 +6,40 @@ use beaver::traits::Project;
 use magnus::Module;
 
 use crate::{BeaverRubyError, CTX};
+
+/// Split on the value where `predicate` is false
+fn split_iter<Iter: Iterator>(iter: Iter, predicate: impl Fn(&Iter::Item) -> bool) -> (std::vec::IntoIter<Iter::Item>, std::iter::Peekable<Iter>) {
+    let mut first_part = Vec::new();
+    let mut iter = iter.peekable();
+    while let Some(n) = iter.peek() {
+        if predicate(n) {
+            first_part.push(iter.next().unwrap());
+        } else {
+            break;
+        }
+    }
+
+    return (first_part.into_iter(), iter);
+}
+
+#[derive(Default)]
+struct RunOptions {
+    opt_mode: Option<beaver::OptimizationMode>,
+}
+
+impl RunOptions {
+    fn update_from<'a>(&mut self, opts: &Vec<Cow<'a, str>>) -> Result<(), BeaverRubyError> {
+        for opt in opts {
+            match opt.as_ref() {
+                "release" | "rel" => self.opt_mode = Some(beaver::OptimizationMode::Release),
+                "debug" => self.opt_mode = Some(beaver::OptimizationMode::Debug),
+                _ => return Err(BeaverRubyError::InvalidKey(opt.to_string()))
+            }
+        }
+
+        return Ok(());
+    }
+}
 
 #[magnus::wrap(class = "TargetAccessor")]
 pub struct TargetAccessor {
@@ -32,7 +67,23 @@ impl TargetAccessor {
     fn run_thread(&self, args: magnus::RArray) -> Result<magnus::Thread, magnus::Error> {
         let context = &CTX.get().unwrap().context();
 
-        let args = args.into_iter().map(|value| {
+        let mut options = RunOptions::default();
+
+        let (opts, args) = split_iter(
+            args.into_iter(),
+            |value|  magnus::Symbol::from_value(*value).is_some()
+        );
+
+        let opts = opts.map(|value| {
+            let sym = magnus::Symbol::from_value(value).unwrap();
+            return sym.name();
+        }).collect::<Result<Vec<Cow<'_, str>>, magnus::Error>>()?;
+
+        options.update_from(&opts)?;
+
+        _ = options; // currently not handled
+
+        let args = args.map(|value| {
             match magnus::RString::from_value(value) {
                 Some(val) => val.to_string(),
                 None => Err(BeaverRubyError::IncompatibleType(value, "String").into()),
