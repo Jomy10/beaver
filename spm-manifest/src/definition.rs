@@ -284,7 +284,7 @@ pub enum TargetBuildSettingDescriptionKind {
     Define(String),
     LinkedLibrary(String),
     LinkedFramework(String),
-    InteroperabilityMode(InteroperabilityMode),
+    InteroperabilityMode(InteropModeWrapper),
     EnableUpcomingFeature(String),
     EnableExperimentalFeature(String),
     StrictMemorySafety,
@@ -292,7 +292,22 @@ pub enum TargetBuildSettingDescriptionKind {
     SwiftLanguageMode(String),
 }
 
-#[derive(Deserialize, Debug, Clone, Copy)]
+#[derive(Deserialize, Debug)]
+pub struct InteropModeWrapper(HashMap<String, InteroperabilityMode>);
+
+impl InteropModeWrapper {
+    fn mode(&self) -> InteroperabilityMode {
+        *self.0.get("_0").unwrap()
+    }
+}
+
+impl PartialEq for InteropModeWrapper {
+    fn eq(&self, other: &Self) -> bool {
+        self.mode() == other.mode()
+    }
+}
+
+#[derive(Deserialize, Debug, Clone, Copy, PartialEq)]
 pub enum InteroperabilityMode {
     C,
     #[serde(rename = "Cxx")]
