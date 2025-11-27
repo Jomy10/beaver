@@ -1,11 +1,12 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use target_lexicon::Triple;
 use utils::moduse;
 
 use crate::backend::{rules, BackendBuilderScope, BuildStep};
-use crate::target::TArtifactType;
-use crate::BeaverError;
+use crate::target::{Dependency, TArtifactType};
+use crate::{Beaver, BeaverError};
 
 moduse!(library);
 moduse!(executable);
@@ -18,7 +19,10 @@ fn register_target<ArtifactType: TArtifactType>(
     artifact_file: &Path,
     artifact: ArtifactType,
     cache_dir: &Arc<PathBuf>,
-    objc_header_path: Option<&Path>
+    objc_header_path: Option<&Path>,
+    extra_dependencies: &Vec<Dependency>,
+    ctx: &Beaver,
+    triple: &Triple
 ) -> crate::Result<String> {
     let Some(package_dir) = project_base_dir.to_str() else {
         return Err(BeaverError::NonUTF8OsStr(project_base_dir.as_os_str().to_os_string()));
@@ -30,6 +34,28 @@ fn register_target<ArtifactType: TArtifactType>(
 
     let step_name = format!("{}$:{}", project_name, target_name);
 
+    let mut extra_flags: Vec<String> = Vec::new();
+    for dep in extra_dependencies {
+        let mut linker_flags = Vec::new();
+        let mut extra_files = Vec::new();
+        dep.linker_flags(triple, ctx, &mut linker_flags, &mut extra_files)?;
+
+        extra_flags.push("-Xlinker".to_string());
+        extra_flags.extend(linker_flags.into_iter()
+            .intersperse("-Xlinker".to_string()));
+
+        let mut cflags = Vec::new();
+        dep.public_cflags(ctx, &mut cflags, &mut extra_files)?;
+
+        extra_flags.push("-Xcc".to_string());
+        extra_flags.extend(cflags.into_iter()
+            .intersperse("-Xcc".to_string()));
+
+        if extra_files.len() > 0 {
+            eprintln!("[UNIMPLEMENTED] extra_files in SwiftPM target (dependency) {:?}", extra_files)
+        }
+    }
+
     // ! rule should be registered in parent project
     scope.add_step(&BuildStep::Cmd {
         rule: &rules::SPM,
@@ -39,6 +65,7 @@ fn register_target<ArtifactType: TArtifactType>(
             ("packageDir", package_dir),
             ("product", &target_name),
             ("cacheDir", cache_dir),
+            ("extra_flags", &extra_flags.join(" ")),
         ],
     })?;
 

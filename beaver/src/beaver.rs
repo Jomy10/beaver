@@ -80,7 +80,7 @@ pub struct Beaver {
     build_dirs: OnceLock<BuildDirs>,
     enable_color: bool,
     pub(crate) target_triple: Triple,
-    verbose: bool,
+    pub(crate) verbose: bool,
     /// enable various debug utilities. adds -d explain to ninja
     debug: bool,
     cache: OnceLock<Cache>,
@@ -317,7 +317,7 @@ impl Beaver {
         let project_is_mutable = project.is_mutable();
         projects.push(project);
         drop(projects);
-        if project_is_mutable {
+        if project_is_mutable || self.current_project_index() == None {
             self.set_current_project_index(idx);
         }
         return Ok(idx);
@@ -358,7 +358,12 @@ impl Beaver {
             },
             AnyProject::CMake(project) => Err(BeaverError::ProjectNotTargetMutable(project.name().to_string()).into()),
             AnyProject::Cargo(project) => Err(BeaverError::ProjectNotTargetMutable(project.name().to_string()).into()),
-            AnyProject::SPM(project) => Err(BeaverError::ProjectNotTargetMutable(project.name().to_string()).into()),
+            AnyProject::SPM(project) => {
+                cb(unsafe { &*project_ptr }, project.targets_mut()?
+                    .get_mut(target.target)
+                    .expect("Invalid TargetRef")
+                )
+            },
             AnyProject::Meson(project) => {
                 cb(unsafe { &*project_ptr }, project.targets_mut()
                     .get_mut(target.target)

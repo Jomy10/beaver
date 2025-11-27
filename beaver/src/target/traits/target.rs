@@ -92,6 +92,10 @@ pub trait Target: Send + Sync + std::fmt::Debug {
 
     /// Debug attributes to print when using `--debug`
     fn debug_attributes(&self) -> Vec<(&'static str, String)>;
+
+    fn add_dependency(&mut self, _: Dependency) -> crate::Result<()> {
+        return Err(crate::BeaverError::TargetOperationNotSupported("add_dependency".to_string(), self.name().to_string()));
+    }
 }
 
 fn collect_dependency_and_languages(dep: &Dependency, into_set: &mut HashSet<Dependency>, into_language_set: &mut HashSet<Language>, context: &Beaver) -> crate::Result<()> {

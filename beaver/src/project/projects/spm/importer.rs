@@ -92,6 +92,10 @@ pub fn import(
         }
     }).collect();
 
+    if targets.len() == 0 {
+        warn!("No products defined in Swift Package Manager project {}", base_dir.display());
+    }
+
     let project = project::spm::Project::new(
         manifest.name,
         std::path::absolute(base_dir)?,

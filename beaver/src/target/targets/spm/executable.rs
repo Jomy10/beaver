@@ -19,6 +19,8 @@ pub struct Executable {
     name: String,
 
     cache_dir: Arc<PathBuf>,
+
+    extra_dependencies: Vec<Dependency>,
 }
 
 impl Executable {
@@ -27,7 +29,8 @@ impl Executable {
             project_id: None,
             id: None,
             name,
-            cache_dir
+            cache_dir,
+            extra_dependencies: Vec::new()
         }
     }
 }
@@ -111,15 +114,32 @@ impl traits::Target for Executable {
         triple: &Triple,
         _builder: Arc<RwLock<Builder>>,
         scope: &mut Builder::Scope,
-        _context: &Arc<Beaver>,
+        context: &Arc<Beaver>,
     ) -> crate::Result<String> {
         let artifact_file = std::path::absolute(self.artifact_file(project_build_dir, ArtifactType::Executable(ExecutableArtifactType::Executable), triple)?)?;
-        super::register_target(scope, project_name, &self.name, project_base_dir, &artifact_file, ExecutableArtifactType::Executable, &self.cache_dir, None)
+        super::register_target(
+            scope,
+            project_name,
+            &self.name,
+            project_base_dir,
+            &artifact_file,
+            ExecutableArtifactType::Executable,
+            &self.cache_dir,
+            None,
+            &self.extra_dependencies,
+            context,
+            triple
+        )
     }
 
     #[doc = " Debug attributes to print when using `--debug`"]
     fn debug_attributes(&self) -> Vec<(&'static str, String)> {
         vec![]
+    }
+
+    fn add_dependency(&mut self, dependency: Dependency) -> crate::Result<()> {
+        self.extra_dependencies.push(dependency);
+        Ok(())
     }
 }
 

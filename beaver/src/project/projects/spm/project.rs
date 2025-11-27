@@ -19,7 +19,7 @@ pub struct Project {
     build_dir: PathBuf,
     /// The cache dir used by SPM
     cache_dir: Arc<PathBuf>,
-    targets: Vec<AnyTarget>,
+    targets: RwLock<Vec<AnyTarget>>,
 }
 
 impl Project {
@@ -45,8 +45,14 @@ impl Project {
             base_dir,
             build_dir,
             cache_dir,
-            targets,
+            targets: RwLock::new(targets),
         }
+    }
+
+    pub fn targets_mut<'a>(&'a self) -> crate::Result<std::sync::RwLockWriteGuard<'a, Vec<AnyTarget>>> {
+        self.targets.write().map_err(|err| {
+            BeaverError::TargetsWriteError(err.to_string())
+        })
     }
 }
 
@@ -57,7 +63,7 @@ impl traits::Project for Project {
 
     fn set_id(&mut self, new_id: usize) -> crate::Result<()> {
         self.id = Some(new_id);
-        for target in &mut self.targets {
+        for target in self.targets_mut()?.iter_mut() {
             target.set_id(new_id);
         }
         Ok(())
@@ -80,11 +86,12 @@ impl traits::Project for Project {
     }
 
     fn targets<'a>(&'a self) -> crate::Result<Box<dyn Deref<Target = Vec<AnyTarget>> + 'a>> {
-        Ok(Box::new(&self.targets))
+        Ok(Box::new(self.targets.read().map_err(|err| BeaverError::TargetsWriteError(err.to_string()))?))
     }
 
     fn find_target(&self, name: &str) -> crate::Result<Option<usize>> {
-        Ok(self.targets.iter().find(|target| target.name() == name)
+        Ok(self.targets()?.iter()
+            .find(|target| target.name() == name)
             .map(|target| target.id().unwrap()))
     }
 
@@ -111,7 +118,7 @@ impl traits::Project for Project {
             return Err(BeaverError::NonUTF8OsStr(self.cache_dir.as_os_str().to_os_string()));
         };
 
-        for target in &self.targets {
+        for target in self.targets()?.iter() {
             _ = target.register(
                 &self.name,
                 &base_abs,

@@ -53,7 +53,7 @@ impl TArtifactType for LibraryArtifactType {
     fn parse(str: &str) -> crate::Result<LibraryArtifactType> {
         match str {
             "dynlib" => Ok(LibraryArtifactType::Dynlib),
-            "staticlib" => Ok(LibraryArtifactType::Staticlib),
+            "staticlib" | "static" => Ok(LibraryArtifactType::Staticlib),
             "pkgconfig" | "pkg-config" | "pkgconf" | "pkg-conf" => Ok(LibraryArtifactType::PkgConfig),
             "framework" => Ok(LibraryArtifactType::Framework),
             "xcframework" => Ok(LibraryArtifactType::XCFramework),

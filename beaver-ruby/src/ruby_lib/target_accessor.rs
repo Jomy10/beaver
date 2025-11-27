@@ -1,10 +1,12 @@
 use std::borrow::Cow;
 use std::path::PathBuf;
 
-use beaver::target::TargetRef;
-use beaver::traits::Project;
+use beaver::BeaverError;
+use beaver::target::{Dependency, TargetRef};
+use beaver::traits::{Project, Target};
 use magnus::Module;
 
+use crate::ext::MagnusConvertContextExt;
 use crate::{BeaverRubyError, CTX};
 
 /// Split on the value where `predicate` is false
@@ -148,6 +150,16 @@ impl TargetAccessor {
             }
         }).map_err(|err| err.into())
     }
+
+    fn add_dependency(&self, dependency: magnus::Value) -> Result<(), magnus::Error> {
+        let context = &CTX.get().unwrap().context();
+
+        let dep = Dependency::try_from_value(dependency, context)?;
+
+        context.with_project_and_target_mut::<(), BeaverError>(&TargetRef { target: self.id, project: self.projid }, |_, target| {
+            target.add_dependency(dep)
+        }).map_err(|err| BeaverRubyError::from(err).into())
+    }
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
@@ -156,6 +168,7 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     class.define_method("build", magnus::method!(TargetAccessor::build, 0))?;
     class.define_method("set_pkgconfig", magnus::method!(TargetAccessor::set_pkgconfig, 1))?;
     class.define_method("run_thread", magnus::method!(TargetAccessor::run_thread, 1))?;
+    class.define_method("add_dependency", magnus::method!(TargetAccessor::add_dependency, 1))?;
 
     return Ok(());
 }

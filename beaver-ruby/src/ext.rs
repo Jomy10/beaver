@@ -325,6 +325,12 @@ impl MagnusConvertContextExt for Vec<Dependency> {
     }
 }
 
+impl MagnusConvertContextExt for Dependency {
+    fn try_from_value(value: magnus::Value, context: &Beaver) -> Result<Self, magnus::Error> where Self: Sized {
+        parse_dependency(value, context).map_err(Into::into)
+    }
+}
+
 pub trait MagnusStringConvertExt {
     fn from_string_or_sym(value: magnus::Value) -> Result<Self, magnus::Error> where Self: Sized;
 }

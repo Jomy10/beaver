@@ -163,17 +163,18 @@ lazy_static! {
         pool: Some(&EXTERNAL_POOL),
     };
 
-    static ref SPM_PROJECT_CMD: String = format!("{} build --package-path $packageDir --cache-path $cacheDir -Xswiftc -emit-objc-header", tools::swift.display());
+    // TODO: -emit-clang-header-path? instead of objc header? (see https://www.swift.org/documentation/cxx-interop/project-build-setup/#mixing-swift-and-c-using-swift-package-manager)
+    static ref SPM_PROJECT_CMD: String = format!("{} build --package-path $packageDir --cache-path $cacheDir -Xswiftc -emit-objc-header $extra_flags", tools::swift.display());
     pub static ref SPM_PROJECT: Rule = Rule {
         name: "spm_project",
         options: vec![
             ("description", "building SPM project at $packageDir"),
-            ("command", &SPM_CMD),
+            ("command", &SPM_PROJECT_CMD),
         ],
         pool: Some(&EXTERNAL_POOL),
     };
 
-    static ref SPM_CMD: String = format!("{} build --package-path $packageDir --cache-path $cacheDir --product $product -Xswiftc -emit-objc-header", tools::swift.display());
+    static ref SPM_CMD: String = format!("{} build --package-path $packageDir --cache-path $cacheDir --product $product -Xswiftc -emit-objc-header $extra_flags", tools::swift.display());
     pub static ref SPM: Rule = Rule {
         name: "spm",
         options: vec![

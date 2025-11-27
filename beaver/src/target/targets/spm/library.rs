@@ -20,6 +20,8 @@ pub struct Library {
     artifact: LibraryArtifactType,
 
     cache_dir: Arc<PathBuf>,
+
+    extra_dependencies: Vec<Dependency>,
 }
 
 impl Library {
@@ -29,7 +31,8 @@ impl Library {
             id: None,
             name,
             artifact,
-            cache_dir
+            cache_dir,
+            extra_dependencies: Vec::new(),
         }
     }
 }
@@ -80,7 +83,7 @@ impl traits::Target for Library {
     }
 
     fn dependencies(&self) -> crate::Result<Cow<'_, [Dependency]>> {
-        Ok(Cow::Borrowed(&[]))
+        Ok(Cow::Borrowed(&self.extra_dependencies))
     }
 
     fn r#type(&self) -> TargetType {
@@ -112,15 +115,32 @@ impl traits::Target for Library {
         triple: &Triple,
         _builder: Arc<RwLock<Builder>>,
         scope: &mut Builder::Scope,
-        _context: &Arc<Beaver>,
+        context: &Arc<Beaver>,
     ) -> crate::Result<String> {
         let artifact_file = std::path::absolute(self.artifact_file(project_build_dir, ArtifactType::Library(self.artifact), triple)?)?;
-        super::register_target(scope, project_name, &self.name, project_base_dir, &artifact_file, self.artifact, &self.cache_dir, Some(&self.swift_objc_header_path(project_build_dir)))
+        super::register_target(
+            scope,
+            project_name,
+            &self.name,
+            project_base_dir,
+            &artifact_file,
+            self.artifact,
+            &self.cache_dir,
+            Some(&self.swift_objc_header_path(project_build_dir)),
+            &self.extra_dependencies,
+            context,
+            triple
+        )
     }
 
     #[doc = " Debug attributes to print when using `--debug`"]
     fn debug_attributes(&self) -> Vec<(&'static str, String)> {
         vec![]
+    }
+
+    fn add_dependency(&mut self, dependency: Dependency) -> crate::Result<()> {
+        self.extra_dependencies.push(dependency);
+        Ok(())
     }
 }
 
