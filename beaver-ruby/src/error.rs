@@ -71,7 +71,11 @@ pub enum BeaverRubyError {
     #[error("Cannot convert {} to {}", {
         let ctx = &CTX.get().unwrap();
         if ctx.thread_id == std::thread::current().id() {
-            .0.to_string()
+            if .0.is_nil() {
+                String::from("nil")
+            } else {
+                .0.to_string()
+            }
         } else {
             // scuffed implementation
             let res = Arc::new(Mutex::new(String::new()));
@@ -79,7 +83,11 @@ pub enum BeaverRubyError {
             let _res = res.clone();
             ctx.block_execute_on(Box::new(move || {
                 let value = unsafe { *value.value() };
-                *_res.lock().unwrap() = unsafe { (*value).to_string() };
+                if unsafe {(*value).is_nil()} {
+                    *_res.lock().unwrap() = String::from("nil");
+                } else {
+                    *_res.lock().unwrap() = unsafe { (*value).to_string() };
+                }
                 Ok(())
             })).unwrap();
             res.lock().unwrap().clone()

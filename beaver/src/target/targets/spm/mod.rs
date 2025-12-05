@@ -56,6 +56,8 @@ fn register_target<ArtifactType: TArtifactType>(
         }
     }
 
+    log::debug!("Extra flags for SPM target {}: {:?}", target_name, extra_flags);
+
     // ! rule should be registered in parent project
     scope.add_step(&BuildStep::Cmd {
         rule: &rules::SPM,
