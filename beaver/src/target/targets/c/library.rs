@@ -312,11 +312,12 @@ impl CTarget for Library {
                     // Don't create duplicate rules
                     if *artifact == LibraryArtifactType::JSLib && self.artifacts.contains(&LibraryArtifactType::Staticlib) { continue }
 
+                    let deps = [dependency_steps, additional_dependency_files].concat();
                     builder.add_step(&BuildStep::Build {
                         rule: cc_rule,
                         output: &object_files[object_files.len() - 1],
                         input: &[source.as_path()],
-                        dependencies: additional_dependency_files,
+                        dependencies: &deps,
                         options: &[("cflags", cflags)]
                     })?;
                 }

@@ -9,6 +9,8 @@ mod unix {
     use std::io;
     use std::path::Path;
 
+    use log::*;
+
     pub trait SocketUnixExt {
         fn sh_write_str_netcat_and_wait(&self, mkfifo: &Path, cat: &Path, netcat: &Path, netcat_send_data: &str, response_file: impl AsRef<Path>, escape_dollar: bool, out: &mut String) -> std::fmt::Result;
         fn sh_write_str_netcat(&self, netcat: &Path, data: &str, out: &mut String) -> std::fmt::Result;
@@ -21,6 +23,7 @@ mod unix {
 
     impl Socket {
         pub fn send(&self, cmd: &str) -> io::Result<()> {
+            trace!("Message sent to socket from beaver: {}", cmd);
             self.0.send(cmd)
         }
     }

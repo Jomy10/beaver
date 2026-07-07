@@ -282,11 +282,12 @@ impl CTarget for Executable {
 
                     object_files.push(object_path);
 
+                    let deps = [dependency_steps, additional_dependency_files].concat();
                     builder.add_step(&BuildStep::Build {
                         rule: cc_rule,
                         output: &object_files[object_files.len() - 1],
                         input: &[source.as_path()],
-                        dependencies: additional_dependency_files,
+                        dependencies: &deps,
                         options: &[("cflags", cflags)]
                     })?;
                 }

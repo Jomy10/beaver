@@ -596,6 +596,7 @@ impl Beaver {
 
     pub(crate) fn enable_communication(self: &Arc<Self>) -> crate::Result<()> {
         let self2 = Arc::downgrade(self);
+        trace!("Listening to communication socket");
         let _ = self.comm_socket.0.set(program_communicator::socket::listen("beaver_custom_targets", move |reader| {
             let mut callback_path: Option<PathBuf> = None;
             let Some(self2) = self2.upgrade() else {
@@ -603,7 +604,7 @@ impl Beaver {
             };
             match self2.handle_communication(reader, &mut callback_path) {
                 Ok(res) => {
-                    trace!(target: "communication", "message result = {:?}", res);
+                    trace!(target: "communication", "ProgramCommunicator message result: {:?}", res);
                     #[cfg(unix)] {
                         if let Some(callback_path) = callback_path {
                             program_communicator::callback::unix::send_message(&callback_path, '0'.as_bytes())
@@ -613,7 +614,7 @@ impl Beaver {
                     Ok(res)
                 },
                 Err(err) => {
-                    error!(target: "communication", "{}", err);
+                    error!(target: "communication", "ProgramCommunicator error: {}", err);
                     #[cfg(unix)] {
                         if let Some(callback_path) = callback_path {
                             program_communicator::callback::unix::send_message(&callback_path, '1'.as_bytes())
@@ -1068,7 +1069,13 @@ impl Drop for Beaver {
     fn drop(&mut self) {
         if self.comm_socket.0.get().is_some() {
             if let Some(socket) = self.comm_socket.0.take() {
-                socket.send("close").unwrap();
+                match socket.send("close") {
+                    Ok(_) => trace!("Communication socket closed"),
+                    Err(err) => {
+                        warn!("Couldn't close socket; {:?}", err);
+                        return;
+                    }
+                }
                 #[cfg(unix)] {
                     use program_communicator::socket::SocketUnixExt;
                     socket.wait().unwrap();
