@@ -6,7 +6,7 @@ mod project;
 mod target;
 pub(crate) mod dependency;
 mod build_dir;
-mod pre;
+mod phase_hooks;
 mod command;
 mod target_triple;
 mod cache;
@@ -18,7 +18,7 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     target::register(ruby)?;
     dependency::register(ruby)?;
     build_dir::register(ruby)?;
-    pre::register(ruby)?;
+    phase_hooks::register(ruby)?;
     command::register(ruby)?;
     target_triple::register(ruby)?;
     cache::register(ruby)?;

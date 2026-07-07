@@ -20,7 +20,7 @@ use crate::cache::Cache;
 use crate::command::Commands;
 use crate::traits::{AnyExecutable, AnyLibrary, AnyProject};
 use crate::{tools, OptimizationMode};
-use crate::phase_hook::{Phase, PhaseHook, PhaseHooks};
+use crate::phase_hook::{Phase, PhaseHook, PhaseHookTrigger, PhaseHooks};
 use crate::error::BeaverError;
 use crate::project::traits::Project;
 use crate::target::traits::{AnyTarget, Target};
@@ -85,9 +85,12 @@ pub struct Beaver {
     debug: bool,
     cache: OnceLock<Cache>,
     status: AtomicState,
-    phase_hook_build: Mutex<PhaseHooks>,
-    phase_hook_run: Mutex<PhaseHooks>,
-    phase_hook_clean: Mutex<PhaseHooks>,
+    pre_phase_hooks_build: Mutex<PhaseHooks>,
+    post_phase_hooks_build: Mutex<PhaseHooks>,
+    pre_phase_hooks_run: Mutex<PhaseHooks>,
+    post_phase_hooks_run: Mutex<PhaseHooks>,
+    pre_phase_hooks_clean: Mutex<PhaseHooks>,
+    post_phase_hooks_clean: Mutex<PhaseHooks>,
     commands: Mutex<Commands>,
     /// Indicates wether the symlink to the last built target has been created
     symlink_created: AtomicBool,
@@ -119,9 +122,12 @@ impl Beaver {
             debug,
             cache: OnceLock::new(),
             status: AtomicState::new(BeaverState::Initialized as u8),
-            phase_hook_build: Mutex::new(PhaseHooks(Vec::new())),
-            phase_hook_run: Mutex::new(PhaseHooks(Vec::new())),
-            phase_hook_clean: Mutex::new(PhaseHooks(Vec::new())),
+            pre_phase_hooks_build: Mutex::new(PhaseHooks(Vec::new())),
+            post_phase_hooks_build: Mutex::new(PhaseHooks(Vec::new())),
+            pre_phase_hooks_run: Mutex::new(PhaseHooks(Vec::new())),
+            post_phase_hooks_run: Mutex::new(PhaseHooks(Vec::new())),
+            pre_phase_hooks_clean: Mutex::new(PhaseHooks(Vec::new())),
+            post_phase_hooks_clean: Mutex::new(PhaseHooks(Vec::new())),
             commands: Mutex::new(Commands(HashMap::new())),
             symlink_created: AtomicBool::new(false),
             comm_socket: CommunicationSocket(OnceLock::new())
@@ -706,7 +712,7 @@ impl Beaver {
             BeaverState::Build => {},
         }
 
-        self.run_phase_hook(Phase::Build)?;
+        self.run_phase_hooks(Phase::Build, PhaseHookTrigger::Pre)?;
 
         let build_file = self.build_file()?;
         let ninja_runner = NinjaRunner::new(&build_file, self.verbose, self.debug);
@@ -714,6 +720,8 @@ impl Beaver {
         ninja_runner.build(target_names, &env::current_dir()?, &build_dir)?;
 
         self.create_symlink()?;
+
+        self.run_phase_hooks(Phase::Build, PhaseHookTrigger::Post)?;
 
         Ok(())
     }
@@ -736,7 +744,7 @@ impl Beaver {
         }
         self.build(target)?;
 
-        self.run_phase_hook(Phase::Run)?;
+        self.run_phase_hooks(Phase::Run, PhaseHookTrigger::Pre)?;
 
         let artifact_file = self.with_project_and_target::<PathBuf, BeaverError>(&target, |project, target| {
             let artifact_type = ArtifactType::Executable(ExecutableArtifactType::Executable);
@@ -757,6 +765,7 @@ impl Beaver {
         if !exit_status.success() {
             return Err(BeaverError::NonZeroExitStatus(exit_status));
         } else {
+            self.run_phase_hooks(Phase::Run, PhaseHookTrigger::Post)?;
             return Ok(());
         }
     }
@@ -778,7 +787,7 @@ impl Beaver {
             return Ok(());
         }
 
-        self.run_phase_hook(Phase::Clean)?;
+        self.run_phase_hooks(Phase::Clean, PhaseHookTrigger::Pre)?;
 
         for project in self.projects()?.iter() {
             project.clean(self)?;
@@ -786,32 +795,43 @@ impl Beaver {
 
         fs::remove_dir_all(self.get_build_dir()?)?;
 
+        self.run_phase_hooks(Phase::Clean, PhaseHookTrigger::Post)?;
+
         Ok(())
     }
 
-    /// Adding a phase hook or "pre-phase hook" is a function that will run before the user
+    /// Adding a pre-phase hook is a function that will run before the user
     /// requests the given phase. e.g. when a user requests a build, then the functions stored in
     /// the build hooks will be ran first
-    pub fn add_phase_hook(&self, phase: Phase, hook: PhaseHook) -> crate::Result<()> {
+    pub fn add_phase_hook(&self, phase: Phase, hook: PhaseHook, trigger: PhaseHookTrigger) -> crate::Result<()> {
         if self.status.load(Ordering::SeqCst) != BeaverState::Initialized as u8 {
             return Err(BeaverError::AlreadyFinalized);
         }
         // let mut hooks = self.phase_hooks.lock().map_err(|err| BeaverError::LockError(err.to_string()))?;
-        match phase {
-            Phase::Build => self.phase_hook_build.lock()
+        match (phase, trigger) {
+            (Phase::Build, PhaseHookTrigger::Pre) => self.pre_phase_hooks_build.lock()
                 .map_err(|err| BeaverError::LockError(err.to_string()))?
                 .0.push(hook),
-            Phase::Run => self.phase_hook_run.lock()
+            (Phase::Build, PhaseHookTrigger::Post) => self.post_phase_hooks_build.lock()
                 .map_err(|err| BeaverError::LockError(err.to_string()))?
                 .0.push(hook),
-            Phase::Clean => self.phase_hook_clean.lock()
+            (Phase::Run, PhaseHookTrigger::Pre) => self.pre_phase_hooks_run.lock()
+                .map_err(|err| BeaverError::LockError(err.to_string()))?
+                .0.push(hook),
+            (Phase::Run, PhaseHookTrigger::Post) => self.post_phase_hooks_run.lock()
+                .map_err(|err| BeaverError::LockError(err.to_string()))?
+                .0.push(hook),
+            (Phase::Clean, PhaseHookTrigger::Pre) => self.pre_phase_hooks_clean.lock()
+                .map_err(|err| BeaverError::LockError(err.to_string()))?
+                .0.push(hook),
+            (Phase::Clean, PhaseHookTrigger::Post) => self.post_phase_hooks_clean.lock()
                 .map_err(|err| BeaverError::LockError(err.to_string()))?
                 .0.push(hook),
         }
         Ok(())
     }
 
-    fn get_hook_ignore_block(hooks: &Mutex<PhaseHooks>) -> crate::Result<Option<MutexGuard<'_, PhaseHooks>>> {
+    fn get_hooks_ignore_block(hooks: &Mutex<PhaseHooks>) -> crate::Result<Option<MutexGuard<'_, PhaseHooks>>> {
         match hooks.try_lock() {
             Ok(val) => Ok(Some(val)),
             Err(err) => match err {
@@ -823,21 +843,24 @@ impl Beaver {
 
     /// Run all the registered hooks for a particular phase. When this function is called multiple times for the
     /// same phase, the hooks will only run on the first invocation
-    fn run_phase_hook(self: &Arc<Self>, phase: Phase) -> crate::Result<()> {
+    fn run_phase_hooks(self: &Arc<Self>, phase: Phase, trigger: PhaseHookTrigger) -> crate::Result<()> {
         match BeaverState::try_from(self.status.load(Ordering::SeqCst))? {
             BeaverState::Initialized => self.create_build_file()?, // finalize beaver
             BeaverState::Invalid => return Err(BeaverError::UnrecoverableError),
             BeaverState::Build => {},
         }
 
-        let hooks = match phase {
+        let hooks = match (&phase, trigger) {
             // We can ignore would block because we have checked that the state is Build
             // This means no new hooks will be added and if the mutex is locked, we are
             // already draining the hooks. This function is being called from inside of
             // a hook
-            Phase::Build => Self::get_hook_ignore_block(&self.phase_hook_build),
-            Phase::Run => Self::get_hook_ignore_block(&self.phase_hook_run),
-            Phase::Clean => Self::get_hook_ignore_block(&self.phase_hook_clean),
+            (Phase::Build, PhaseHookTrigger::Pre) => Self::get_hooks_ignore_block(&self.pre_phase_hooks_build),
+            (Phase::Build, PhaseHookTrigger::Post) => Self::get_hooks_ignore_block(&self.post_phase_hooks_build),
+            (Phase::Run, PhaseHookTrigger::Pre) => Self::get_hooks_ignore_block(&self.pre_phase_hooks_run),
+            (Phase::Run, PhaseHookTrigger::Post) => Self::get_hooks_ignore_block(&self.post_phase_hooks_run),
+            (Phase::Clean, PhaseHookTrigger::Pre) => Self::get_hooks_ignore_block(&self.pre_phase_hooks_clean),
+            (Phase::Clean, PhaseHookTrigger::Post) => Self::get_hooks_ignore_block(&self.post_phase_hooks_clean),
         }?;
 
         let mut hooks = match hooks {

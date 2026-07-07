@@ -2,12 +2,17 @@ build_dir "build"
 
 # Run before building
 pre "build" do
+  puts "Generating header..."
   Dir.mkdir("build/generated") unless Dir.exist?("build/generated")
   File.write("build/generated/generated.h", "#define TEXT_MACRO \"I AM GENERATED\"")
 end
 
 pre "clean" do
   File.delete("build/generated/generated.h")
+end
+
+post "build" do
+  puts "I can also run after a phase!"
 end
 
 Project(name: "MyProject")

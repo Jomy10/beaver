@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::sync::Arc;
 use cargo_manifest::{Manifest, Workspace};
-use log::warn;
+use log::*;
 use url::Url;
 
 use crate::target::{ExecutableArtifactType, LibraryArtifactType};
@@ -127,7 +127,7 @@ fn parse_package(manifest: &Manifest, workspace: Option<&Workspace>, cargo_args:
             };
             let artifacts = crate_types.into_iter().map(|crate_type| {
                 match crate_type.as_str() {
-                    "rlib" => Ok(LibraryArtifactType::RustLib),
+                    "rlib" | "lib" => Ok(LibraryArtifactType::RustLib),
                     "dylib" => Ok(LibraryArtifactType::RustDynlib),
                     "staticlib" => Ok(LibraryArtifactType::Staticlib),
                     "cdylib" => Ok(LibraryArtifactType::Dynlib),

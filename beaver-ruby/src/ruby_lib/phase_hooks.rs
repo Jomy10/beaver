@@ -1,9 +1,9 @@
 use utils::UnsafeSendable;
-use beaver::phase_hook::Phase;
+use beaver::phase_hook::{Phase, PhaseHookTrigger};
 
 use crate::{BeaverRubyError, CTX};
 
-fn pre(args: &[magnus::Value]) -> Result<(), magnus::Error> {
+fn register_phase_hook(args: &[magnus::Value], trigger: PhaseHookTrigger) -> Result<(), magnus::Error> {
     let args = magnus::scan_args::scan_args::<
         (magnus::Value,), // required (phase name)
         (),
@@ -34,11 +34,20 @@ fn pre(args: &[magnus::Value]) -> Result<(), magnus::Error> {
                 .map(|_| ())
                 .map_err(BeaverRubyError::from)
         })).map_err(|err| Box::new(err) as Box<dyn std::error::Error>)
-    })).map_err(|err| BeaverRubyError::from(err).into())
+    }), trigger).map_err(|err| BeaverRubyError::from(err).into())
+}
+
+fn pre(args: &[magnus::Value]) -> Result<(), magnus::Error> {
+    register_phase_hook(args, PhaseHookTrigger::Pre)
+}
+
+fn post(args: &[magnus::Value]) -> Result<(), magnus::Error> {
+    register_phase_hook(args, PhaseHookTrigger::Post)
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     ruby.define_global_function("pre", magnus::function!(pre, -1));
+    ruby.define_global_function("post", magnus::function!(post, -1));
 
     Ok(())
 }

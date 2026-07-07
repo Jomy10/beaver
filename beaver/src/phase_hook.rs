@@ -29,3 +29,8 @@ impl std::fmt::Debug for PhaseHooks {
         f.write_fmt(format_args!("PhaseHooks(hooks: {})", self.0.len()))
     }
 }
+
+pub enum PhaseHookTrigger {
+    Post,
+    Pre
+}
