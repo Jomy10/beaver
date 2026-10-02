@@ -21,7 +21,7 @@ use OptimizationMode::*;
 // TODO: -march=native -msse4.1 -> C settings (in project?) (https://www.youtube.com/watch?v=egG5Kraswhc)
 lazy_static! {
     static ref cflags_release: Vec<&'static str> = {
-        let mut v = ["-O3", "-flto", "-DNDEBUG"].to_vec();
+        let mut v = ["-O3", "-flto", "-DNDEBUG", "-DRELEASE"].to_vec();
         match &*tools::cc_version {
             CCVersion::Clang(ver) => if ver.major >= 18 { v.push("-ffat-lto-objects") },
             CCVersion::Gcc(_) => v.push("-ffat-lto-objects"),
@@ -46,7 +46,7 @@ impl OptimizationMode {
     // Flags //
     pub fn cflags(&self) -> &[&str] {
         match self {
-            Debug => &["-g", "-O0"],
+            Debug => &["-g", "-O0", "-DDEBUG"],
             Release => cflags_release.as_slice(),
         }
     }

@@ -1,4 +1,4 @@
-#![feature(box_as_ptr, linked_list_remove)]
+#![feature(linked_list_remove)]
 
 use utils::moduse;
 
