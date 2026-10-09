@@ -9,23 +9,38 @@ use crate::traits::{AnyExecutable, AnyLibrary, AnyTarget, Target};
 use crate::{target, tools, Beaver, BeaverError};
 
 // TODO: reconfigure if configure_args changed
-pub fn import(
+pub fn import<P: AsRef<Path>>(
     base_dir: &Path,
     meson_configure_args: &[&str],
+    additional_reconfigure_files: &[P],
     context: &Beaver
 ) -> crate::Result<usize> {
-    let base_dir = std::path::absolute(base_dir)?;
+    let base_dir = std::path::absolute(base_dir).map_err(|err| BeaverError::io(err, "failed to get absolute path to base_dir in meson project"))?;
     let base_dir_str = base_dir.to_string_lossy();
     let file_context = context.optimize_mode.to_string() + ":" + base_dir_str.as_ref();
 
-    let (build_dir, reconfigured) = meson_configure(&base_dir, base_dir_str.as_ref(), &file_context, meson_configure_args, context)?;
+    let (build_dir, reconfigured) = meson_configure(
+        &base_dir, base_dir_str.as_ref(),
+        &file_context,
+        meson_configure_args,
+        !context.cache()?
+            .files_present_in_context(&file_context, additional_reconfigure_files.iter().map(|p| p.as_ref()))?,
+        context
+    )?;
     let meson_info = build_dir.join("meson-info");
 
     trace!("Meson importer: storing cache");
-    let buildsystem_files_file = fs::File::open(meson_info.join("intro-buildsystem_files.json"))?;
+    let buildsystem_files_path = meson_info.join("intro-buildsystem_files.json");
+    let buildsystem_files_file = fs::File::open(&buildsystem_files_path)
+        .map_err(|err| BeaverError::io(err, buildsystem_files_path.to_string_lossy()))?;
     let buildsystem_files: Vec<String> = serde_json::from_reader(io::BufReader::new(buildsystem_files_file))?;
 
-    context.cache()?.set_all_files(buildsystem_files.iter().map(|path| Path::new(path)), &file_context)?;
+    // Define the files that should reconfigure the project
+    context.cache()?.set_all_files(
+        buildsystem_files.iter().map(|path| Path::new(path))
+            .chain(additional_reconfigure_files.into_iter().map(|p| p.as_ref())),
+        &file_context
+    )?;
 
     trace!("Meson importer: retrieving targets");
 
@@ -122,13 +137,15 @@ fn meson_configure(
     base_dir_str: &str,
     file_context: &str,
     meson_configure_args: &[&str],
+    force_reconfigure: bool,
     context: &Beaver
 ) -> crate::Result<(PathBuf, bool)> {
     let build_dir = context.get_build_dir_for_external_build_system2(base_dir_str)?;
 
     let cache = context.cache()?;
     let meson_build_files_changed = cache.files_changed_in_context(&file_context)?;
-    let reconfigure = !build_dir.exists() || meson_build_files_changed;
+    let reconfigure = !build_dir.exists() || meson_build_files_changed || force_reconfigure;
+    trace!("Reconfigure: {} ({} || {} || {})", reconfigure, !build_dir.exists(), meson_build_files_changed, force_reconfigure);
 
     if reconfigure {
         trace!("Reconfiguring Meson project {}", base_dir_str);

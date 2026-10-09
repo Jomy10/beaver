@@ -98,23 +98,43 @@ fn import_spm(dir: String) -> Result<ProjectAccessor, magnus::Error> {
 }
 
 fn import_meson(args: &[magnus::Value]) -> Result<(), magnus::Error> {
+    // Params:
+    // - path to meson project
+    // - An array of flags to pass to `meson configure`
+    // - Additional files to check for reconfigure. For example when using `--cross-file`,
+    //   the *crossfile*.ini can be passed here to reconfigure the meson project when
+    //   the crossfile has changed.
+    // Example:
+    // ```rb
+    // ini_file = File.absolute_path("emscripten.ini")
+    // import_meson cairo_p, ["--wipe", "--cross-file", ini_file], [ini_file]
+    // ```
     let args = magnus::scan_args::scan_args::<
         (String,), // required
-        (Option<magnus::RArray>,), // optional
+        (Option<magnus::RArray>, Option<magnus::RArray>), // optional
         (),
         (),
         (),
         ()
     >(args)?;
     let dir = args.required.0;
+
     let meson_flags = if let Some(flags) = args.optional.0 {
         flags.into_iter().map(|v| v.to_string()).collect()
     } else {
         Vec::new()
     };
     let meson_flags: Vec<_> = meson_flags.iter().map(|str| str.as_str()).collect();
+
+    let additional_dep_files = if let Some(files) = args.optional.1 {
+        files.into_iter().map(|v| v.to_string()).collect()
+    } else {
+        Vec::new()
+    };
+    let additional_dep_files: Vec<_> = additional_dep_files.iter().map(|str| PathBuf::from(str)).collect();
+
     let context = &CTX.get().unwrap().context();
-    project::meson::import(&PathBuf::from(dir), &meson_flags, &context)
+    project::meson::import(&PathBuf::from(dir), &meson_flags, &additional_dep_files, &context)
         .map_err(|err| magnus::Error::from(BeaverRubyError::from(err)))?;
     Ok(())
 }

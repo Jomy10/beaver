@@ -44,6 +44,9 @@ beaver-macros = { path = "../beaver-macros" }
 program-communicator = { path = "../program-communicator" }
 pkgconfig-parser = { path = "../pkgconfig-parser" }
 
+[target.'cfg(windows)'.dependencies]
+sha2 = { version = "0.11.0" }
+
 [dev-dependencies]
 tempdir = { workspace = true }
 colog = { workspace = true }

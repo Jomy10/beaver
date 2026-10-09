@@ -18,6 +18,7 @@ use crate::backend::ninja::{NinjaBuilder, NinjaRunner};
 use crate::backend::BackendBuilder;
 use crate::cache::Cache;
 use crate::command::Commands;
+use crate::path::encode_path;
 use crate::traits::{AnyExecutable, AnyLibrary, AnyProject};
 use crate::{tools, OptimizationMode};
 use crate::phase_hook::{Phase, PhaseHook, PhaseHookTrigger, PhaseHooks};
@@ -221,7 +222,9 @@ impl Beaver {
     pub fn get_build_dir_for_external_build_system2(&self, base_dir_str: impl AsRef<str>) -> crate::Result<PathBuf> {
         self.get_build_dir().map(|build_dir| build_dir
             .join("__beaver_external")
-            .join(urlencoding::encode(base_dir_str.as_ref())))
+            .join(encode_path(base_dir_str.as_ref()))
+        )
+            // .join(urlencoding::encode(base_dir_str.as_ref())))
     }
 
     /// Directory for storing intermediate files, etc. This version doesn't change based on target triple or optimization mode
@@ -236,7 +239,9 @@ impl Beaver {
     pub fn get_build_dir_for_external_build_system_static2(&self, base_dir_str: impl AsRef<str>) -> crate::Result<PathBuf> {
         self.get_base_build_dir().map(|build_dir| build_dir
             .join("__beaver_external")
-            .join(urlencoding::encode(base_dir_str.as_ref())))
+            .join(encode_path(base_dir_str.as_ref()))
+        )
+            // .join(urlencoding::encode(base_dir_str.as_ref())))
     }
 
     fn create_symlink(&self) -> crate::Result<()> {

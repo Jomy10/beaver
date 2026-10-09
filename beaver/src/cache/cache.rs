@@ -152,6 +152,31 @@ impl Cache {
         Ok(any_changed)
     }
 
+    pub fn files_present_in_context<'a>(&self, context: &str, files: impl Iterator<Item = &'a Path>) -> crate::Result<bool> {
+        let concrete_files = files
+            .map(|file| file
+                .to_str()
+                .ok_or(BeaverError::NonUTF8OsStr(file.as_os_str().to_os_string())
+            )
+            ).map(|res| res.map(|file| ConcreteFileKey {
+                context,
+                filename: file
+            }));
+
+        for file in concrete_files {
+            let file = file?;
+
+            trace!("Checking file '{}' has been cached in context '{}'", file.filename, file.context);
+            let filekeyb = file.to_bytes();
+            if self.concrete_files.get(filekeyb)?.is_none() {
+                trace!("Not present!");
+                return Ok(false);
+            }
+        }
+
+        return Ok(true);
+    }
+
     /// set all files in a context, removing any old files
     pub fn set_all_files<'a>(&self, files: impl Iterator<Item = &'a Path>, context: &str) -> crate::Result<()> {
         trace!("Adding file context {}", context);
