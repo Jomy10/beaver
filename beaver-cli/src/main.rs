@@ -228,8 +228,6 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
     let target = matches.get_one::<String>("target-triple").unwrap();
     let target = Triple::from_str(target).map_err(|err| TripleParseError { inner: err })?;
 
-    println!("{}", target);
-
     let subcommand_match = matches.subcommand();
     let subcommand = subcommand_match.map(|(subcommand, _)| subcommand).unwrap_or("build");
 
