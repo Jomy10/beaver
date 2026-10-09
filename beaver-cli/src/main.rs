@@ -138,7 +138,9 @@ When the argument is provided, but without a value, then the optimization mode i
             .long_about("List projects and targets from the script file. This will execute the script file, but not any pre-phase hooks")
             .arg(arg!(-a --artifacts "Display the types of artifacts each target produces"))
             .arg(arg!(-d --dependencies "Display the dependencies of each target"))
-            .arg(arg!(-s --sources "Display the sources of each target")))
+            .arg(arg!(-s --sources "Display the sources of each target"))
+            .args(build_args.iter()))
+
 
         .get_matches();
 
@@ -226,6 +228,8 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
     let target = matches.get_one::<String>("target-triple").unwrap();
     let target = Triple::from_str(target).map_err(|err| TripleParseError { inner: err })?;
 
+    println!("{}", target);
+
     let subcommand_match = matches.subcommand();
     let subcommand = subcommand_match.map(|(subcommand, _)| subcommand).unwrap_or("build");
 
@@ -298,6 +302,7 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
             let artifacts = matches.get_flag("artifacts");
             let dependencies = matches.get_flag("dependencies");
             let sources = matches.get_flag("sources");
+
             let print_options = PrintOptions {
                 artifacts,
                 dependencies,
