@@ -78,7 +78,6 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
                 "linker_flags" | "ldflags" | "lflags" => {
                     let flags = Vec::<String>::try_from_value(value)?;
                     linker_flags.set(flags)?;
-
                 },
                 "artifacts" => {
                     let value = Vec::<ArtifactType>::try_from_value(value)?;
@@ -163,7 +162,7 @@ fn def_custom_library(args: magnus::RHash) -> Result<TargetAccessor, magnus::Err
     let context = &CTX.get().unwrap().context();
 
     context.with_current_project_mut(|project| {
-        let project_base_dir = project.base_dir();
+        // let project_base_dir = project.base_dir();
 
         let mut name = Arg::<String>::new("name");
         let mut desc = Arg::<String>::new("description");
@@ -171,9 +170,9 @@ fn def_custom_library(args: magnus::RHash) -> Result<TargetAccessor, magnus::Err
         let mut version = Arg::<Version>::new("version");
         let mut license = Arg::<String>::new("license");
         let mut language = Arg::<Language>::new("language");
-        let mut sources = Arg::<Files>::new("sources");
+        // let mut sources = Arg::<Files>::new("sources");
         let mut cflags = Arg::<Vec<String>>::new("cflags");
-        let mut headers = Arg::<Headers>::new("headers");
+        // let mut headers = Arg::<Headers>::new("headers");
         let mut linker_flags = Arg::<Vec<String>>::new("linker_flags");
         let mut artifacts = Arg::<HashMap<LibraryArtifactType, PathBuf>>::new("artifacts");
         let mut dependencies = Arg::<Vec<Dependency>>::new("dependencies");
@@ -209,18 +208,18 @@ fn def_custom_library(args: magnus::RHash) -> Result<TargetAccessor, magnus::Err
                     let langval = Language::try_from_value(value)?;
                     language.set(langval)?;
                 },
-                "sources" => {
-                    let files = Files::try_from_value(value, project_base_dir)?;
-                    sources.set(files)?;
-                },
+                // "sources" => {
+                //     let files = Files::try_from_value(value, project_base_dir)?;
+                //     sources.set(files)?;
+                // },
                 "cflags" => {
                     let flags = Vec::<String>::try_from_value(value)?;
                     cflags.set(flags)?;
                 },
-                "headers" | "include" => {
-                    let value = Headers::try_from_value(value)?;
-                    headers.set(value)?;
-                },
+                // "headers" | "include" => {
+                //     let value = Headers::try_from_value(value)?;
+                //     headers.set(value)?;
+                // },
                 "linker_flags" | "ldflags" | "lflags" => {
                     let flags = Vec::<String>::try_from_value(value)?;
                     linker_flags.set(flags)?;

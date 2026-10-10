@@ -107,7 +107,7 @@ fn import_meson(args: &[magnus::Value]) -> Result<(), magnus::Error> {
     // Example:
     // ```rb
     // ini_file = File.absolute_path("emscripten.ini")
-    // import_meson cairo_p, ["--wipe", "--cross-file", ini_file], [ini_file]
+    // import_meson cairo_p, ["--cross-file", ini_file], [ini_file]
     // ```
     let args = magnus::scan_args::scan_args::<
         (String,), // required

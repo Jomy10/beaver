@@ -46,6 +46,7 @@ impl TripleWrapper {
         }
     }
 
+    // see: https://en.wikipedia.org/wiki/POSIX#Conformance
     fn is_posix_certified(&self) -> bool {
         use target_lexicon::OperatingSystem::*;
 
@@ -60,6 +61,7 @@ impl TripleWrapper {
         }
     }
 
+    // see: https://en.wikipedia.org/wiki/POSIX#Conformance
     /// posix or moslty posix-compliant operating systems
     fn is_posix(&self) -> bool {
         use target_lexicon::OperatingSystem::*;
