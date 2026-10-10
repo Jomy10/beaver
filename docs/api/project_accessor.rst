@@ -5,14 +5,14 @@ Project Accessor
 
   Class for accessing a project from ruby.
 
-  .. rb:classmethod:: target(name)
+  .. rb:method:: target(name)
 
     Get a target from defined in the project.
 
     :param name: The target name
     :rtype: :rb:class:`TargetAccessor`
 
-  .. rb:classmethod:: build_dir()
+  .. rb:method:: build_dir()
 
     Returns the project's build directory.
 
@@ -20,7 +20,7 @@ Project Accessor
 
     :rtype: String
 
-  .. rb:classmethod:: base_dir()
+  .. rb:method:: base_dir()
 
     Returns the project's base directory.
 
@@ -28,7 +28,7 @@ Project Accessor
 
     :rtype: String
 
-  .. rb:classmethod:: name()
+  .. rb:method:: name()
 
     Returns the project's name.
 
