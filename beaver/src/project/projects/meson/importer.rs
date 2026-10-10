@@ -136,6 +136,7 @@ fn meson_configure(
     base_dir: &Path,
     base_dir_str: &str,
     file_context: &str,
+    // TODO: check if args list changed
     meson_configure_args: &[&str],
     force_reconfigure: bool,
     context: &Beaver
@@ -145,7 +146,6 @@ fn meson_configure(
     let cache = context.cache()?;
     let meson_build_files_changed = cache.files_changed_in_context(&file_context)?;
     let reconfigure = !build_dir.exists() || meson_build_files_changed || force_reconfigure;
-    trace!("Reconfigure: {} ({} || {} || {})", reconfigure, !build_dir.exists(), meson_build_files_changed, force_reconfigure);
 
     if reconfigure {
         trace!("Reconfiguring Meson project {}", base_dir_str);
@@ -160,6 +160,9 @@ fn meson_configure(
             &build_dir
         ];
         args.extend_from_slice(meson_configure_args);
+        if !args.contains(&"--wipe") {
+            args.push("--wipe");
+        }
 
         let console_style = console::Style::new().fg(console::Color::Color256(8));
         eprintln!("{}", console_style.apply_to(format!("meson {}", &args.join(" "))));
