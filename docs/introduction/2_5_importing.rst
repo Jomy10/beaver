@@ -62,3 +62,5 @@ Currently supported build systems:
 
 .. In the future beaver will be able to manage dependencies from remote hosts,
 .. automatically downloading the right version, etc.
+
+.. seealso:: API reference :ref:`project import functions <project_import>`

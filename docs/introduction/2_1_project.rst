@@ -1,4 +1,4 @@
-.. _2_1_target:
+.. _2_1_project:
 
 Defining a project
 ------------------

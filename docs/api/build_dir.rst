@@ -1,3 +1,5 @@
+.. _build_directory:
+
 Build directory
 ----------------
 

@@ -9,3 +9,5 @@ of your build script.
   build_dir "out"
 
   Project(name: "MyProject")
+
+.. seealso:: API reference :ref:`Build_directory`

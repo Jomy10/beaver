@@ -11,6 +11,8 @@ Project
   :param base_dir: The project's directory, where build.rb is located (default: script directory).
   :rtype: :rb:class:`ProjectAccessor`
 
+.. _project_import:
+
 .. rb:function:: import_cmake(dir, flags)
 
   Import a CMake project.
