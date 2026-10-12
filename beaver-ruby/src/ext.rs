@@ -193,12 +193,12 @@ impl MagnusConvertExt for Flags {
         if value.is_kind_of(ruby.class_string()) || value.is_kind_of(ruby.class_array()) {
             Ok(Flags::new(parse_to_string_vec(value)?, Vec::new()))
         } else if let Some(hash) = magnus::RHash::from_value(value) {
-            let public_flags = if let Some(value) = hash.get(magnus::Symbol::new("public")) {
+            let public_flags = if let Some(value) = hash.get(ruby.to_symbol("public")) {
                 parse_to_string_vec(value)?
             } else {
                 Vec::new()
             };
-            let private_flags = if let Some(value) = hash.get(magnus::Symbol::new("private")) {
+            let private_flags = if let Some(value) = hash.get(ruby.to_symbol("private")) {
                 parse_to_string_vec(value)?
             } else {
                 Vec::new()
@@ -217,12 +217,12 @@ impl MagnusConvertExt for Headers {
         if value.is_kind_of(ruby.class_string()) || value.is_kind_of(ruby.class_array()) {
             Ok(Headers::new(parse_to_string_vec(value)?.into_iter().map(|str| PathBuf::from(str)).collect(), Vec::new()))
         } else if let Some(hash) = magnus::RHash::from_value(value) {
-            let public_headers = if let Some(value) = hash.get(magnus::Symbol::new("public")) {
+            let public_headers = if let Some(value) = hash.get(ruby.to_symbol("public")) {
                 parse_to_string_vec(value)?.into_iter().map(|str| PathBuf::from(str)).collect()
             } else {
                 Vec::new()
             };
-            let private_headers = if let Some(value) = hash.get(magnus::Symbol::new("private")) {
+            let private_headers = if let Some(value) = hash.get(ruby.to_symbol("private")) {
                 parse_to_string_vec(value)?.into_iter().map(|str| PathBuf::from(str)).collect()
             } else {
                 Vec::new()

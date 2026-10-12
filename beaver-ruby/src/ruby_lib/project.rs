@@ -140,11 +140,11 @@ fn import_meson(args: &[magnus::Value]) -> Result<(), magnus::Error> {
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
-    ruby.define_global_function("Project", magnus::function!(define_project, 1));
-    ruby.define_global_function("import_cmake", magnus::function!(import_cmake, -1));
-    ruby.define_global_function("import_cargo", magnus::function!(import_cargo, 1));
-    ruby.define_global_function("import_spm", magnus::function!(import_spm, 1));
-    ruby.define_global_function("import_meson", magnus::function!(import_meson, -1));
+    ruby.define_global_function("Project", magnus::function!(define_project, 1))?;
+    ruby.define_global_function("import_cmake", magnus::function!(import_cmake, -1))?;
+    ruby.define_global_function("import_cargo", magnus::function!(import_cargo, 1))?;
+    ruby.define_global_function("import_spm", magnus::function!(import_spm, 1))?;
+    ruby.define_global_function("import_meson", magnus::function!(import_meson, -1))?;
 
     Ok(())
 }

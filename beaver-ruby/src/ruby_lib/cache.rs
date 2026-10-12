@@ -47,15 +47,15 @@ fn get(ruby: &magnus::Ruby, var_name: magnus::RString) -> Result<magnus::value::
     context.get(var_name)
         .map_err(|err| BeaverRubyError::from(err).into())
         .map(|val| match val {
-            Some(str) => magnus::RString::new(&str).into_value(),
-            None => ruby.qnil().into_value()
+            Some(str) => ruby.str_new(&str).into_value_with(&ruby),
+            None => ruby.qnil().into_value_with(&ruby)
         })
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
-    ruby.define_global_function("files_changed", magnus::function!(files_changed, -1));
-    ruby.define_global_function("store", magnus::function!(store, 2));
-    ruby.define_global_function("get", magnus::function!(get, 1));
+    ruby.define_global_function("files_changed", magnus::function!(files_changed, -1))?;
+    ruby.define_global_function("store", magnus::function!(store, 2))?;
+    ruby.define_global_function("get", magnus::function!(get, 1))?;
 
     Ok(())
 }

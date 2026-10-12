@@ -140,14 +140,14 @@ impl DependencyWrapper {
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     let _class = ruby.define_class("Dependency", ruby.class_object())?;
 
-    ruby.define_global_function("static", magnus::function!(DependencyWrapper::new_static, 1));
-    ruby.define_global_function("dynamic", magnus::function!(DependencyWrapper::new_dynamic, 1));
-    ruby.define_global_function("pkgconfig", magnus::function!(DependencyWrapper::new_pkgconfig, -1));
-    ruby.define_global_function("pkgconfig_direct", magnus::function!(DependencyWrapper::new_pkgconfig_direct, 1));
-    ruby.define_global_function("system_lib", magnus::function!(DependencyWrapper::new_system, 1));
-    ruby.define_global_function("framework", magnus::function!(DependencyWrapper::new_framework, 1));
-    ruby.define_global_function("flags", magnus::function!(DependencyWrapper::new_flags, 1));
-    ruby.define_global_function("file_dep", magnus::function!(DependencyWrapper::new_file, 1));
+    ruby.define_global_function("static", magnus::function!(DependencyWrapper::new_static, 1))?;
+    ruby.define_global_function("dynamic", magnus::function!(DependencyWrapper::new_dynamic, 1))?;
+    ruby.define_global_function("pkgconfig", magnus::function!(DependencyWrapper::new_pkgconfig, -1))?;
+    ruby.define_global_function("pkgconfig_direct", magnus::function!(DependencyWrapper::new_pkgconfig_direct, 1))?;
+    ruby.define_global_function("system_lib", magnus::function!(DependencyWrapper::new_system, 1))?;
+    ruby.define_global_function("framework", magnus::function!(DependencyWrapper::new_framework, 1))?;
+    ruby.define_global_function("flags", magnus::function!(DependencyWrapper::new_flags, 1))?;
+    ruby.define_global_function("file_dep", magnus::function!(DependencyWrapper::new_file, 1))?;
 
     Ok(())
 }

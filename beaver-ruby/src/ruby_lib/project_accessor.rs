@@ -45,24 +45,27 @@ impl ProjectAccessor {
 
     fn build_dir(&self) -> Result<magnus::RString, magnus::Error> {
         let context = &CTX.get().unwrap().context();
+        let ruby = unsafe { magnus::Ruby::get_unchecked() };
         let projects = context.projects().map_err(|err| BeaverRubyError::from(err))?;
-        Ok(magnus::RString::new(projects[self.id].build_dir().as_os_str().to_str()
+        Ok(ruby.str_new(projects[self.id].build_dir().as_os_str().to_str()
             .ok_or_else(|| BeaverRubyError::from(BeaverError::NonUTF8OsStr(projects[self.id].base_dir().as_os_str().to_os_string())))?
         ))
     }
 
     fn base_dir(&self) -> Result<magnus::RString, magnus::Error> {
         let context = &CTX.get().unwrap().context();
+        let ruby = unsafe { magnus::Ruby::get_unchecked() };
         let projects = context.projects().map_err(|err| BeaverRubyError::from(err))?;
-        Ok(magnus::RString::new(projects[self.id].base_dir().as_os_str().to_str()
+        Ok(ruby.str_new(projects[self.id].base_dir().as_os_str().to_str()
             .ok_or_else(|| BeaverRubyError::from(BeaverError::NonUTF8OsStr(projects[self.id].base_dir().as_os_str().to_os_string())))?
         ))
     }
 
     fn name(&self) -> Result<magnus::RString, magnus::Error> {
         let context = &CTX.get().unwrap().context();
+        let ruby = unsafe { magnus::Ruby::get_unchecked() };
         let projects = context.projects().map_err(|err| BeaverRubyError::from(err))?;
-        Ok(magnus::RString::new(projects[self.id].name()))
+        Ok(ruby.str_new(projects[self.id].name()))
     }
 }
 
@@ -73,8 +76,8 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     class.define_method("base_dir", magnus::method!(ProjectAccessor::base_dir, 0))?;
     class.define_method("name", magnus::method!(ProjectAccessor::name, 0))?;
 
-    ruby.define_global_function("project", magnus::function!(ProjectAccessor::access, 1));
-    ruby.define_global_function("current_project", magnus::function!(ProjectAccessor::access_current, 0));
+    ruby.define_global_function("project", magnus::function!(ProjectAccessor::access, 1))?;
+    ruby.define_global_function("current_project", magnus::function!(ProjectAccessor::access_current, 0))?;
 
     Ok(())
 }

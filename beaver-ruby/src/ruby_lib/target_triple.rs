@@ -8,41 +8,49 @@ pub struct TripleWrapper(pub(crate) Triple);
 
 impl TripleWrapper {
     fn to_s(&self) -> magnus::RString {
-        magnus::RString::new(&self.0.to_string())
+        let ruby = unsafe { magnus::Ruby::get_unchecked() };
+        ruby.str_new(&self.0.to_string())
     }
 
     fn arch(&self) -> magnus::RString {
-        magnus::RString::new(self.0.architecture.into_str().as_ref())
+        let ruby = unsafe { magnus::Ruby::get_unchecked() };
+        ruby.str_new(self.0.architecture.into_str().as_ref())
     }
 
     fn vendor(&self) -> magnus::RString {
-        magnus::RString::new(self.0.vendor.as_str())
+        let ruby = unsafe { magnus::Ruby::get_unchecked() };
+        ruby.str_new(self.0.vendor.as_str())
     }
 
     fn os(&self) -> magnus::RString {
-        magnus::RString::new(self.0.operating_system.into_str().as_ref())
+        let ruby = unsafe { magnus::Ruby::get_unchecked() };
+        ruby.str_new(self.0.operating_system.into_str().as_ref())
     }
 
     fn abi(&self) -> magnus::RString {
-        magnus::RString::new(self.0.environment.into_str().as_ref())
+        let ruby = unsafe { magnus::Ruby::get_unchecked() };
+        ruby.str_new(self.0.environment.into_str().as_ref())
     }
 
     fn binary_format(&self) -> magnus::RString {
-        magnus::RString::new(self.0.binary_format.into_str().as_ref())
+        let ruby = unsafe { magnus::Ruby::get_unchecked() };
+        ruby.str_new(self.0.binary_format.into_str().as_ref())
     }
 
     fn endianness(&self) -> magnus::Symbol {
+        let ruby = unsafe { magnus::Ruby::get_unchecked() };
         match self.0.endianness().unwrap() {
-            target_lexicon::Endianness::Little => magnus::Symbol::new("little"),
-            target_lexicon::Endianness::Big => magnus::Symbol::new("big"),
+            target_lexicon::Endianness::Little => ruby.to_symbol("little"),
+            target_lexicon::Endianness::Big => ruby.to_symbol("big"),
         }
     }
 
     fn pointer_width(&self) -> magnus::Fixnum {
+        let ruby = unsafe { magnus::Ruby::get_unchecked() };
         match self.0.pointer_width().unwrap() {
-            target_lexicon::PointerWidth::U16 => magnus::Fixnum::from_u64(16).unwrap(),
-            target_lexicon::PointerWidth::U32 => magnus::Fixnum::from_u64(32).unwrap(),
-            target_lexicon::PointerWidth::U64 => magnus::Fixnum::from_u64(64).unwrap(),
+            target_lexicon::PointerWidth::U16 => ruby.fixnum_from_u64(16).unwrap(),
+            target_lexicon::PointerWidth::U32 => ruby.fixnum_from_u64(32).unwrap(),
+            target_lexicon::PointerWidth::U64 => ruby.fixnum_from_u64(64).unwrap(),
         }
     }
 

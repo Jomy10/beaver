@@ -114,14 +114,14 @@ fn opt(ruby: &magnus::Ruby, args: &[magnus::Value]) -> Result<magnus::Value, mag
         if let Some(value) = value {
             match default_value_type {
                 rb_sys::ruby_value_type::RUBY_T_FLOAT => match value.parse::<f64>() {
-                    Ok(f) => Ok(magnus::Float::from_f64(f).as_value()),
+                    Ok(f) => Ok(ruby.float_from_f64(f).as_value()),
                     Err(err) => Err(BeaverRubyError::from(err).into()),
                 },
                 rb_sys::ruby_value_type::RUBY_T_NIL |
                 rb_sys::ruby_value_type::RUBY_T_STRING => Ok(ruby.str_new(&value).as_value()),
                 rb_sys::ruby_value_type::RUBY_T_FIXNUM |
                 rb_sys::ruby_value_type::RUBY_T_BIGNUM => match value.parse::<i64>() {
-                    Ok(i) => Ok(magnus::Integer::from_i64(i).as_value()),
+                    Ok(i) => Ok(ruby.integer_from_i64(i).as_value()),
                     Err(err) => Err(BeaverRubyError::from(err).into()),
                 },
                 rb_sys::ruby_value_type::RUBY_T_TRUE |
@@ -132,7 +132,7 @@ fn opt(ruby: &magnus::Ruby, args: &[magnus::Value]) -> Result<magnus::Value, mag
                     }),
                     Err(err) => Err(BeaverRubyError::from(err).into()),
                 },
-                rb_sys::ruby_value_type::RUBY_T_SYMBOL => Ok(magnus::Symbol::new(value).as_value()),
+                rb_sys::ruby_value_type::RUBY_T_SYMBOL => Ok(ruby.to_symbol(value).as_value()),
                 ty => {
                     warn!("Couldn't determine type for `opt`. Default value is {:?} which is not supported, defaulting to string", ty);
                     Ok(ruby.str_new(&value).as_value())
@@ -277,19 +277,19 @@ fn sh(args: &[magnus::Value]) -> Result<(), magnus::Error> {
     }
 }
 
-fn split_args(args: String) -> Result<magnus::RArray, magnus::Error> {
+fn split_args(ruby: &magnus::Ruby, args: String) -> Result<magnus::RArray, magnus::Error> {
     match shlex::split(&args) {
-        Some(args) => Ok(magnus::RArray::from_vec(args)),
+        Some(args) => Ok(ruby.ary_from_vec(args)),
         None => Err(BeaverRubyError::ErroneousSplitArgsInput(args).into())
     }
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
-    ruby.define_global_function("opt", magnus::function!(opt, -1));
-    ruby.define_global_function("flag", magnus::function!(flag, -1));
-    ruby.define_global_function("cmd", magnus::function!(cmd, -1));
-    ruby.define_global_function("sh", magnus::function!(sh, -1));
-    ruby.define_global_function("split_args", magnus::function!(split_args, 1));
+    ruby.define_global_function("opt", magnus::function!(opt, -1))?;
+    ruby.define_global_function("flag", magnus::function!(flag, -1))?;
+    ruby.define_global_function("cmd", magnus::function!(cmd, -1))?;
+    ruby.define_global_function("sh", magnus::function!(sh, -1))?;
+    ruby.define_global_function("split_args", magnus::function!(split_args, 1))?;
 
     Ok(())
 }

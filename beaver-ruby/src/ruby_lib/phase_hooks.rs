@@ -30,7 +30,7 @@ fn register_phase_hook(args: &[magnus::Value], trigger: PhaseHookTrigger) -> Res
     context.add_phase_hook(phase, Box::new(move || {
         let ctx = &CTX.get().unwrap();
         ctx.block_execute_on(Box::new(move || {
-            unsafe { block.value() }.call::<magnus::RArray, magnus::Value>(magnus::RArray::new())
+            unsafe { block.value() }.call::<magnus::RArray, magnus::Value>( magnus::RArray::new())
                 .map(|_| ())
                 .map_err(BeaverRubyError::from)
         })).map_err(|err| Box::new(err) as Box<dyn std::error::Error>)
@@ -46,8 +46,8 @@ fn post(args: &[magnus::Value]) -> Result<(), magnus::Error> {
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
-    ruby.define_global_function("pre", magnus::function!(pre, -1));
-    ruby.define_global_function("post", magnus::function!(post, -1));
+    ruby.define_global_function("pre", magnus::function!(pre, -1))?;
+    ruby.define_global_function("post", magnus::function!(post, -1))?;
 
     Ok(())
 }

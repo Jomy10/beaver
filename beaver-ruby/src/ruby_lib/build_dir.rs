@@ -13,7 +13,7 @@ fn build_dir(str: String) -> Result<(), magnus::Error> {
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
-    ruby.define_global_function("build_dir", magnus::function!(build_dir, 1));
+    ruby.define_global_function("build_dir", magnus::function!(build_dir, 1))?;
 
     return Ok(());
 }
