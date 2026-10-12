@@ -1,3 +1,5 @@
+.. _phase_hook:
+
 Phase Hook
 ----------
 

@@ -1,3 +1,5 @@
+.. _TargetAccessor:
+
 Target Accessor
 ---------------
 

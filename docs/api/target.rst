@@ -25,8 +25,9 @@ C targets support C, C++, Obj-C and Obj-C++ sources, depending on the selected *
     and for the name(s) of the output artifact(s). **(required)**
   :param description: A description of the library. Used in pkg-config generation.
   :param homepage: A link to the library's homepage
-  :param version: The version of the library. Used in pkg-config generation.
-  :param license: The license of the library.
+  :param version: The version of the library. Used in pkg-config generation. Can be
+    a string, int or float.
+  :param license: The license of the library. e.g. "MIT".
   :param language: The language of the library. |c_lang|
   :param sources: The source files to compile for this library. Supports glob patterns. **(required)**
   :param cflags: |c_cflags_brief|
@@ -85,7 +86,7 @@ C targets support C, C++, Obj-C and Obj-C++ sources, depending on the selected *
     and for the name(s) of the output artifact(s). **(required)**
   :param description: A description of the executable.
   :param homepage: A link to the executable's homepage.
-  :param version: The version of the executable.
+  :param version: The version of the executable. Can be a string, int or float.
   :param license: The license of the executable.
   :param language: The language of the executable. |c_lang|
   :param sources: The source files to compile for this executable. Supports glob patterns. **(required)**
@@ -122,7 +123,7 @@ build Beaver-compatible libraries and executables.
   :param name: The name of the library.
   :param description: The description of the library.
   :param homepage: A link to the homepage of the library.
-  :param version: The version of the library.
+  :param version: The version of the library. Can be a string, int or float.
   :param license: The license of the library.
   :param language: The source language of the library.
   :param cflags: The C flags of this library. Passed to dependants of this library.

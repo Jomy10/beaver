@@ -12,4 +12,5 @@ Beaver documentation
    :caption: Contents:
 
 
+   Introduction<introduction/0_index>
    api/_index
