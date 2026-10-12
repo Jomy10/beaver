@@ -1,0 +1,43 @@
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommands clang libclang-dev ruby
+
+      - name: Install rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain nightly
+
+      - name: Cache cargo registry and build output
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          #   target
+          key: ${{ runner.os }}-cargo-${{ hashfiles('**/Cargo.lock') }}
+          restore-key: ${{ runner.os }}-cargo-
+
+      - name: Build Beaver
+        run: |
+          . "$HOME/.cargo/env"
+          cargo build --release --locked
+
+      - name: Upload executable
+        uses: actions/upload-artifact@v3
+        with:
+          name: executable
+          path: |
+              target/release/beaver
+          if-no-files-found: error
