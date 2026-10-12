@@ -5,6 +5,7 @@ use std::io;
 
 use const_gen::{const_declaration, const_definition, CompileConst};
 
+#[derive(Debug)]
 #[derive(CompileConst)]
 #[inherit_doc]
 /// Holds the ruby version determined by a build script
@@ -30,8 +31,8 @@ fn run_ruby(s: &str) -> String {
         .expect("Failed to run ruby")
     ;
     if !out.status.success() {
-        eprintln!("{:?}", out);
-        panic!("Error: {}", String::from_utf8(out.stderr).unwrap_or("no stderr".to_string()));
+        eprintln!("cargo:warning={:?}", out);
+        println!("cargo:error={}", String::from_utf8(out.stderr).unwrap_or("no stderr".to_string()));
     }
     return String::from_utf8(out.stdout).expect("Output is not valid utf8");
 }
@@ -61,6 +62,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
             .chars().nth(0).unwrap().to_digit(10).unwrap() as u8;
 
     let ruby_version = RubyVersion { major, minor, teeny, patch };
+    eprintln!("Selected ruby version {}", ruby_version);
 
     let cargo_toml = std::fs::read_to_string("Cargo.toml")?;
     let parsed_toml: CargoToml = toml::from_str(cargo_toml.as_str())?;

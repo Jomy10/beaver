@@ -25,14 +25,14 @@ colored = "3.0"
 console = "0.15" # TODO: replace with colored
 clap = "4.5"
 shlex = "1.3"
-globset = "0.4"
+# globset = "0.4"
 log = "0.4"
 semver = "1.0"
 target-lexicon = "0.13"
 thiserror = "2.0"
 url = "2.5"
 urlencoding = "1.0" # TODO: 2.0 upgrade
-unicode-segmentation = "1.12"
+# unicode-segmentation = "1.12"
 regex = "1.11"
 lazy_static = "1.5"
 rayon = "1.10"
@@ -58,7 +58,7 @@ tokio = "1.43"
 itertools = "0.14"
 seq-macro = "0.3"
 libc = "0.2"
-peek-again = { version = "0.4", features = ["allow-unsafe"] }
+# peek-again = { version = "0.4", features = ["allow-unsafe"] }
 globwalk = "0.9"
 atomic_refcell = "0.1"
 pkg-config = "0.3"
@@ -75,5 +75,5 @@ cargo-manifest = "0.19"
 # codegen-units = 1
 # # TODO: look into UPX
 
-[profile.dev.package.sqlx-macros]
-opt-level = 3
+# [profile.dev.package.sqlx-macros]
+# opt-level = 3
