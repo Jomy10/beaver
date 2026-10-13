@@ -45,6 +45,10 @@ jobs:
           apt-get update
           apt-get install -y clang libclang-dev wget
 
+      - name: Install rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain nightly
+
       - name: Install ruby-install
         run: |
           wget https://github.com/postmodern/ruby-install/releases/download/v0.10.2/ruby-install-0.10.2.tar.gz
@@ -61,6 +65,8 @@ jobs:
 
       - name: Install ruby
         run: |
+          set -xe
+
           echo "version: ${{ matrix.ruby.version }}"
           echo "static: ${{ matrix.ruby.static }}"
           echo "build ruby: ${{ matrix.platform.build_ruby }}"
@@ -86,10 +92,6 @@ jobs:
             --install-dir $RUBY_PATH \
             -- --disable-install-doc
 
-      - name: Install rust
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain nightly
-
       - name: List versions
         run: |
           . "$HOME/.cargo/env"
@@ -103,8 +105,16 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-${{ runner.arch }}-cargo-${{ hashfiles('**/Cargo.lock') }}
-          restore-key: ${{ runner.os }}-${{ runner.arch }}-cargo-
+          key: ${{ matrix.platform.os }}-${{ matrix.platform.arch }}-cargo-${{ hashfiles('**/Cargo.lock') }}
+          restore-key: ${{ matrix.platform.os }}-${{ matrix.platform.arch }}-cargo-
+
+      - name: Debug TLS
+        run: |
+          uname -m
+          openssl version
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+          ldd "$HOME/.cargo/bin/cargo" | grep -E 'ssl|crypto' || true
+          curl -sSI https://index.crates.io/config.json | head -n 1
 
       - name: Build Beaver
         run: |
