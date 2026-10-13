@@ -1,0 +1,40 @@
+on:
+  push:
+    branches: [master]
+
+jobs:
+  docs:
+    runs-on: ubuntu
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+            python -m pip install --upgrade pip
+            python -m pip install \
+              "git+https://github.com/Jomy10/rubydomain" \
+              sphinx \
+              shibuya
+
+      - name: Build documentation
+        working-directory: docs
+        run: |
+            python -m sphinx -M html . _build
+
+      - name: Zip docs
+        run: |
+            cd docs/_build
+            zip -r ../../../documentation.zip html
+
+      - name: Upload docs
+        uses: actions/upload-artifact@v3
+        with:
+          name: documentation
+          path: documentation.zip
+          if-no-files-found: error

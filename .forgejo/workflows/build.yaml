@@ -149,6 +149,5 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: executable
-          path: |
-              target/release/beaver
+          path: target/release/beaver
           if-no-files-found: error
