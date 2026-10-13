@@ -61,8 +61,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /opt/rubies
-          key: ${{ runner.os }}-${{ runner.arch }}-ruby-install-${{ matrix.ruby.version }}-${{ matrix.ruby.mode || 'dyn' }}
-          restore-key: ${{ runner.os }}-${{ runner.arch }}-ruby-install-
+          key: ${{ matrix.platform.os }}-${{ matrix.platform.arch }}-ruby-install-${{ matrix.ruby.version }}-${{ matrix.ruby.mode || 'dyn' }}
+          restore-key: ${{ matrix.platform.os }}-${{ matrix.platform.arch }}-ruby-install-
 
       - name: Install ruby
         run: |
