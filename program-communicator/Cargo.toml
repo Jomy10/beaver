@@ -8,6 +8,3 @@ authors.workspace = true
 log = { workspace = true }
 thiserror = { workspace = true }
 utils = { path = "../utils", features = ["junctions"] }
-
-[dev-dependencies]
-colog = { workspace = true }
