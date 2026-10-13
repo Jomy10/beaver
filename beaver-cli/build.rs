@@ -1,3 +1,4 @@
+use std::env::VarError;
 use std::process::Command;
 use std::{env, fs};
 use std::path::Path;
@@ -25,7 +26,14 @@ impl std::fmt::Display for RubyVersion {
 // const VERSION: &'static str = "v4.0.0";
 
 fn run_ruby(s: &str) -> String {
-    let out = Command::new("ruby")
+    let ruby = match std::env::var("RUBY") {
+        Ok(ruby) => ruby,
+        Err(VarError::NotPresent) => "ruby".to_string(),
+        Err(err) => {
+            panic!("{}", err);
+        }
+    };
+    let out = Command::new(ruby)
         .args(["-e", s])
         .output()
         .expect("Failed to run ruby")
@@ -78,6 +86,11 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     ].join("\n");
 
     fs::write(&dest_path, const_declartations)?;
+
+    // Link system libraries
+    if !cfg!(any(target_os = "macos", target_os = "windows")) {
+        println!("cargo:rustc-link-lib=z");
+    }
 
     // TODO: Generate manpages
 

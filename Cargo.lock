@@ -1175,7 +1175,6 @@ version = "0.0.0"
 dependencies = [
  "colog",
  "log",
- "tempdir",
  "thiserror 2.0.21",
  "utils",
 ]

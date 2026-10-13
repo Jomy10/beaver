@@ -61,7 +61,7 @@ mod darwin {
 mod other {
     use target_lexicon::Triple;
 
-    pub fn swift_linker_flags(triple: &Triple) -> &'static [&'static str] {
+    pub fn swift_linker_flags(_triple: &Triple) -> &'static [&'static str] {
         unimplemented!("Can't link to swift on non-apple platforms yet")
     }
 }
