@@ -5,7 +5,8 @@ on:
     inputs:
       reason:
         description: "Reason for manual run"
-        required: true
+        required: false
+        default: "Manual rerun"
 
 jobs:
   build:
