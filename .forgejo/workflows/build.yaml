@@ -115,6 +115,8 @@ jobs:
 
       - name: Debug TLS
         run: |
+          . "$HOME/.cargo/env"
+                    
           echo "=== curl TLS backend ==="
           curl --version
 
