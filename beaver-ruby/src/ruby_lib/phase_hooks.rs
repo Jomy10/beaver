@@ -30,7 +30,9 @@ fn register_phase_hook(args: &[magnus::Value], trigger: PhaseHookTrigger) -> Res
     context.add_phase_hook(phase, Box::new(move || {
         let ctx = &CTX.get().unwrap();
         ctx.block_execute_on(Box::new(move || {
-            unsafe { block.value() }.call::<magnus::RArray, magnus::Value>( magnus::RArray::new())
+            let ruby = magnus::Ruby::get()?;
+            unsafe { block.value() }.call::<magnus::RArray, magnus::Value>(ruby.ary_new())
+            // unsafe { block.value() }.call::<magnus::RArray, magnus::Value>( magnus::RArray::new())
                 .map(|_| ())
                 .map_err(BeaverRubyError::from)
         })).map_err(|err| Box::new(err) as Box<dyn std::error::Error>)
