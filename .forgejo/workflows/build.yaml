@@ -57,6 +57,10 @@ jobs:
           cd ruby-install-0.10.2/
           make install
 
+      - name: Create ruby path
+        run: |
+            [ -d /opt/rubies ] || mkdir -p /opt/rubies
+
       - name: Cache ruby installation
         uses: actions/cache@v4
         with:
@@ -69,7 +73,7 @@ jobs:
           set -xe
 
           echo "version: ${{ matrix.ruby.version }}"
-          echo "static: ${{ matrix.ruby.static }}"
+          echo "static: ${{ matrix.ruby.mode }}"
           echo "build ruby: ${{ matrix.platform.build_ruby }}"
 
           if [ -x "$RUBY_PATH/bin/ruby" ]; then
@@ -84,7 +88,7 @@ jobs:
             exit 0
           fi
 
-          if [ "${{ matrix.ruby.mode }}" = "static" ]; then
+          if [ "${{ matrix.ruby.mode }}" == "static" ]; then
             export RUBY_CONFIGURE_OPTS="--enable-static"
           fi
           ruby-install ruby ${{ matrix.ruby.version }} \
@@ -111,16 +115,25 @@ jobs:
 
       - name: Debug TLS
         run: |
-          uname -m
-          openssl version
-          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
-          ldd "$HOME/.cargo/bin/cargo" | grep -E 'ssl|crypto' || true
-          curl -sSI https://index.crates.io/config.json | head -n 1
+          echo "=== curl TLS backend ==="
+          curl --version
+
+          echo "=== Actual Cargo binary ==="
+          CARGO_BIN="$(rustup which cargo)"
+          echo "$CARGO_BIN"
+          ldd "$CARGO_BIN" | grep -E 'ssl|crypto|curl' || true
+
+          echo "=== crates.io GET request ==="
+          curl -fsS https://index.crates.io/config.json -o /dev/null \
+            && echo "GET succeeded"
+
+          echo "=== Cargo HTTP debug ==="
+          CARGO_LOG=network=debug cargo fetch -v
 
       - name: Build Beaver
         run: |
           . "$HOME/.cargo/env"
-          if [ "${{ matrix.ruby.mode }}" = "static" ]; then
+          if [ "${{ matrix.ruby.mode }}" == "static" ]; then
             export CARGO_FLAGS="$CARGO_FLAGS --features static-ruby"
           fi
           RUBY=$RUBY_PATH/bin/ruby cargo build --release --locked
