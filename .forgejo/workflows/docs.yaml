@@ -15,6 +15,7 @@ jobs:
           apt install -y python3 python3-pip python3-venv
 
       - name: Install dependencies
+        working-directory: docs
         run: |
             python3 -m venv venv
             source venv/bin/activate
