@@ -16,8 +16,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-            python -m pip install --upgrade pip
-            python -m pip install \
+            python3 -m pip install --upgrade pip
+            python3 -m pip install \
               "git+https://github.com/Jomy10/rubydomain" \
               sphinx \
               shibuya
@@ -25,7 +25,7 @@ jobs:
       - name: Build documentation
         working-directory: docs
         run: |
-            python -m sphinx -M html . _build
+            python3 -m sphinx -M html . _build
 
       - name: Zip docs
         run: |
