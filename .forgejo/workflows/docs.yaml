@@ -9,12 +9,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up python
-        run: |
-          apt update
-          apt install -y python3 python3-pip python3-venv
+      - name: Update apt
+        run: apt update
 
       - name: Install dependencies
+        run: apt install tar
+
+      - name: Set up python
+        run: apt install -y python3 python3-pip python3-venv
+
+      - name: Install python dependencies
         working-directory: docs
         run: |
             python3 -m venv venv
@@ -34,11 +38,11 @@ jobs:
       - name: Zip docs
         run: |
             cd docs/_build
-            zip -r ../../../documentation.zip html
+            tar -cvzf ../../../documentation.tar.gz html
 
       - name: Upload docs
         uses: actions/upload-artifact@v3
         with:
           name: documentation
-          path: documentation.zip
+          path: documentation.tar.gz
           if-no-files-found: error
