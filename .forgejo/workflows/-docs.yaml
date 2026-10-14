@@ -13,7 +13,7 @@ jobs:
         run: apt update
 
       - name: Install dependencies
-        run: apt install tar
+        run: apt install -y tar gzip
 
       - name: Set up python
         run: apt install -y python3 python3-pip python3-venv
@@ -38,7 +38,7 @@ jobs:
       - name: Zip docs
         run: |
             cd docs/_build
-            tar -cvzf ../../../documentation.tar.gz html
+            tar -cvzf ../../documentation.tar.gz html
 
       - name: Upload docs
         uses: actions/upload-artifact@v3
