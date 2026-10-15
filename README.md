@@ -42,7 +42,7 @@ C::Executable(
 ## Building
 
 Building requires **ruby** to be installed. The ruby version linked to will be the one that is accessible
-from the command line `ruby --version`.
+from the command line `ruby --version`. A specific ruby can be chosen with the `RUBY` environment variable.
 
 ```sh
 cargo build -p beaver-cli

@@ -12,9 +12,6 @@ jobs:
       - name: Update apt
         run: apt update
 
-      - name: Install dependencies
-        run: apt install -y tar gzip
-
       - name: Set up python
         run: apt install -y python3 python3-pip python3-venv
 
@@ -35,14 +32,9 @@ jobs:
             source venv/bin/activate
             python3 -m sphinx -M html . _build
 
-      - name: Zip docs
-        run: |
-            cd docs/_build
-            tar -cvzf ../../documentation.tar.gz html
-
       - name: Upload docs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v7
         with:
           name: documentation
-          path: documentation.tar.gz
+          path: docs/_build/
           if-no-files-found: error
