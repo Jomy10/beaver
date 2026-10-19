@@ -1,5 +1,8 @@
 # Beaver
 
+[![docs](https://gh-stamps.vercel.app/api/docs?fontSize=14&borderRadius=10&borderWidth=1&padding=10&backgroundColor=9f6118&color=ffcda0&borderColor=e98d22&icon=book-medical&fontWeight=bold)](https://docs.beaver.jomy.dev)
+[![download](https://gh-stamps.vercel.app/api/v4.3.0?fontSize=14&borderRadius=10&borderWidth=1&padding=10&backgroundColor=9f6118&color=ffcda0&borderColor=e98d22&icon=download&fontWeight=bold)](https://codeberg.org/Jomy10/beaver/releases/tag/4.3.0)
+
 Capable build system and command runner for any project.
 
 Projects can be built programmatically because configuration is written in Ruby.
@@ -57,9 +60,7 @@ cargo +nightly install --git https://github.com/jomy10/beaver
 
 ## Documentation
 
-You can view the [examples](examples) and there is basic documentation in the [docs](docs) directory.
-
-More extensive documentation is coming soon when the project is more stable.
+Documentation can be found on [docs.beaver.jomy.dev](https://docs.beaver.jomy.dev) and there examples in the [examples](examples) directory.
 
 ## Contributing
 
