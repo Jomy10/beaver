@@ -177,7 +177,7 @@ jobs:
     name: build-${{ matrix.platform.os }}-${{ matrix.platform.arch }}-${{ matrix.ruby.version }}${{ matrix.ruby.mode == 'static' && '-static' || '' }}
     runs-on: ${{ matrix.platform.runner }}
     env:
-      RUBY_PATH: /opt/rubies/ruby-${{ matrix.ruby.version }}
+      RUBY_PATH: ~/.rubies/ruby-${{ matrix.ruby.version }}
     steps:
       - name: checkout code
         uses: actions/checkout@v4
@@ -186,15 +186,11 @@ jobs:
 
       - name: Install ruby-build
         run: |
-            printf 'USER=%s\n' "${USER-<unset>}"
-            printf 'HOME=%s\n' "${HOME-<unset>}"
-            printf 'UID=%s\n' "$(id -u)"
-            printf 'whoami=%s\n' "$(id -un)"
             brew install -y ruby-build
 
       - name: Create ruby path
         run: |
-            [ -d /opt/rubies ] || mkdir -p /opt/rubies
+            [ -d ~/.rubies ] || mkdir -p ~/.rubies
 
       - name: Install ruby
         run: |
