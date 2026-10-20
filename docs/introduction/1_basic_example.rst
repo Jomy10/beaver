@@ -31,4 +31,4 @@ Basic example
     dependencies: ["Physics", "Renderer"]
   )
 
-Many more examples can be found on [GitHub](https://github.com/jomy10/beaver/tree/master/examples).
+Many more examples can be found on `CodeBerg <https://codeberg.org/Jomy10/beaver/src/branch/master/examples>`_ (`mirror <https://github.com/jomy10/beaver/tree/master/examples>`_).

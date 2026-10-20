@@ -68,6 +68,6 @@ Beaver also provides a utility function which prints a shell command and also ex
   sh "echo 'hello'"
   sh "echo", "hello"
 
-.. seealso:: More info can be found in the `example for arguments on GitHub <https://github.com/Jomy10/beaver/blob/master/examples/arguments/beaver.rb>`_
+.. seealso:: More info can be found in the `example for arguments on CodeBerg <https://codeberg.org/Jomy10/beaver/src/branch/master/examples/arguments/beaver.rb>`_ (`mirror <https://github.com/Jomy10/beaver/blob/master/examples/arguments/beaver.rb>>`)_.
 
 .. seealso:: API reference :ref:`shell`
