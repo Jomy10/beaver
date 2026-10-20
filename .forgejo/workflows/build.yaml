@@ -185,7 +185,12 @@ jobs:
           ref: ${{ (forgejo.event_name == 'release' && forgejo.event.release.tag_name) || '' }}
 
       - name: Install ruby-build
-        run: brew install -y ruby-build
+        run: |
+            printf 'USER=%s\n' "${USER-<unset>}"
+            printf 'HOME=%s\n' "${HOME-<unset>}"
+            printf 'UID=%s\n' "$(id -u)"
+            printf 'whoami=%s\n' "$(id -un)"
+            brew install -y ruby-build
 
       - name: Create ruby path
         run: |
