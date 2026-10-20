@@ -187,9 +187,13 @@ jobs:
       - name: Install ruby-build
         run: brew install -y ruby-build
 
+      - name: Create ruby path
+        run: |
+            [ -d /opt/rubies ] || mkdir -p /opt/rubies
+
       - name: Install ruby
         run: |
-            ruby-build ruby-${{ matrix.ruby.version }} ~/.rubies/ruby-${{ matrix.ruby.version }}
+            ruby-build ruby-${{ matrix.ruby.version }} /opt/rubies/ruby-${{ matrix.ruby.version }}
 
       - name: Install rust
         run: |
