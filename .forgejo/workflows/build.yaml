@@ -9,7 +9,7 @@ on:
         default: "Manual rerun"
 
 jobs:
-  build:
+  build-linux:
     strategy:
       fail-fast: false
       matrix:
@@ -26,11 +26,11 @@ jobs:
            target: x86_64-unknown-linux-gnu
            runner: ubuntu
            build_ruby: true
-         - os: linux
-           arch: arm64
-           target: arm64-unknown-linux-gnu
-           runner: ubuntu-arm
-           build_ruby: true
+         # - os: linux
+         #   arch: arm64
+         #   target: arm64-unknown-linux-gnu
+         #   runner: ubuntu-arm
+         #   build_ruby: true
     name: build-${{ matrix.platform.os }}-${{ matrix.platform.arch }}-${{ matrix.ruby.version }}${{ matrix.ruby.mode == 'static' && '-static' || '' }}
     runs-on: ${{ matrix.platform.runner }}
     env:
@@ -113,25 +113,6 @@ jobs:
           key: ${{ matrix.platform.os }}-${{ matrix.platform.arch }}-cargo-${{ hashfiles('**/Cargo.lock') }}
           restore-key: ${{ matrix.platform.os }}-${{ matrix.platform.arch }}-cargo-
 
-      - name: Debug TLS
-        run: |
-          . "$HOME/.cargo/env"
-
-          echo "=== curl TLS backend ==="
-          curl --version
-
-          echo "=== Actual Cargo binary ==="
-          CARGO_BIN="$(rustup which cargo)"
-          echo "$CARGO_BIN"
-          ldd "$CARGO_BIN" | grep -E 'ssl|crypto|curl' || true
-
-          echo "=== crates.io GET request ==="
-          curl -fsS https://index.crates.io/config.json -o /dev/null \
-            && echo "GET succeeded"
-
-          echo "=== Cargo HTTP debug ==="
-          CARGO_LOG=network=debug cargo fetch -v
-
       - name: Build Beaver
         run: |
           . "$HOME/.cargo/env"
@@ -139,6 +120,94 @@ jobs:
             export CARGO_FLAGS="$CARGO_FLAGS --features static-ruby"
           fi
           RUBY=$RUBY_PATH/bin/ruby cargo build --release --locked
+
+      - name: Upload executable to release
+        if: forgejo.event_name == 'release'
+        env:
+          TOKEN: ${{ secrets.CODEBERG_TOKEN }}
+          REPOSITORY: ${{ forgejo.repository }}
+          TAG: ${{ forgejo.event.release.tag_name }}
+          API_URL: ${{ forgejo.api_url }}
+        run: |
+          set -eu
+
+          ASSET="target/release/beaver"
+
+          RELEASE_ID=$(curl -fsSL \
+            -H "Authorization: token $TOKEN" \
+            "$API_URL/repos/$REPOSITORY/releases/tags/$TAG" | jq -r .id)
+
+          NAME="beaver$RELEASE_ID-${{ matrix.platform.os }}-${{ matrix.platform.arch }}-ruby-${{ matrix.ruby.version }}"
+          if [ ${{ matrix.ruby.mode }} == "static" ]; then
+            NAME += "-static"
+          fi
+          ARCHIVE="$NAME.tar.gz"
+
+          tar -czf "$ARCHIVE" "$(basename "$ASSET")"
+
+          curl -fsSL \
+            -X POST \
+            -H "Authorization: token $TOKEN" \
+            -F "attachment=@$ARCHIVE" \
+            "$API_URL/repos/$REPOSITORY/releases/$RELEASE_ID/assets"
+
+      - name: Upload executable to action
+        if: forgejo.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v3
+        with:
+          name: executable
+          path: target/release/beaver
+          if-no-files-found: error
+
+  build-macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+          - version: "3.2.11"
+          - version: "3.3.12"
+          - version: "3.4.10"
+          - version: "4.0.7"
+          # - version: "4.0.7"
+          #   mode: "static"
+        platform:
+          - os: macos
+            arch: arm64
+            runner: macos-arm
+    name: build-${{ matrix.platform.os }}-${{ matrix.platform.arch }}-${{ matrix.ruby.version }}${{ matrix.ruby.mode == 'static' && '-static' || '' }}
+    runs-on: ${{ matrix.platform.runner }}
+    env:
+      RUBY_PATH: /opt/rubies/ruby-${{ matrix.ruby.version }}
+    steps:
+      - name: checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ (forgejo.event_name == 'release' && forgejo.event.release.tag_name) || '' }}
+
+      - name: Install ruby-build
+        run: brew install -y ruby-build
+
+      - name: Install ruby
+        run: |
+            ruby-build ruby-${{ matrix.ruby.version }} ~/.rubies/ruby-${{ matrix.ruby.version }}
+
+      - name: Install rust
+        run: |
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain nightly
+
+      - name: List versions
+        run: |
+          . "$HOME/.cargo/env"
+          cargo --version
+          $RUBY_PATH/bin/ruby --version
+
+      - name: Build beaver
+        run: |
+            . "$HOME/cargo/env"
+            if [ "${{ matrix.ruby.mode }}" == "static" ]; then
+              export CARGO_FLAGS="$CARGO_FLAGS --features static-ruby"
+            fi
+            RUBY=$RUBY_PATH/bin/ruby cargo build --release --locked
 
       - name: Upload executable to release
         if: forgejo.event_name == 'release'
