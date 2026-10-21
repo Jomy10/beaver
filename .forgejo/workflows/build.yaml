@@ -215,7 +215,7 @@ jobs:
 
       - name: Build beaver
         run: |
-            . "$HOME/cargo/env"
+            . "$HOME/.cargo/env"
             if [ "${{ matrix.ruby.mode }}" == "static" ]; then
               export CARGO_FLAGS="$CARGO_FLAGS --features static-ruby"
             fi
