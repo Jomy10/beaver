@@ -180,7 +180,7 @@ jobs:
       - name: Set ruby paths
         run: |
           echo "RUBY_BASE_PATH`$HOME/.rubies" >> "$GITHUB_ENV"
-          "cho "RUBY_PATH: $HOME/.rubies/ruby-${{ matrix.ruby.version }}" >> "$GITHUB_ENV"
+          echo "RUBY_PATH: $HOME/.rubies/ruby-${{ matrix.ruby.version }}" >> "$GITHUB_ENV"
 
       - name: Install ruby-build
         run: |
