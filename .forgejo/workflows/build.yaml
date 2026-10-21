@@ -14,10 +14,10 @@ jobs:
       fail-fast: false
       matrix:
        ruby:
-        - version: "3.2.11"
-        - version: "3.3.12"
-        - version: "3.4.10"
-        - version: "4.0.7"
+        - version: "3.2"
+        - version: "3.3"
+        - version: "3.4"
+        - version: "4.0"
         - version: "4.0.7"
           mode: "static"
        platform:
@@ -44,58 +44,65 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update
-          apt-get install -y clang libclang-dev wget
+          apt-get install -y clang libclang-dev wget libgmp3-dev libyaml-0
 
       - name: Install rust
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain nightly
 
-      - name: Install ruby-install
-        run: |
-          wget https://github.com/postmodern/ruby-install/releases/download/v0.10.2/ruby-install-0.10.2.tar.gz
-          tar -xzvf ruby-install-0.10.2.tar.gz
-          cd ruby-install-0.10.2/
-          make install
+      - name: Setup ruby
+        if: matrix.ruby.mode != 'static'
+        uses: https://github.com/ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby.version }}
+          bundler-cache: true
+
+      - name: Move ruby installation
+        if: matrix.ruby.mode != 'static'
+        run: cp -r $(dirname "$(which ruby)")/.. $RUBY_PATH
 
       - name: Create ruby path
+        if: matrix.ruby.mode == 'static'
         run: |
-            [ -d /opt/rubies ] || mkdir -p /opt/rubies
+          # Create path to rubies
+          [ -d /opt/rubies ] || mkdir -p /opt/rubies
 
       - name: Cache ruby installation
+        if: matrix.ruby.mode == 'static'
         uses: actions/cache@v4
         with:
           path: /opt/rubies
           key: ${{ matrix.platform.os }}-${{ matrix.platform.arch }}-ruby-install-${{ matrix.ruby.version }}-${{ matrix.ruby.mode || 'dyn' }}
           restore-key: ${{ matrix.platform.os }}-${{ matrix.platform.arch }}-ruby-install-
 
-      - name: Install ruby
+      - name: Setup ruby static
+        if: matrix.ruby.mode == 'static'
         run: |
           set -xe
-
-          echo "version: ${{ matrix.ruby.version }}"
-          echo "static: ${{ matrix.ruby.mode }}"
-          echo "build ruby: ${{ matrix.platform.build_ruby }}"
 
           if [ -x "$RUBY_PATH/bin/ruby" ]; then
             echo "Ruby already installed at $RUBY_PATH, skipping build"
             exit 0
           fi
 
-          if [ "${{ matrix.ruby.mode }}" != "static" ] && [ "${{ matrix.platform.build_ruby }}" == "false" ]; then
-            URL="https://github.com/jdx/ruby/releases/download/${{ matrix.ruby.version }}/ruby-${{ matrix.ruby.version }}.${{ matrix.platform.arch }}_linux.tar.gz"
-            mkdir -p "$RUBY_PATH"
-            curl -fsSL "$URL" | tar -xz -C "$RUBY_PATH" --strip-components=1
-            exit 0
-          fi
+          # Install ruby-install
+          wget https://github.com/postmodern/ruby-install/releases/download/v0.10.2/ruby-install-0.10.2.tar.gz
+          tar -xzvf ruby-install-0.10.2.tar.gz
+          cd ruby-install-0.10.2/
+          make install
 
-          if [ "${{ matrix.ruby.mode }}" == "static" ]; then
-            export RUBY_CONFIGURE_OPTS="--enable-static"
-          fi
+          echo "version: ${{ matrix.ruby.version }}"
+          echo "static: ${{ matrix.ruby.mode }}"
+          echo "build ruby: ${{ matrix.platform.build_ruby }}"
+
+          # export RUBY_CONFIGURE_OPTS="--enable-static"
           ruby-install ruby ${{ matrix.ruby.version }} \
             -j $(nproc) \
             --rubies-dir /opt/rubies \
             --install-dir $RUBY_PATH \
-            -- --disable-install-doc
+            -- \
+              --disable-install-doc \
+              --enable-static
 
       - name: List versions
         run: |
@@ -194,7 +201,7 @@ jobs:
 
       - name: Install ruby
         run: |
-            ruby-build ruby-${{ matrix.ruby.version }} /opt/rubies/ruby-${{ matrix.ruby.version }}
+            ruby-build ruby-${{ matrix.ruby.version }} ~/.rubies/ruby-${{ matrix.ruby.version }}
 
       - name: Install rust
         run: |
