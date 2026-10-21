@@ -40,7 +40,7 @@ jobs:
            arch: arm64
            libc: musl
            runner: alpine-arm
-    name: build-${{ matrix.platform.os }}-${{ matrix.platform.arch }}-${{ matrix.ruby.version }}${{ matrix.ruby.mode == 'static' && '-static' || '' }}
+    name: build-${{ matrix.platform.os }}-${{ matrix.platform.arch }}-${{ matrix.platform.libc }}-${{ matrix.ruby.version }}${{ matrix.ruby.mode == 'static' && '-static' || '' }}
     runs-on: ${{ matrix.platform.runner }}
     env:
       RUBY_BASE_PATH: /opt/rubies
@@ -151,7 +151,7 @@ jobs:
             -H "Authorization: token $TOKEN" \
             "$API_URL/repos/$REPOSITORY/releases/tags/$TAG" | jq -r .id)
 
-          NAME="beaver$RELEASE_ID-${{ matrix.platform.os }}-${{ matrix.platform.arch }}-ruby-${{ matrix.ruby.majorminor }}"
+          NAME="beaver$RELEASE_ID-${{ matrix.platform.os }}-${{ matrix.platform.arch }}-${{ matrix.platform.libc }}-ruby-${{ matrix.ruby.majorminor }}"
           if [ ${{ matrix.ruby.mode }} == "static" ]; then
             NAME += "-static"
           fi
@@ -169,7 +169,7 @@ jobs:
         if: forgejo.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v3
         with:
-          name: beaver-${{ matrix.platform.os }}-${{ matrix.platform.arch }}-ruby-${{ matrix.ruby.majorminor }}${{ matrix.ruby.mode == 'static' && '-static' || '' }}
+          name: beaver-${{ matrix.platform.os }}-${{ matrix.platform.arch }}-${{ matrix.platform.libc }}-ruby-${{ matrix.ruby.majorminor }}${{ matrix.ruby.mode == 'static' && '-static' || '' }}
           path: target/release/beaver
           if-no-files-found: error
 
