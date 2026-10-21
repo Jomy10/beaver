@@ -150,7 +150,7 @@ jobs:
         if: forgejo.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v3
         with:
-          name: executable
+          name: beaver.zip
           path: target/release/beaver
           if-no-files-found: error
 
@@ -255,6 +255,6 @@ jobs:
         if: forgejo.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v3
         with:
-          name: beaver.zip
+          name: beaver-${{ matrix.platform.os }}-${{ matrix.platform.arch }}-ruby-${{ matrix.ruby.version }}-${{ matrix.ruby.mode == 'static' && '-static' || '' }}.zip
           path: target/release/beaver
           if-no-files-found: error
