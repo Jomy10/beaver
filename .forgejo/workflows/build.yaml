@@ -44,7 +44,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get update
-          apt-get install -y clang libclang-dev wget libgmp3-dev libyaml-0
+          apt-get install -y clang libclang-dev wget libgmp3-dev libyaml-dev
 
       - name: Install rust
         run: |
@@ -184,7 +184,8 @@ jobs:
     name: build-${{ matrix.platform.os }}-${{ matrix.platform.arch }}-${{ matrix.ruby.version }}${{ matrix.ruby.mode == 'static' && '-static' || '' }}
     runs-on: ${{ matrix.platform.runner }}
     env:
-      RUBY_PATH: ~/.rubies/ruby-${{ matrix.ruby.version }}
+      RUBY_BASE_PATH: $HOME/.rubies
+      RUBY_PATH: $HOME/.rubies/ruby-${{ matrix.ruby.version }}
     steps:
       - name: checkout code
         uses: actions/checkout@v4
@@ -197,11 +198,11 @@ jobs:
 
       - name: Create ruby path
         run: |
-            [ -d ~/.rubies ] || mkdir -p ~/.rubies
+            [ -d $RUBY_BASE_PATH ] || mkdir -p $RUBY_BASE_PATH
 
       - name: Install ruby
         run: |
-            ruby-build ruby-${{ matrix.ruby.version }} ~/.rubies/ruby-${{ matrix.ruby.version }}
+            ruby-build ruby-${{ matrix.ruby.version }} $RUBY_PATH
 
       - name: Install rust
         run: |
