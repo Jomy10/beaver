@@ -202,7 +202,12 @@ jobs:
 
       - name: Install ruby
         run: |
-            ruby-build ruby-${{ matrix.ruby.version }} $RUBY_PATH
+            if [ -x "$RUBY_PATH/bin/ruby" ]; then
+              echo "Ruby already installed at $RUBY_PATH, skipping build"
+              exit 0
+            fi
+
+            ruby-build ruby-${{ matrix.ruby.version }} "$RUBY_PATH"
 
       - name: Install rust
         run: |
@@ -256,6 +261,6 @@ jobs:
         if: forgejo.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v3
         with:
-          name: executable
+          name: beaver.zip
           path: target/release/beaver
           if-no-files-found: error
