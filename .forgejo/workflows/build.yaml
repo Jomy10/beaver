@@ -14,10 +14,10 @@ jobs:
       fail-fast: false
       matrix:
        ruby:
-        - version: "3.2"
-        - version: "3.3"
-        - version: "3.4"
-        - version: "4.0"
+        - version: "3.2.11"
+        - version: "3.3.12"
+        - version: "3.4.10"
+        - version: "4.0.7"
         - version: "4.0.7"
           mode: "static"
        platform:
@@ -34,6 +34,7 @@ jobs:
     name: build-${{ matrix.platform.os }}-${{ matrix.platform.arch }}-${{ matrix.ruby.version }}${{ matrix.ruby.mode == 'static' && '-static' || '' }}
     runs-on: ${{ matrix.platform.runner }}
     env:
+      RUBY_BASE_PATH: /opt/rubies
       RUBY_PATH: /opt/rubies/ruby-${{ matrix.ruby.version }}
     steps:
       - name: checkout code
@@ -50,33 +51,19 @@ jobs:
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain nightly
 
-      - name: Setup ruby
-        if: matrix.ruby.mode != 'static'
-        uses: https://github.com/ruby/setup-ruby@v1
-        with:
-          ruby-version: ${{ matrix.ruby.version }}
-          bundler-cache: true
-
-      - name: Move ruby installation
-        if: matrix.ruby.mode != 'static'
-        run: cp -r $(dirname "$(which ruby)")/.. $RUBY_PATH
-
       - name: Create ruby path
-        if: matrix.ruby.mode == 'static'
         run: |
           # Create path to rubies
-          [ -d /opt/rubies ] || mkdir -p /opt/rubies
+          [ -d "$RUBY_BASE_PATH" ] || mkdir -p "$RUBY_BASE_PATH"
 
       - name: Cache ruby installation
-        if: matrix.ruby.mode == 'static'
         uses: actions/cache@v4
         with:
-          path: /opt/rubies
+          path: "$RUBY_BASE_PATH"
           key: ${{ matrix.platform.os }}-${{ matrix.platform.arch }}-ruby-install-${{ matrix.ruby.version }}-${{ matrix.ruby.mode || 'dyn' }}
           restore-key: ${{ matrix.platform.os }}-${{ matrix.platform.arch }}-ruby-install-
 
-      - name: Setup ruby static
-        if: matrix.ruby.mode == 'static'
+      - name: Setup ruiby
         run: |
           set -xe
 
@@ -95,14 +82,15 @@ jobs:
           echo "static: ${{ matrix.ruby.mode }}"
           echo "build ruby: ${{ matrix.platform.build_ruby }}"
 
-          # export RUBY_CONFIGURE_OPTS="--enable-static"
+          if [ "${{ matrix.ruby.mode }}" == "static" ]; then
+            export RUBY_CONFIGURE_OPTS="--enable-static"
+          fi
           ruby-install ruby ${{ matrix.ruby.version }} \
             -j $(nproc) \
             --rubies-dir /opt/rubies \
             --install-dir $RUBY_PATH \
             -- \
-              --disable-install-doc \
-              --enable-static
+              --disable-install-doc
 
       - name: List versions
         run: |
@@ -175,22 +163,24 @@ jobs:
           - version: "3.3.12"
           - version: "3.4.10"
           - version: "4.0.7"
-          # - version: "4.0.7"
-          #   mode: "static"
+          - version: "4.0.7"
+            mode: "static"
         platform:
           - os: macos
             arch: arm64
             runner: macos-arm
     name: build-${{ matrix.platform.os }}-${{ matrix.platform.arch }}-${{ matrix.ruby.version }}${{ matrix.ruby.mode == 'static' && '-static' || '' }}
     runs-on: ${{ matrix.platform.runner }}
-    env:
-      RUBY_BASE_PATH: $HOME/.rubies
-      RUBY_PATH: $HOME/.rubies/ruby-${{ matrix.ruby.version }}
     steps:
       - name: checkout code
         uses: actions/checkout@v4
         with:
           ref: ${{ (forgejo.event_name == 'release' && forgejo.event.release.tag_name) || '' }}
+
+      - name: Set ruby paths
+        run: |
+          echo "RUBY_BASE_PATH`$HOME/.rubies" >> "$GITHUB_ENV"
+          "cho "RUBY_PATH: $HOME/.rubies/ruby-${{ matrix.ruby.version }}" >> "$GITHUB_ENV"
 
       - name: Install ruby-build
         run: |
@@ -198,7 +188,7 @@ jobs:
 
       - name: Create ruby path
         run: |
-            [ -d $RUBY_BASE_PATH ] || mkdir -p $RUBY_BASE_PATH
+            [ -d "$RUBY_BASE_PATH" ] || mkdir -p "$RUBY_BASE_PATH"
 
       - name: Install ruby
         run: |
@@ -207,7 +197,11 @@ jobs:
               exit 0
             fi
 
-            ruby-build ruby-${{ matrix.ruby.version }} "$RUBY_PATH"
+            if [ "${{ matrix.ruby.mode }}" == "static" ]; then
+              ruby-build ruby-${{ matrix.ruby.version }} "$RUBY_PATH" -- --enable-static
+            else
+              ruby-build ruby-${{ matrix.ruby.version }} "$RUBY_PATH"
+            fi
 
       - name: Install rust
         run: |
@@ -217,7 +211,7 @@ jobs:
         run: |
           . "$HOME/.cargo/env"
           cargo --version
-          $RUBY_PATH/bin/ruby --version
+          "$RUBY_PATH/bin/ruby" --version
 
       - name: Build beaver
         run: |
@@ -225,7 +219,7 @@ jobs:
             if [ "${{ matrix.ruby.mode }}" == "static" ]; then
               export CARGO_FLAGS="$CARGO_FLAGS --features static-ruby"
             fi
-            RUBY=$RUBY_PATH/bin/ruby cargo build --release --locked
+            RUBY="$RUBY_PATH/bin/ruby" cargo build --release --locked
 
       - name: Upload executable to release
         if: forgejo.event_name == 'release'
