@@ -39,6 +39,12 @@ impl std::fmt::Debug for MainError {
     }
 }
 
+impl std::fmt::Display for MainError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&console::style(format!("{}", self.inner.as_ref())).red().to_string())
+    }
+}
+
 struct TripleParseError {
     inner: target_lexicon::ParseError
 }
@@ -55,7 +61,17 @@ impl std::fmt::Display for TripleParseError {
     }
 }
 
-fn main() -> Result<(), MainError> {
+fn main() {
+    match _main() {
+        Ok(_) => {},
+        Err(err) => {
+            eprintln!("{}", err);
+            std::process::exit(1);
+        },
+    }
+}
+
+fn _main() -> Result<(), MainError> {
     let build_args = [
         arg!(-o --opt [OPT] "Optimization mode")
             .default_value(default_opt_mode.as_os_str())
