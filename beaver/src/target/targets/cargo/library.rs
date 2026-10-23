@@ -54,6 +54,10 @@ impl Library {
 }
 
 impl traits::Target for Library {
+    fn target_kind(&self) -> traits::TargetKind {
+        traits::TargetKind::Cargo
+    }
+
     fn name(&self) -> &str {
         &self.name
     }

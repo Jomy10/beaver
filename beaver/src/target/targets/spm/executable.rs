@@ -36,6 +36,10 @@ impl Executable {
 }
 
 impl traits::Target for Executable {
+    fn target_kind(&self) -> traits::TargetKind {
+        traits::TargetKind::Spm
+    }
+
     fn name(&self) -> &str {
         &self.name
     }

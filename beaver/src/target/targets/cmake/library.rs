@@ -58,6 +58,10 @@ impl Library {
 }
 
 impl traits::Target for Library {
+    fn target_kind(&self) -> traits::TargetKind {
+        traits::TargetKind::CMake
+    }
+
     fn name(&self) ->  &str {
         &self.name
     }

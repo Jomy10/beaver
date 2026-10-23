@@ -107,6 +107,10 @@ impl Library {
 }
 
 impl traits::Target for Library {
+    fn target_kind(&self) -> traits::TargetKind {
+        traits::TargetKind::C
+    }
+
     fn name(&self) -> &str {
         &self.name
     }

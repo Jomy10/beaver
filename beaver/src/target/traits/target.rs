@@ -19,8 +19,26 @@ pub enum TargetType {
     Executable,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum TargetKind {
+    C,
+    Cargo,
+    CMake,
+    Custom,
+    Meson,
+    Spm,
+}
+
+impl std::fmt::Display for TargetKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{:?} target", self))
+    }
+}
+
 #[enum_dispatch]
 pub trait Target: Send + Sync + std::fmt::Debug {
+    fn target_kind(&self) -> TargetKind;
+
     // General Info //
     fn name(&self) -> &str;
     fn description(&self) -> Option<&str>;

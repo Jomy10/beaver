@@ -22,6 +22,8 @@ pub struct Library {
     cache_dir: Arc<PathBuf>,
 
     extra_dependencies: Vec<Dependency>,
+
+    build_flags: Vec<String>,
 }
 
 impl Library {
@@ -33,11 +35,16 @@ impl Library {
             artifact,
             cache_dir,
             extra_dependencies: Vec::new(),
+            build_flags: Vec::new()
         }
     }
 }
 
 impl traits::Target for Library {
+    fn target_kind(&self) -> traits::TargetKind {
+        traits::TargetKind::Spm
+    }
+
     fn name(&self) -> &str {
         &self.name
     }
@@ -176,5 +183,9 @@ impl Library {
     fn swift_objc_header_path(&self, project_build_dir: &Path) -> PathBuf {
         self.swift_objc_header_search_path(project_build_dir)
             .join(format!("{}-Swift.h", self.name))
+    }
+
+    pub fn add_build_flags(&mut self, flags: &mut Vec<String>) {
+        self.build_flags.append(flags);
     }
 }

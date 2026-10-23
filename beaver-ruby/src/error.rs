@@ -119,6 +119,8 @@ pub enum BeaverRubyError {
     NoCommand(String),
     #[error("`set_pkgconfig` can only be called on Meson targets")]
     SetPkgconfigOnNonMesonTarget,
+    #[error("Method `{1}` does not exist on `{0}`")]
+    MethodNotFound(String, String),
 
     #[error("{0:?}")]
     JoinError(Box<dyn Any + Send + 'static>),

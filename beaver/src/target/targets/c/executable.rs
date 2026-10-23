@@ -101,6 +101,10 @@ impl Executable {
 
 
 impl traits::Target for Executable {
+    fn target_kind(&self) -> traits::TargetKind {
+        traits::TargetKind::C
+    }
+
     fn name(&self) -> &str {
         &self.name
     }
