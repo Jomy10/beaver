@@ -179,6 +179,9 @@ pub enum BeaverError {
     // Meson //
     #[error("Meson failed to setup")]
     MesonFailed,
+    #[error("Parsing meson files failed: {0}")]
+    MesonParse(serde_json::Error),
+
     #[error("Provided pkgconfig path does not exist {}", .0.display())]
     InvalidPkgConfigPath(PathBuf),
 

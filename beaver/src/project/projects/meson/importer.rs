@@ -33,7 +33,8 @@ pub fn import<P: AsRef<Path>>(
     let buildsystem_files_path = meson_info.join("intro-buildsystem_files.json");
     let buildsystem_files_file = fs::File::open(&buildsystem_files_path)
         .map_err(|err| BeaverError::io(err, buildsystem_files_path.to_string_lossy()))?;
-    let buildsystem_files: Vec<String> = serde_json::from_reader(io::BufReader::new(buildsystem_files_file))?;
+    let buildsystem_files: Vec<String> = serde_json::from_reader(io::BufReader::new(buildsystem_files_file))
+        .map_err(|err| BeaverError::MesonParse(err))?;
 
     // Define the files that should reconfigure the project
     context.cache()?.set_all_files(
@@ -45,12 +46,14 @@ pub fn import<P: AsRef<Path>>(
     trace!("Meson importer: retrieving targets");
 
     let project_info_file = fs::File::open(meson_info.join("intro-projectinfo.json"))?;
-    let project_info: ProjectInfo = serde_json::from_reader(io::BufReader::new(project_info_file))?;
+    let project_info: ProjectInfo = serde_json::from_reader(io::BufReader::new(project_info_file))
+        .map_err(|err| BeaverError::MesonParse(err))?;
 
     let version = Version::parse(&project_info.version);
 
     let targets_file = fs::File::open(meson_info.join("intro-targets.json"))?;
-    let targets_info: Vec<TargetInfo> = serde_json::from_reader(io::BufReader::new(targets_file))?;
+    let targets_info: Vec<TargetInfo> = serde_json::from_reader(io::BufReader::new(targets_file))
+        .map_err(|err| BeaverError::MesonParse(err))?;
     let targets: crate::Result<Vec<AnyTarget>> = targets_info.into_iter()
         .flat_map(|target_info| {
             let language = target_info.target_sources.iter()

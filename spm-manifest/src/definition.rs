@@ -19,7 +19,7 @@ pub struct Manifest {
     pub platforms: Vec<PlatformDescription>,
     pub products: Vec<ProductDescription>,
     pub providers: Option<SystemPackageProviderDescription>,
-    pub targets: Vec<TargetDescription>,
+    // pub targets: Vec<TargetDescription>,
     pub tools_version: ToolsVersion
 }
 
@@ -288,7 +288,7 @@ pub enum TargetBuildSettingDescriptionKind {
     EnableUpcomingFeature(String),
     EnableExperimentalFeature(String),
     StrictMemorySafety,
-    UnsafeFlags(Vec<String>),
+    UnsafeFlags(HashMap<String, Vec<String>>),
     SwiftLanguageMode(String),
 }
 

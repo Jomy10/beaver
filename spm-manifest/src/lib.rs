@@ -1,11 +1,33 @@
 mod definition;
 pub use definition::*;
 
-pub type Error = serde_json::Error;
+// use serde_path_to_error::Error;
+
+#[derive(Debug)]
+pub struct Error {
+    path: String,
+    error: String
+}
+
+impl std::error::Error for Error {}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}\n{}", self.error, self.path))
+    }
+}
 
 impl Manifest {
     pub fn parse(str: &str) -> Result<Manifest, Error> {
-        serde_json::from_str(str)
+        let mut des = serde_json::Deserializer::from_str(str);
+        let result = serde_path_to_error::deserialize(&mut des);
+        match result {
+            Ok(v) => Ok(v),
+            Err(err) => {
+                let path = err.path().to_string();
+                return Err(Error { path, error: err.to_string() });
+            }
+        }
     }
 }
 

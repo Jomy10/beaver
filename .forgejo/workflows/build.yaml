@@ -54,10 +54,10 @@ jobs:
       - name: Install dependencies
         run: |
           if [ "${{ matrix.platform.libc }}" = "musl" ]; then
-            apk add --no-cache ca-certificates file binutils curl clang clang-dev gmp-dev yaml-dev wget make
+            apk add --no-cache ca-certificates file bash build-base gcc binutils curl linux-headers gmp-dev yaml-dev wget make
           else
             apt-get update
-            apt-get install -y curl clang libclang-dev wget libgmp3-dev libyaml-dev
+            apt-get install -y file curl clang libclang-dev wget libgmp3-dev libyaml-dev
           fi
 
       - name: Install rust
