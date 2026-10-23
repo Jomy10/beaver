@@ -2,6 +2,7 @@ use std::collections::LinkedList;
 use std::path::PathBuf;
 use std::process::Command;
 
+use beaver::BeaverError;
 use log::*;
 use magnus::rb_sys::AsRawValue;
 use magnus::value::ReprValue;
@@ -284,12 +285,26 @@ fn split_args(ruby: &magnus::Ruby, args: String) -> Result<magnus::RArray, magnu
     }
 }
 
+fn which(ruby: &magnus::Ruby, prog: String) -> Result<Option<magnus::RString>, magnus::Error> {
+    let Some(paths) = utils::path() else {
+        return Err(BeaverRubyError::NoPATH.into());
+    };
+    let pathext = utils::pathext();
+    let Some(cmdpath) = utils::which(&prog, paths.iter(), pathext.as_ref().map(|v| v.as_slice())) else {
+        return Ok(None);
+    };
+    return cmdpath.to_str()
+        .map(|str| Some(ruby.str_new(&str)))
+        .ok_or_else(|| BeaverRubyError::from(BeaverError::NonUTF8OsStr(cmdpath.into_os_string())).into());
+}
+
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     ruby.define_global_function("opt", magnus::function!(opt, -1))?;
     ruby.define_global_function("flag", magnus::function!(flag, -1))?;
     ruby.define_global_function("cmd", magnus::function!(cmd, -1))?;
     ruby.define_global_function("sh", magnus::function!(sh, -1))?;
     ruby.define_global_function("split_args", magnus::function!(split_args, 1))?;
+    ruby.define_global_function("which", magnus::function!(which, 1))?;
 
     Ok(())
 }

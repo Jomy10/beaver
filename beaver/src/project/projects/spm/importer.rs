@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
-use log::warn;
+use log::*;
 
 use crate::target::LibraryArtifactType;
 use crate::traits::AnyTarget;
@@ -10,9 +10,13 @@ use crate::{project, target, tools, Beaver, BeaverError};
 
 /// Returns the new project id
 pub fn import(
-    base_dir: &Path,
+    _base_dir: &Path,
     context: &Beaver
 ) -> crate::Result<usize> {
+    trace!("Import SPM at {}", _base_dir.display());
+    let base_dir = std::path::absolute(_base_dir)
+        .map_err(|err| BeaverError::ExtendedIOError(err, format!("Getting absolute path to SPM base directory {}", _base_dir.display()), std::backtrace::Backtrace::capture()))?;
+
     let manifest_path = base_dir.join("Package.swift");
     if !manifest_path.exists() {
         return Err(BeaverError::NotASwiftPackagePath(manifest_path));
@@ -22,10 +26,12 @@ pub fn import(
 
     let build_sys_cache_dir = context.get_build_dir_for_external_build_system_static2(base_dir_str.as_ref())?;
     if !build_sys_cache_dir.exists() {
-        fs::create_dir_all(&build_sys_cache_dir)?;
+        fs::create_dir_all(&build_sys_cache_dir)
+            .map_err(|err| BeaverError::ExtendedIOError(err, format!("creating cache directory {}", build_sys_cache_dir.display()), std::backtrace::Backtrace::capture()))?;
     }
     let cache_dir = build_sys_cache_dir.join("cache");
-    let cache_dir = Arc::new(std::path::absolute(cache_dir)?);
+    let cache_dir = Arc::new(std::path::absolute(cache_dir)
+        .map_err(|err| BeaverError::ExtendedIOError(err, "getting absolute cache directory path".to_string(), std::backtrace::Backtrace::capture()))?);
     let json_save_path = build_sys_cache_dir.join("manifest.json");
 
     let file_context = context.optimize_mode.to_string() + ":" + base_dir_str.as_ref();
@@ -35,7 +41,7 @@ pub fn import(
     let json = if remake_json {
         let output = std::process::Command::new(tools::swift.as_path())
             .args(&["package", "dump-package"])
-            .current_dir(base_dir)
+            .current_dir(&base_dir)
             .output()?;
 
         if !output.status.success() {
@@ -93,7 +99,7 @@ pub fn import(
     }).collect();
 
     if targets.len() == 0 {
-        warn!("No products defined in Swift Package Manager project {}", base_dir.display());
+        warn!("No products defined in Swift Package Manager project {}", &base_dir.display());
     }
 
     let project = project::spm::Project::new(
