@@ -18,7 +18,7 @@ Project Accessor
 
     Returns the project's build directory.
 
-    see :rb:func:`Project` name parameter
+    see :rb:func:`build_dir`
 
     :rtype: String
 

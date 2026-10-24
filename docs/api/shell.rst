@@ -111,3 +111,9 @@ Utilities
 
     split_args("a b 35 'Hello World'")
     #=> ["a", "b", "35", "Hello World"]
+
+.. rb:function:: which(prog)
+
+    Gets the path to a program available in ``$PATH``.
+
+    :param prog: The name of the program.

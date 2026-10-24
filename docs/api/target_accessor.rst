@@ -31,3 +31,39 @@ Target Accessor
   .. rb:method:: set_pkgconfig(name)
 
     Set the name of the pkgconfig file, or the path to the pkgconfig file for a Meson target
+
+  .. rb:method:: artifacts
+
+    Returns the artifacts that this target outputs.
+
+    :rtype: Hash where the key is an artifact type and the value is the path to the artifact
+
+    **Example**
+
+    .. code-block:: rb
+
+      project("SomeProject").target("SomeTarget").artifacts
+      #=> {
+      #     staticlib: "build/aarch64-apple-darwin/debug/SomeTarget/artifacts/libSomeTarget.a",
+      #     dynlib: "build/aarch64-apple-darwin/debug/SomeTarget/artifacts/libSomeTarget.dylib"
+      #   }
+
+  .. rb:method:: dep(artifact_type)
+
+    Returns a dependency to the `artifact_type` of this target.
+
+    :param artifact_type: The type of artifact to get the dependency to (e.g. ``:staticlib``, ``:dynlib``, ...)
+    :rtype: :rb:class:`Dependency`
+
+    **Example**
+
+    .. code-block:: rb
+
+      some_target = project("SomeProject").target("SomeTarget")
+
+      C::Library(
+        # ...
+        dependencies: [
+          some_target.dep(:staticlib)
+        ]
+      )

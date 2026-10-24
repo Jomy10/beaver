@@ -21,7 +21,7 @@ Target Triple
 
     :rtype: String
 
-  .. rb:method:: vender
+  .. rb:method:: vendor
 
     Gets the vendor of the platform.
 
