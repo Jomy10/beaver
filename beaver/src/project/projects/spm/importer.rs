@@ -107,6 +107,7 @@ pub fn import(
         std::path::absolute(base_dir)?,
         cache_dir,
         targets,
+        &context
         // context.optimize_mode,
         // &context.target_triple
     )?;

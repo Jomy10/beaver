@@ -3,6 +3,7 @@
 
 use target_lexicon::Triple;
 
+#[allow(unused)] // might be needed in the future
 pub trait TripleExt {
     fn swift_name(&self) -> String;
 }

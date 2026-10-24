@@ -1,6 +1,4 @@
-use std::ffi::OsStr;
 use std::ops::Deref;
-use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
@@ -29,27 +27,27 @@ impl Project {
         base_dir: PathBuf,
         cache_dir: Arc<PathBuf>,
         targets: Vec<AnyTarget>,
+        context: &Beaver,
         // opt_mode: OptimizationMode,
         // target_triple: &Triple
     ) -> crate::Result<Self> {
-        let output = Command::new(tools::swift.as_os_str())
-            .current_dir(&base_dir)
-            .args(["build", "--show-bin-path"])
-            .output()
-            .map_err(|err| BeaverError::CouldNotRetrieveSwiftBinPath(name.clone(), err.to_string()))?;
+        let output: String = context.get_or_store(format!("_octo:spm:project:bin_dir:{}:{}", name, base_dir.display()), || {
+            let output = Command::new(tools::swift.as_os_str())
+                .current_dir(&base_dir)
+                .args(["build", "--show-bin-path"])
+                .output()
+                .map_err(|err| BeaverError::CouldNotRetrieveSwiftBinPath(name.clone(), err.to_string()))?;
 
-        if output.status.code().unwrap() != 0 {
-            return Err(BeaverError::CouldNotRetrieveSwiftBinPath(name.clone(), format!("{} (exit status: {})", String::from_utf8(output.stderr)?, output.status)))
-        }
+            if output.status.code().unwrap() != 0 {
+                return Err(BeaverError::CouldNotRetrieveSwiftBinPath(name.clone(), format!("{} (exit status: {})", String::from_utf8(output.stderr)?, output.status)))
+            }
 
-        let build_dir = if cfg!(not(target_os = "windows")) {
-            let build_dir = OsStr::from_bytes(&output.stdout[..output.stdout.len() - 1 /* strip newline */]);
-            PathBuf::from(build_dir)
-        } else {
-            let build_dir = String::from_utf8(output.stdout)?;
-            let build_dir = build_dir.trim();
-            PathBuf::from(build_dir)
-        };
+            return String::from_utf8(output.stdout)
+                .map(|str| str.trim().to_string())
+                .map_err(|err| err.into());
+        })?;
+
+        let build_dir = PathBuf::from(output);
 
         let mut targets = targets;
         for i in 0..targets.len() {
