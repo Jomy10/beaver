@@ -1,10 +1,11 @@
-use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
+use log::warn;
 use target_lexicon::Triple;
 
 use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep, Rule};
+use crate::target::c::{CStd, CxxStd};
 use crate::target::parameters::{DefaultArgument, Files, Flags, Headers};
 use crate::target::{Dependency, Language, TArtifactType, Version};
 use crate::{traits, Beaver, BeaverError};
@@ -29,45 +30,35 @@ pub struct TargetDescriptor<ArtifactType> {
 pub enum Setting {
     ObjCArc,
 
-    // TO BE IMPLEMENTED!
-    CStd(u32),
-    CXXStd(u32),
+    CStd(CStd),
+    CXXStd(CxxStd),
 }
 
 #[derive(Debug)]
 pub enum SettingParseError {
     NotParseable,
-    ExpectedNumber,
-    NotANumber(ParseIntError)
+    ExpectedValue,
+    InvalidStd
 }
 
 impl Setting {
     pub fn parse(str: &str) -> Result<Setting, SettingParseError> {
-        match str.to_uppercase().as_str() {
-            "OBJCARC" | "OBJC-ARC" | "OBJC_ARC" | "ARC" => Ok(Setting::ObjCArc),
-            str if str.starts_with("cstd") => {
+        match str.to_lowercase().as_str() {
+            "objcarc" | "objc-arc" | "objc_arc" | "arc" => Ok(Setting::ObjCArc),
+            str if str.starts_with("std") => {
                 let mut parts = str.split("=");
                 _ = parts.next();
                 let Some(std) = parts.next() else {
-                    return Err(SettingParseError::ExpectedNumber);
+                    return Err(SettingParseError::ExpectedValue);
                 };
-                let std = match std.parse::<u32>() {
-                    Ok(i) => i,
-                    Err(err) => return Err(SettingParseError::NotANumber(err)),
-                };
-                Ok(Setting::CStd(std))
-            },
-            str if str.starts_with("cxxstd") || str.starts_with("c++std") => {
-                let mut parts = str.split("=");
-                _ = parts.next();
-                let Some(std) = parts.next() else {
-                    return Err(SettingParseError::ExpectedNumber);
-                };
-                let std = match std.parse::<u32>() {
-                    Ok(i) => i,
-                    Err(err) => return Err(SettingParseError::NotANumber(err)),
-                };
-                Ok(Setting::CXXStd(std))
+                if let Some(std) = CStd::parse(std) {
+                    Ok(Setting::CStd(std))
+                } else if let Some(std) = CxxStd::parse(std) {
+                    Ok(Setting::CXXStd(std))
+                } else {
+                    println!("{}", std);
+                    Err(SettingParseError::InvalidStd)
+                }
             },
             _ => Err(SettingParseError::NotParseable)
         }
@@ -85,6 +76,8 @@ pub(crate) trait CTarget: traits::Target {
 
     // TODO: for libraries -> cache cflags and linker_flags
     /// Returns the cflags and files this target depends on
+    ///
+    /// This is the final cflags that is passed to ninja
     fn cflags<'a>(
         &self,
         project_base_dir: &Path,
@@ -100,20 +93,78 @@ pub(crate) trait CTarget: traits::Target {
             cflags.extend(langflags.iter().map(|str| str.to_string()));
         }
 
+        let is_c = self.language() == Language::C || self.language() == Language::OBJC;
+        let mut dep_min_cstd = None;
+        let mut dep_min_cxxstd = None;
         for dependency in dependencies {
             dependency.public_cflags(context, &mut cflags, &mut add_dependency_files)?;
+            if is_c {
+                match (dependency.min_cstd(context), dep_min_cstd) {
+                    (Some(v), None) => dep_min_cstd = Some(v),
+                    (None, _) => {},
+                    (Some(s1), Some(s2)) => dep_min_cstd = Some(s1.max(&s2))
+                }
+            } else {
+                match (dependency.min_cxxstd(context), dep_min_cxxstd) {
+                    (Some(v), None) => dep_min_cxxstd = Some(v),
+                    (None, _) => {},
+                    (Some(s1), Some(s2)) => dep_min_cxxstd = Some(s1.max(&s2))
+                }
+            }
         }
         for lang in dependency_languages {
             let Some(lang_cflags) = Language::cflags(*lang, self.language()) else { continue };
             cflags.extend(lang_cflags.iter().map(|str| str.to_string()));
         }
 
+        // TODO: isatty
         if context.color_enabled() {
             cflags.push("-fdiagnostics-color=always".to_string());
         }
 
-        if (self.language() == Language::OBJC || self.language() == Language::OBJCXX) && self.settings().contains(&Setting::ObjCArc) {
+        let mut objc_arc = false;
+        let mut min_cstd = None;
+        let mut min_cxxstd = None;
+        for setting in self.settings().iter() {
+            match setting {
+                Setting::ObjCArc => objc_arc = true,
+                Setting::CStd(v) => if is_c {
+                   min_cstd = Some(*v);
+                } else {
+                    warn!("c-std setting enabled for C++ target {}", self.name())
+                },
+                Setting::CXXStd(v) => if !is_c {
+                    min_cxxstd = Some(*v);
+                } else {
+                    warn!("cxx-std setting enabled for C target {}", self.name())
+                }
+            }
+        }
+
+        if (self.language() == Language::OBJC || self.language() == Language::OBJCXX) && objc_arc {
             cflags.push("-fobjc-arc".to_string());
+        }
+
+        if is_c {
+            let c_std = match (min_cstd, dep_min_cstd) {
+                (Some(v), None) => Some(v),
+                (None, Some(v)) => Some(v),
+                (Some(s1), Some(s2)) => Some(s1.max(&s2)),
+                (None, None) => None
+            };
+            if let Some(std) = c_std {
+                cflags.push(format!("-std={}", std.as_str()));
+            }
+        } else {
+            let cxx_std = match (min_cxxstd, dep_min_cxxstd) {
+                (Some(v), None) => Some(v),
+                (None, Some(v)) => Some(v),
+                (Some(s1), Some(s2)) => Some(s1.max(&s2)),
+                (None, None) => None
+            };
+            if let Some(std) = cxx_std {
+                cflags.push(format!("-std={}", std.as_str()));
+            }
         }
 
         return Ok((cflags, add_dependency_files));

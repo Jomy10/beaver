@@ -2,6 +2,7 @@ use std::path::{self, Path, PathBuf};
 use enum_dispatch::enum_dispatch;
 use target_lexicon::Triple;
 
+use crate::target::c::{CStd, CxxStd};
 use crate::target::targets;
 use crate::target::{traits::Target, ArtifactType, LibraryArtifactType};
 
@@ -72,6 +73,9 @@ pub trait Library: Target {
 
         return None;
     }
+
+    fn min_cstd(&self) -> Option<CStd> { None }
+    fn min_cxxstd(&self) -> Option<CxxStd> { None }
 }
 
 #[enum_dispatch(Target)]

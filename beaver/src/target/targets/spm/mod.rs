@@ -76,7 +76,7 @@ fn register_target<ArtifactType: TArtifactType>(
     })?;
 
     // define how to build the objc header.
-    // This headers is included in dependants
+    // This header is included in dependants
     if let Some(objc_header) = objc_header_path {
         let Some(objc_header) = objc_header.to_str() else {
             return Err(BeaverError::NonUTF8OsStr(objc_header.as_os_str().to_os_string()));

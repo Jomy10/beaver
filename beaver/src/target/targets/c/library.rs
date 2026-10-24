@@ -9,6 +9,7 @@ use target_lexicon::{OperatingSystem, Triple};
 
 use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep};
 use crate::platform::{dynlib_extension_for_os, dynlib_linker_flags_for_os, staticlib_extension_for_os};
+use crate::target::c::{CStd, CxxStd};
 use crate::target::parameters::{DefaultArgument, Files, Flags, Headers};
 use crate::target::traits::{self, TargetType};
 use crate::target::{self, ArtifactType, Dependency, Language, LibraryArtifactType, Version};
@@ -24,7 +25,7 @@ pub struct Library {
     project_id: Option<usize>,
     name: String,
     description: Option<String>,
-    homepage: Option<url::Url>,
+    homepage:Option<url::Url>,
     version: Option<Version>,
     license: Option<String>,
 
@@ -409,5 +410,13 @@ impl traits::Library for Library {
     fn artifact_output_dir(&self,  project_build_dir: &std::path::Path, target_triple: &Triple) -> std::path::PathBuf {
         _ = target_triple; // todo: support cross-compiling in the future --> this is supported, target_triple isn't necessary since the project_build_dir has this variable
         project_build_dir.join("artifacts")
+    }
+
+    fn min_cstd(&self) -> Option<CStd> {
+        self.settings.iter().find_map(|v| if let Setting::CStd(v) = v { Some(*v) } else { None })
+    }
+
+    fn min_cxxstd(&self) -> Option<CxxStd> {
+        self.settings.iter().find_map(|v| if let Setting::CXXStd(v) = v { Some(*v) } else { None })
     }
 }

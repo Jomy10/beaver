@@ -171,6 +171,7 @@ impl traits::Library for Library {
     }
 }
 
+// TODO: currently broken
 impl Library {
     /// include {product-name}-Swift.h path
     fn swift_objc_header_search_path(&self, project_build_dir: &Path) -> PathBuf {

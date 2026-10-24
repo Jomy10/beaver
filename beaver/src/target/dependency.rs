@@ -6,6 +6,7 @@ use std::process::{Command, Stdio};
 use log::*;
 use target_lexicon::Triple;
 
+use crate::target::c::{CStd, CxxStd};
 use crate::{tools, Beaver, BeaverError};
 use crate::traits::{Project, Target};
 use super::traits::Library;
@@ -316,6 +317,24 @@ impl Dependency {
                 deps.iter().map(|dep| dep.linker_flags(triple, context, out, additional_files)).collect()
             },
             Dependency::File(_) => Ok(())
+        }
+    }
+
+    pub(crate) fn min_cstd(&self, context: &Beaver) -> Option<CStd> {
+        match self {
+            Dependency::Library(lib) => context.with_project_and_library::<_, BeaverError>(&lib.target, |_, lib| {
+                Ok(lib.min_cstd())
+            }).unwrap(),
+            _ => None, // TODO: support in flags()
+        }
+    }
+
+    pub(crate) fn min_cxxstd(&self, context: &Beaver) -> Option<CxxStd> {
+        match self {
+            Dependency::Library(lib) => context.with_project_and_library::<_, BeaverError>(&lib.target, |_, lib| {
+                Ok(lib.min_cxxstd())
+            }).unwrap(),
+            _ => None, // TODO: support in flags()
         }
     }
 }
