@@ -40,19 +40,23 @@ fn register_target<ArtifactType: TArtifactType>(
         let mut extra_files = Vec::new();
         dep.linker_flags(triple, ctx, &mut linker_flags, &mut extra_files)?;
 
-        extra_flags.push("-Xlinker".to_string());
-        extra_flags.extend(linker_flags.into_iter()
-            .intersperse("-Xlinker".to_string()));
+        if linker_flags.len() > 0 {
+            extra_flags.push("-Xlinker".to_string());
+            extra_flags.extend(linker_flags.into_iter()
+                .intersperse("-Xlinker".to_string()));
+        }
 
         let mut cflags = Vec::new();
         dep.public_cflags(ctx, &mut cflags, &mut extra_files)?;
 
-        extra_flags.push("-Xcc".to_string());
-        extra_flags.extend(cflags.into_iter()
-            .intersperse("-Xcc".to_string()));
+        if cflags.len() > 0 {
+            extra_flags.push("-Xcc".to_string());
+            extra_flags.extend(cflags.into_iter()
+                .intersperse("-Xcc".to_string()));
+        }
 
         if extra_files.len() > 0 {
-            eprintln!("[UNIMPLEMENTED] extra_files in SwiftPM target (dependency) {:?}", extra_files)
+            log::warn!("[UNIMPLEMENTED] extra_files in SwiftPM target (dependency) {:?}", extra_files)
         }
     }
 
