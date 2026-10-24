@@ -185,7 +185,16 @@ impl TargetAccessor {
         return Ok(hash);
     }
 
-    fn as_dep(&self, artifact_type: String) -> Result<DependencyWrapper, magnus::Error> {
+    fn as_dep(&self, artifact_type: magnus::Value) -> Result<DependencyWrapper, magnus::Error> {
+        let rstr = magnus::RString::from_value(artifact_type);
+        let artifact_type = if let Some(str) = &rstr {
+            Cow::Borrowed(unsafe { str.as_str()? })
+        } else if let Some(symbol) = magnus::Symbol::from_value(artifact_type) {
+            symbol.name()?
+        } else {
+            return Err(BeaverRubyError::IncompatibleType(artifact_type, "String or Symbol").into());
+        };
+
         let artifact_type = ArtifactType::parse(&artifact_type).map_err(|err| BeaverRubyError::from(err))?;
         let artifact_type = artifact_type.as_library().ok_or_else(|| BeaverRubyError::WrongArtifactType(artifact_type))?;
 
