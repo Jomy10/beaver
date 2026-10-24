@@ -262,6 +262,7 @@ impl Cache {
         let mut guard = self.file_update_list.lock().map_err(|err| BeaverError::LockError(err.to_string()))?;
         guard.clear();
         self.db.clear()?;
+        self.variables.clear()?;
         return Ok(());
     }
 }

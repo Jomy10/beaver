@@ -17,4 +17,16 @@ impl Beaver {
     pub fn get(&self, var_name: impl AsRef<str>) -> crate::Result<Option<String>> {
         self.cache()?.get(var_name.as_ref())
     }
+
+    pub fn get_or_store<S: AsRef<str>>(&self, var_name: impl AsRef<str>, val: impl FnOnce() -> crate::Result<S>) -> crate::Result<String> {
+        if let Some(val) = self.get(var_name.as_ref())? {
+            println!("get {}", val);
+            return Ok(val);
+        } else {
+            let val = val()?;
+            println!("set {}", val.as_ref());
+            self.store(var_name.as_ref(), &val)?;
+            return Ok(val.as_ref().to_string());
+        }
+    }
 }
