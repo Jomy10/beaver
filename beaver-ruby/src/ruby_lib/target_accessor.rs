@@ -2,11 +2,12 @@ use std::borrow::Cow;
 use std::path::PathBuf;
 
 use beaver::BeaverError;
-use beaver::target::{ArtifactType, Dependency, TargetRef};
+use beaver::target::{ArtifactType, Dependency, LibraryTargetDependency, TargetRef};
 use beaver::traits::{Project, Target};
 use magnus::Module;
 
 use crate::ext::MagnusConvertContextExt;
+use crate::ruby_lib::dependency::DependencyWrapper;
 use crate::{BeaverRubyError, CTX};
 
 /// Split on the value where `predicate` is false
@@ -183,6 +184,18 @@ impl TargetAccessor {
 
         return Ok(hash);
     }
+
+    fn as_dep(&self, artifact_type: String) -> Result<DependencyWrapper, magnus::Error> {
+        let artifact_type = ArtifactType::parse(&artifact_type).map_err(|err| BeaverRubyError::from(err))?;
+        let artifact_type = artifact_type.as_library().ok_or_else(|| BeaverRubyError::WrongArtifactType(artifact_type))?;
+
+        let dep = Dependency::Library(LibraryTargetDependency {
+            target: TargetRef { target: self.id, project: self.projid },
+            artifact: artifact_type,
+        });
+
+        return Ok(DependencyWrapper(dep));
+    }
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
@@ -193,6 +206,7 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     class.define_method("run_thread", magnus::method!(TargetAccessor::run_thread, 1))?;
     class.define_method("add_dependency", magnus::method!(TargetAccessor::add_dependency, 1))?;
     class.define_method("artifacts", magnus::method!(TargetAccessor::artifacts, 0))?;
+    class.define_method("dep", magnus::method!(TargetAccessor::as_dep, 1))?;
 
     return Ok(());
 }

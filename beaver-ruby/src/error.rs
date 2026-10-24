@@ -4,6 +4,7 @@ use std::process::ExitStatus;
 use std::str::ParseBoolError;
 use std::sync::{Arc, Mutex};
 
+use beaver::target::ArtifactType;
 use magnus::error::RubyUnavailableError;
 use magnus::value::ReprValue;
 use utils::UnsafeSendable;
@@ -121,6 +122,8 @@ pub enum BeaverRubyError {
     SetPkgconfigOnNonMesonTarget,
     #[error("Method `{1}` does not exist on `{0}`")]
     MethodNotFound(String, String),
+    #[error("Cannot create dependency on artifact type `{0}`")]
+    WrongArtifactType(ArtifactType),
 
     #[error("{0:?}")]
     JoinError(Box<dyn Any + Send + 'static>),

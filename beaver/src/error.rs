@@ -6,10 +6,11 @@ use std::process::ExitStatus;
 use std::string::FromUtf8Error;
 use std::time::{SystemTimeError, TryFromFloatSecsError};
 
+use itertools::Itertools;
 use target_lexicon::OperatingSystem;
 use utils::str::OsStrConversionError;
 
-use crate::target::{self, ArtifactType, Language};
+use crate::target::{self, ArtifactType, ExecutableArtifactType, Language, LibraryArtifactType};
 
 #[derive(thiserror::Error)]
 pub enum BeaverError {
@@ -231,10 +232,12 @@ pub enum BeaverError {
         got: String,
         expected_values: Vec<String>,
     },
-    #[error("Invalid library artifact type `{0}`. Valid artifacts are `dynlib`, `staticlib`, `pkgconfig`, `framework` and `xcframework`")]
+    #[error("Invalid library artifact type `{0}`. Valid artifacts are {valid}", valid = ExecutableArtifactType::valid_identifiers().iter().map(|ident| format!("`{ident}`")).join(", "))]
     InvalidLibraryArtifactType(String),
-    #[error("Invalid executable artifact type `{0}`. Valid artifacts are `executable` and `app`")]
+    #[error("Invalid executable artifact type `{0}`. Valid artifacts are {valid}", valid = LibraryArtifactType::valid_identifiers().iter().map(|ident| format!("`{ident}`")).join(", "))]
     InvalidExecutableArtifactType(String),
+    #[error("Invalid artifact type `{0}`. Valid artifacts are {valid}", valid = ArtifactType::valid_identifiers().iter().map(|ident| format!("`{ident}`")).join(", "))]
+    InvalidArtifactType(String),
 }
 
 pub type Result<Success> = std::result::Result<Success, BeaverError>;

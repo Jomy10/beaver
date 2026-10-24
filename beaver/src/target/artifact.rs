@@ -37,12 +37,56 @@ impl std::fmt::Display for ArtifactType {
     }
 }
 
+// see: https://users.rust-lang.org/t/concatenating-arrays/89538/8
+macro_rules! concat_arrays {
+    ( $a:expr, $b:expr $(,)?) => {{
+        const fn must_be_arrays_of_same_type<T, const A: usize, const B: usize>(_: &[T; A], _: &[T; B]) {}
+        const fn impossible_array<T, const X: usize, const C: usize>(_: &[T; X]) -> [T; C] { unreachable!() }
+        const fn force_array<T, const C: usize>(a: [T; C]) -> [T; C] { a }
+        #[repr(C)] // so they're in order
+        struct TwoArrays<T, const A: usize, const B: usize>([T; A], [T; B]);
+
+        let (a, b) = ($a, $b);
+        must_be_arrays_of_same_type(&a, &b);
+        if false {
+            impossible_array(&a)
+        } else if false {
+            impossible_array(&b)
+        } else {
+            // SAFETY: `repr(C)` means that the two array fields are contiguous,
+            // and they're arrays of the same type so the alignment is the same
+            // and thus there's no padding.  The `if false` branches force the
+            // type of this expression to be an array of the same type as the
+            // input, and `transmute` only compiles if they're the same length,
+            // so only the correct inferred output count `C` will work.
+            let c = unsafe { ::std::mem::transmute(TwoArrays(a, b)) };
+            force_array(c)
+        }
+    }}
+}
+
 impl ArtifactType {
-    pub fn as_str(&self) -> &'static str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             ArtifactType::Library(library_artifact_type) => library_artifact_type.as_str(),
             ArtifactType::Executable(executable_artifact_type) => executable_artifact_type.as_str(),
         }
+    }
+
+    pub fn parse(str: &str) -> crate::Result<ArtifactType> {
+        match LibraryArtifactType::parse(str)
+            .map(|aty| ArtifactType::Library(aty))
+            .or_else(|_| ExecutableArtifactType::parse(str)
+                .map(|aty| ArtifactType::Executable(aty))
+            )
+        {
+            Ok(v) => Ok(v),
+            Err(_) => Err(BeaverError::InvalidArtifactType(str.to_string())),
+        }
+    }
+
+    pub const fn valid_identifiers() -> [&'static str; 10] {
+        concat_arrays!(LibraryArtifactType::valid_identifiers(), ExecutableArtifactType::valid_identifiers())
     }
 }
 
@@ -88,7 +132,7 @@ impl std::fmt::Display for LibraryArtifactType {
 }
 
 impl LibraryArtifactType {
-    pub fn as_str(&self) -> &'static str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             LibraryArtifactType::Dynlib => "dynlib",
             LibraryArtifactType::Staticlib => "staticlib",
@@ -99,6 +143,20 @@ impl LibraryArtifactType {
             LibraryArtifactType::RustDynlib => "rust_dynlib",
             LibraryArtifactType::JSLib => "jslib",
         }
+    }
+
+    /// Valid identifiers for `parse`
+    pub const fn valid_identifiers() -> [&'static str; 8] {
+        [
+            LibraryArtifactType::Dynlib.as_str(),
+            LibraryArtifactType::Staticlib.as_str(),
+            LibraryArtifactType::PkgConfig.as_str(),
+            LibraryArtifactType::Framework.as_str(),
+            LibraryArtifactType::XCFramework.as_str(),
+            LibraryArtifactType::RustLib.as_str(),
+            LibraryArtifactType::RustDynlib.as_str(),
+            LibraryArtifactType::JSLib.as_str(),
+        ]
     }
 }
 
@@ -132,11 +190,18 @@ impl std::fmt::Display for ExecutableArtifactType {
 }
 
 impl ExecutableArtifactType {
-    pub fn as_str(&self) -> &'static str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             ExecutableArtifactType::Executable => "exe",
             ExecutableArtifactType::App => "app",
         }
+    }
+
+    pub const fn valid_identifiers() -> [&'static str; 2] {
+        [
+            ExecutableArtifactType::Executable.as_str(),
+            ExecutableArtifactType::App.as_str()
+        ]
     }
 }
 
