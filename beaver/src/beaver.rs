@@ -350,6 +350,16 @@ impl Beaver {
         return cb(project, target).map_err(|err| err.into());
     }
 
+        pub fn with_project_and_library<S, E: From<BeaverError>>(
+            &self,
+            target: &TargetRef,
+            cb: impl FnOnce(&AnyProject, &AnyLibrary) -> crate::Result<S>
+        ) -> crate::Result<S> {
+            self.with_project_and_target::<S, E>(target, |project, target| {
+                cb(project, target.as_library().expect("Tried to access a target as a library which is not a library"))
+            })
+        }
+
     pub fn with_project_and_target_mut<S, E: From<BeaverError>>(
         &self,
         target: &TargetRef,
@@ -752,20 +762,58 @@ impl Beaver {
 
         self.run_phase_hooks(Phase::Run, PhaseHookTrigger::Pre)?;
 
-        let artifact_file = self.with_project_and_target::<PathBuf, BeaverError>(&target, |project, target| {
+        let (artifact_file, dynamic_dependency_dirs) = self.with_project_and_target::<_, BeaverError>(&target, |project, target| {
             let artifact_type = ArtifactType::Executable(ExecutableArtifactType::Executable);
             if !target.artifacts().contains(&artifact_type) {
                 return Err(BeaverError::NoExecutableArtifact(target.name().to_string()));
             }
-            target.artifact_file(project.build_dir(), artifact_type, &self.target_triple)
+
+            // Collecting dynamic library paths this target depends on to append to DYLD_LIBRARY_PATH when running
+            #[cfg(target_os = "macos")]
+            let dyndep_paths = {
+                use itertools::Itertools;
+                target.unique_dependencies_and_languages(&self)?.0
+                    .filter_map(|dep| if let Dependency::Library(libdep) = dep {
+                        use crate::target::LibraryArtifactType;
+
+                        let is_dyn = match libdep.artifact {
+                            LibraryArtifactType::Dynlib | LibraryArtifactType::RustDynlib => true,
+                            LibraryArtifactType::Staticlib |
+                            LibraryArtifactType::PkgConfig |
+                            LibraryArtifactType::Framework |
+                            LibraryArtifactType::XCFramework |
+                            LibraryArtifactType::RustLib |
+                            LibraryArtifactType::JSLib => false
+                        };
+
+                        if is_dyn {
+                            let path = self.with_project_and_library::<_, BeaverError>(&libdep.target, |project, target| {
+                                std::path::absolute(target.artifact_file(project.build_dir(), ArtifactType::Library(libdep.artifact), &self.target_triple)
+                                    .unwrap()
+                                    .parent().unwrap()
+                                ).map_err(|err| err.into())
+                            }).unwrap();
+                            Some(path)
+                        } else {
+                            None
+                        }
+                    } else { None })
+                    .unique()
+                    .collect::<Vec<_>>()
+            };
+
+            #[cfg(not(target_os = "macos"))]
+            let dyndep_paths: Vec<PathBuf> = Vec::new();
+
+            Ok((
+                target.artifact_file(project.build_dir(), artifact_type, &self.target_triple)?,
+                dyndep_paths
+            ))
         })?;
 
         assert!(artifact_file.exists()); // should always be the case, otherwise it's a bug
 
-        let mut process = Command::new(artifact_file.as_path())
-            .args(args)
-            .current_dir(env::current_dir()?)
-            .spawn()?;
+        let mut process = Self::run_platform(artifact_file.as_path(), args, dynamic_dependency_dirs)?;
 
         let exit_status = process.wait()?;
         if !exit_status.success() {
@@ -774,6 +822,32 @@ impl Beaver {
             self.run_phase_hooks(Phase::Run, PhaseHookTrigger::Post)?;
             return Ok(());
         }
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    fn run_platform<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(file: impl AsRef<OsStr>, args: I, _dynamic_dependency_dirs: Vec<PathBuf>) -> crate::Result<std::process::Child> {
+        Command::new(artifact_file.as_path())
+            .args(args)
+            .current_dir(env::current_dir()?)
+            .spawn()
+            .map_err(|err| err.into())
+    }
+
+    #[cfg(target_os = "macos")]
+    fn run_platform<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(file: impl AsRef<OsStr>, args: I, dynamic_dependency_dirs: Vec<PathBuf>) -> crate::Result<std::process::Child> {
+        let dyld_lib_path = env::var("DYLD_LIBRARY_PATH").map(Some).unwrap_or(None);
+        let mut dyld_lib_paths = dynamic_dependency_dirs.iter().map(|p| p.as_path()).collect::<Vec<_>>();
+        if let Some(existing) = dyld_lib_path.as_ref() {
+            dyld_lib_paths.extend(env::split_paths_ref(existing).unwrap());
+        }
+        let dyld_lib_path = env::join_paths(dyld_lib_paths).map_err(|err| BeaverError::CouldNotConstructDyldLibPath(err))?;
+
+        Command::new(file.as_ref())
+            .env("DYLD_LIBRARY_PATH", dyld_lib_path)
+            .args(args)
+            .current_dir(env::current_dir()?)
+            .spawn()
+            .map_err(|err| err.into())
     }
 
     pub fn run_default<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(self: &Arc<Self>, args: I) -> crate::Result<()> {

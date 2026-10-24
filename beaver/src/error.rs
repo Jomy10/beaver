@@ -1,4 +1,5 @@
 use std::backtrace::BacktraceStatus;
+use std::env::JoinPathsError;
 use std::ffi::{CStr, OsString};
 use std::io;
 use std::path::PathBuf;
@@ -43,6 +44,8 @@ pub enum BeaverError {
     // Run error //
     #[error("No executable artifact found in target '{0}'")]
     NoExecutableArtifact(String),
+    #[error("Couldn't construct DYLD_LIBRARY_PATH: {0}")]
+    CouldNotConstructDyldLibPath(JoinPathsError),
 
     // Target Triple //
     #[error("Unknown target OS `{0}`")]

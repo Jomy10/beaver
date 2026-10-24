@@ -1,4 +1,4 @@
-#![feature(iter_intersperse, once_cell_try, error_generic_member_access)]
+#![feature(iter_intersperse, once_cell_try, error_generic_member_access, env_split_paths_ref)]
 #![cfg_attr(target_os = "wasi", feature(wasi_ext))]
 
 use utils::moduse;
