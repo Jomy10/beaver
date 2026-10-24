@@ -61,6 +61,16 @@ impl std::fmt::Display for TripleParseError {
     }
 }
 
+#[derive(Debug)]
+struct CliError(String);
+
+impl std::error::Error for CliError {}
+impl std::fmt::Display for CliError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
 fn main() {
     match _main() {
         Ok(_) => {},
@@ -209,7 +219,10 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
                 path.exists()
             });
             let Some(filename) = filename else {
-                panic!("Couldn't find a beaver script file in the current directory. Possible filenames are {}. Alternatively you can specify the filename using `--file <FILE>`", filenames.map(|filename| format!("'{}'", filename)).join(", "))
+                return Err(MainError { inner: Box::new(CliError(format!(
+                    "Couldn't find a beaver script file in the current directory. Possible filenames are {}. Alternatively you can specify the filename using `--file <FILE>`",
+                    filenames.map(|filename| format!("'{}'", filename)).join(", ")
+                ))) });
             };
             Path::new(filename)
         }

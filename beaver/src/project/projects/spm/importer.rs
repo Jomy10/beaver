@@ -107,9 +107,9 @@ pub fn import(
         std::path::absolute(base_dir)?,
         cache_dir,
         targets,
-        context.optimize_mode,
-        &context.target_triple
-    );
+        // context.optimize_mode,
+        // &context.target_triple
+    )?;
 
     context.add_project(project)
 }

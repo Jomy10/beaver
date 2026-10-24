@@ -176,6 +176,8 @@ pub enum BeaverError {
     SwiftManifestError(#[from] spm_manifest::Error),
     #[error("Not a swift package path: {0}")]
     NotASwiftPackagePath(PathBuf),
+    #[error("Could not retrieve bin path for project {0}: {1}")]
+    CouldNotRetrieveSwiftBinPath(String, String),
 
     // Meson //
     #[error("Meson failed to setup")]

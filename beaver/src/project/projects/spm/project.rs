@@ -1,4 +1,6 @@
+use std::ffi::OsStr;
 use std::ops::Deref;
+use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
@@ -8,8 +10,7 @@ use std::process::Command;
 
 use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep};
 use crate::traits::{self, AnyTarget, MutableProject, Target};
-use crate::triple::TripleExt;
-use crate::{tools, Beaver, BeaverError, OptimizationMode};
+use crate::{tools, Beaver, BeaverError};
 
 #[derive(Debug)]
 pub struct Project {
@@ -28,25 +29,41 @@ impl Project {
         base_dir: PathBuf,
         cache_dir: Arc<PathBuf>,
         targets: Vec<AnyTarget>,
-        opt_mode: OptimizationMode,
-        target_triple: &Triple
-    ) -> Self {
-        let build_dir = base_dir.join(".build")
-            .join(target_triple.swift_name())
-            .join(opt_mode.swift_name());
+        // opt_mode: OptimizationMode,
+        // target_triple: &Triple
+    ) -> crate::Result<Self> {
+        let output = Command::new(tools::swift.as_os_str())
+            .current_dir(&base_dir)
+            .args(["build", "--show-bin-path"])
+            .output()
+            .map_err(|err| BeaverError::CouldNotRetrieveSwiftBinPath(name.clone(), err.to_string()))?;
+
+        if output.status.code().unwrap() != 0 {
+            return Err(BeaverError::CouldNotRetrieveSwiftBinPath(name.clone(), format!("{} (exit status: {})", String::from_utf8(output.stderr)?, output.status)))
+        }
+
+        let build_dir = if cfg!(not(target_os = "windows")) {
+            let build_dir = OsStr::from_bytes(&output.stdout[..output.stdout.len() - 1 /* strip newline */]);
+            PathBuf::from(build_dir)
+        } else {
+            let build_dir = String::from_utf8(output.stdout)?;
+            let build_dir = build_dir.trim();
+            PathBuf::from(build_dir)
+        };
+
         let mut targets = targets;
         for i in 0..targets.len() {
             targets[i].set_id(i);
         }
 
-        Self {
+        Ok(Self {
             id: None,
             name,
             base_dir,
             build_dir,
             cache_dir,
             targets: RwLock::new(targets),
-        }
+        })
     }
 
     pub fn targets_mut<'a>(&'a self) -> crate::Result<std::sync::RwLockWriteGuard<'a, Vec<AnyTarget>>> {
