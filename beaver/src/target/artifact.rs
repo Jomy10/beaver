@@ -28,6 +28,24 @@ impl ArtifactType {
     }
 }
 
+impl std::fmt::Display for ArtifactType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ArtifactType::Library(library_artifact_type) => library_artifact_type.fmt(f),
+            ArtifactType::Executable(executable_artifact_type) => executable_artifact_type.fmt(f),
+        }
+    }
+}
+
+impl ArtifactType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ArtifactType::Library(library_artifact_type) => library_artifact_type.as_str(),
+            ArtifactType::Executable(executable_artifact_type) => executable_artifact_type.as_str(),
+        }
+    }
+}
+
 #[derive(Eq, PartialEq, Hash, Clone, Copy, Debug)]
 pub enum LibraryArtifactType {
     /// A dynamic library callable through C convention
@@ -65,15 +83,21 @@ impl TArtifactType for LibraryArtifactType {
 
 impl std::fmt::Display for LibraryArtifactType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl LibraryArtifactType {
+    pub fn as_str(&self) -> &'static str {
         match self {
-            LibraryArtifactType::Dynlib => f.write_str("dynlib"),
-            LibraryArtifactType::Staticlib => f.write_str("staticlib"),
-            LibraryArtifactType::PkgConfig => f.write_str("pkgconfig"),
-            LibraryArtifactType::Framework => f.write_str("framework"),
-            LibraryArtifactType::XCFramework => f.write_str("xcframework"),
-            LibraryArtifactType::RustLib => f.write_str("rlib"),
-            LibraryArtifactType::RustDynlib => f.write_str("rust_dynlib"),
-            LibraryArtifactType::JSLib => f.write_str("jslib"),
+            LibraryArtifactType::Dynlib => "dynlib",
+            LibraryArtifactType::Staticlib => "staticlib",
+            LibraryArtifactType::PkgConfig => "pkgconfig",
+            LibraryArtifactType::Framework => "framework",
+            LibraryArtifactType::XCFramework => "xcframework",
+            LibraryArtifactType::RustLib => "rlib",
+            LibraryArtifactType::RustDynlib => "rust_dynlib",
+            LibraryArtifactType::JSLib => "jslib",
         }
     }
 }
@@ -103,9 +127,15 @@ impl TArtifactType for ExecutableArtifactType {
 
 impl std::fmt::Display for ExecutableArtifactType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl ExecutableArtifactType {
+    pub fn as_str(&self) -> &'static str {
         match self {
-            ExecutableArtifactType::Executable => f.write_str("exe"),
-            ExecutableArtifactType::App => f.write_str("app"),
+            ExecutableArtifactType::Executable => "exe",
+            ExecutableArtifactType::App => "app",
         }
     }
 }

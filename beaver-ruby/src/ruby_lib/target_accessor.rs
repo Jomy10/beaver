@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::path::PathBuf;
 
 use beaver::BeaverError;
-use beaver::target::{Dependency, TargetRef};
+use beaver::target::{ArtifactType, Dependency, TargetRef};
 use beaver::traits::{Project, Target};
 use magnus::Module;
 
@@ -160,6 +160,29 @@ impl TargetAccessor {
             target.add_dependency(dep)
         }).map_err(|err| BeaverRubyError::from(err).into())
     }
+
+    fn artifacts(&self) -> Result<magnus::RHash, magnus::Error> {
+        let ruby = unsafe { magnus::Ruby::get_unchecked() };
+
+        let context = &CTX.get().unwrap().context();
+
+        let artifact_paths = context.with_project_and_target::<Vec<(ArtifactType, PathBuf)>, BeaverError>(&TargetRef { target: self.id, project: self.projid }, |project, target| {
+            target.artifacts().iter()
+                .map(|artifact| target.artifact_file(project.build_dir(), *artifact, context.target_triple())
+                    .map(|path| (*artifact, path))
+            ).collect::<Result<Vec<_>, BeaverError>>()
+        }).map_err(|err| Into::<magnus::Error>::into(BeaverRubyError::from(err)))?;
+
+        let artifact_paths = artifact_paths.iter().map(|(ty, path)| {
+            let path = path.to_str().ok_or_else(|| BeaverError::NonUTF8OsStr(path.as_os_str().to_os_string()));
+            path.map(|p| (ty, p))
+        }).collect::<Result<Vec<_>, BeaverError>>()
+            .map_err(|err| BeaverRubyError::from(err))?;
+
+        let hash = ruby.hash_from_iter(artifact_paths.iter().map(|(ty, path)| (ruby.to_symbol(ty.as_str()), ruby.str_new(*path))));
+
+        return Ok(hash);
+    }
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
@@ -169,6 +192,7 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     class.define_method("set_pkgconfig", magnus::method!(TargetAccessor::set_pkgconfig, 1))?;
     class.define_method("run_thread", magnus::method!(TargetAccessor::run_thread, 1))?;
     class.define_method("add_dependency", magnus::method!(TargetAccessor::add_dependency, 1))?;
+    class.define_method("artifacts", magnus::method!(TargetAccessor::artifacts, 0))?;
 
     return Ok(());
 }

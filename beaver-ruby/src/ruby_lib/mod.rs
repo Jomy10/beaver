@@ -1,7 +1,7 @@
 use crate::BeaverRubyError;
 
 mod project_accessor;
-mod target_accessor;
+pub(crate) mod target_accessor;
 mod project;
 mod target;
 pub(crate) mod dependency;
