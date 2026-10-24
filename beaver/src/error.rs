@@ -36,7 +36,7 @@ pub enum BeaverError {
     TargetsWriteError(String),
     #[error("Couldn't lock targets for reading: {0}")]
     TargetsReadError(String),
-    #[error("Cannot use `{0}` on target {1}")]
+    #[error("Cannot use `{0}` on {1}")]
     TargetOperationNotSupported(String, String),
 
     // Run error //

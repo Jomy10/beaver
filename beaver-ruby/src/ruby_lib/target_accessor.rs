@@ -160,24 +160,6 @@ impl TargetAccessor {
             target.add_dependency(dep)
         }).map_err(|err| BeaverRubyError::from(err).into())
     }
-
-    fn add_build_flags(&self, mut flags: Vec<String>) -> Result<(), magnus::Error> {
-        let context = &CTX.get().unwrap().context();
-
-        context.with_project_and_target_mut(&TargetRef { target: self.id, project: self.projid }, |_, target| {
-            match target {
-                beaver::traits::AnyTarget::Library(any_library) => match any_library {
-                    beaver::traits::AnyLibrary::SPM(library) => Ok(library.add_build_flags(&mut flags)),
-                    _ => Err(BeaverRubyError::MethodNotFound(target.target_kind().to_string(), "add_build_flags".to_string()))
-                },
-                _ => Err(BeaverRubyError::MethodNotFound(target.target_kind().to_string(), "add_build_flags".to_string()))
-            }
-        }).map_err(|err| BeaverRubyError::from(err).into())
-    }
-
-    fn add_build_flag(&self, flag: String) -> Result<(), magnus::Error> {
-        self.add_build_flags(vec![flag])
-    }
 }
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
@@ -187,8 +169,6 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     class.define_method("set_pkgconfig", magnus::method!(TargetAccessor::set_pkgconfig, 1))?;
     class.define_method("run_thread", magnus::method!(TargetAccessor::run_thread, 1))?;
     class.define_method("add_dependency", magnus::method!(TargetAccessor::add_dependency, 1))?;
-    class.define_method("add_build_flags", magnus::method!(TargetAccessor::add_build_flags, 1))?;
-    class.define_method("add_build_flag", magnus::method!(TargetAccessor::add_build_flag, 1))?;
 
     return Ok(());
 }

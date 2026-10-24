@@ -112,7 +112,7 @@ pub trait Target: Send + Sync + std::fmt::Debug {
     fn debug_attributes(&self) -> Vec<(&'static str, String)>;
 
     fn add_dependency(&mut self, _: Dependency) -> crate::Result<()> {
-        return Err(crate::BeaverError::TargetOperationNotSupported("add_dependency".to_string(), self.name().to_string()));
+        return Err(crate::BeaverError::TargetOperationNotSupported("add_dependency".to_string(), self.target_kind().to_string()));
     }
 }
 
