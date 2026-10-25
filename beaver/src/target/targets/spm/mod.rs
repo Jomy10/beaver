@@ -11,6 +11,8 @@ use crate::{Beaver, BeaverError};
 moduse!(library);
 moduse!(executable);
 
+// TODO: handle C/C++ std -> -Xcc
+
 fn register_target<ArtifactType: TArtifactType>(
     scope: &mut impl BackendBuilderScope,
     project_name: &str,

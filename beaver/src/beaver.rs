@@ -826,13 +826,16 @@ impl Beaver {
 
     #[cfg(not(target_os = "macos"))]
     fn run_platform<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(file: impl AsRef<OsStr>, args: I, _dynamic_dependency_dirs: Vec<PathBuf>) -> crate::Result<std::process::Child> {
-        Command::new(artifact_file.as_path())
+        Command::new(file.as_ref())
             .args(args)
             .current_dir(env::current_dir()?)
             .spawn()
             .map_err(|err| err.into())
     }
 
+    // TODO: provide debug command -> launch lldb
+    // macos:
+    // settings set target.env-vars DYLD_LIBRARY_PATH="plugins/c/.build/out/Products/Debug/"
     #[cfg(target_os = "macos")]
     fn run_platform<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(file: impl AsRef<OsStr>, args: I, dynamic_dependency_dirs: Vec<PathBuf>) -> crate::Result<std::process::Child> {
         let dyld_lib_path = env::var("DYLD_LIBRARY_PATH").map(Some).unwrap_or(None);

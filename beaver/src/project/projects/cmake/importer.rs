@@ -26,7 +26,19 @@ pub fn import(
     let base_dir_str = base_dir.to_string_lossy();
     let file_context = context.optimize_mode.cmake_name().to_string() + ":" + base_dir_str.as_ref();
 
+    let flags_context = format!("{}:cmake_flags", file_context);
+    let current_flags = cmake_flags.join(",");
+    let cmake_flags_changed = context.cache()?.get(&flags_context)?
+        .map(|old_flags| old_flags != current_flags)
+        .unwrap_or(true);
+    if cmake_flags_changed {
+        trace!("CMake flags changed");
+        context.cache()?.store(&flags_context, &current_flags)?;
+    }
+
     let build_dir = context.get_build_dir_for_external_build_system2(base_dir_str.as_ref())?;
+
+    trace!("CMake build dir = {}", build_dir.display());
 
     let build_dir_exists = build_dir.exists();
     if !build_dir_exists {
@@ -60,7 +72,7 @@ pub fn import(
     // Execute cmake
     let cache = context.cache()?;
     let cmake_files_changed = cache.files_changed_in_context(&file_context)?;
-    let reconfigure = cmake_files_changed || !build_dir_exists || !query_dir_exists || !reply_dir.exists();
+    let reconfigure = cmake_files_changed || !build_dir_exists || !query_dir_exists || !reply_dir.exists() || cmake_flags_changed;
     if reconfigure {
         trace!("Reconfiguring CMake project {:?}", base_dir);
 
