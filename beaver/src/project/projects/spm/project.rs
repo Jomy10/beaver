@@ -79,7 +79,7 @@ impl traits::Project for Project {
     fn set_id(&mut self, new_id: usize) -> crate::Result<()> {
         self.id = Some(new_id);
         for target in self.targets_mut()?.iter_mut() {
-            target.set_id(new_id);
+            target.set_project_id(new_id);
         }
         Ok(())
     }

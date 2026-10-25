@@ -56,7 +56,6 @@ impl Setting {
                 } else if let Some(std) = CxxStd::parse(std) {
                     Ok(Setting::CXXStd(std))
                 } else {
-                    println!("{}", std);
                     Err(SettingParseError::InvalidStd)
                 }
             },
