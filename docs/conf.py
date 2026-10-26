@@ -15,12 +15,18 @@ release = "4.2.0"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-  "sphinxcontrib.rubydomain",
+    "sphinxcontrib.rubydomain",
 ]
 
 templates_path = ["_templates"]
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", ".venv", "beaver.rb", "serve_debug.rb"]
-
+exclude_patterns = [
+    "_build",
+    "Thumbs.db",
+    ".DS_Store",
+    ".venv",
+    "beaver.rb",
+    "serve_debug.rb",
+]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -29,5 +35,18 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", ".venv", "beaver.rb", "s
 html_theme = "shibuya"
 html_static_path = ["_static"]
 html_theme_options = {
-  "accent_color": "red"
+    "accent_color": "red",
+    "nav_socials": [
+        {
+            "name": "CodeBerg",
+            "url": "https://codeberg.org/jomy10/beaver",
+            "icon": "simple-icons:codeberg",
+        }
+    ], "foot_socials": [
+        {
+            "name": "CodeBerg",
+            "url": "https://codeberg.org/jomy10/beaver",
+            "icon": "simple-icons:codeberg",
+        }
+    ],
 }
