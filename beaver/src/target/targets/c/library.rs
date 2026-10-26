@@ -40,6 +40,7 @@ pub struct Library {
     artifacts: Vec<LibraryArtifactType>,
     dependencies: Vec<Dependency>,
 
+    compiler: Option<String>,
     settings: Vec<crate::target::c::Setting>,
 }
 
@@ -58,7 +59,8 @@ impl Library {
             desc.linker_flags,
             desc.artifacts,
             desc.dependencies,
-            desc.settings
+            desc.settings,
+            desc.compiler
         )
     }
 
@@ -75,7 +77,8 @@ impl Library {
         linker_flags: Vec<String>,
         artifacts: DefaultArgument<Vec<LibraryArtifactType>>,
         dependencies: Vec<Dependency>,
-        settings: Vec<Setting>
+        settings: Vec<Setting>,
+        compiler: Option<String>
     ) -> crate::Result<Library> {
         target::utils::check_language(&[Language::C, Language::CXX, Language::OBJC, Language::OBJCXX], &language, "C")?;
 
@@ -102,6 +105,7 @@ impl Library {
             linker_flags,
             artifacts,
             dependencies,
+            compiler,
             settings
         })
     }
@@ -250,6 +254,10 @@ impl CTarget for Library {
 
     fn target_artifacts(&self) -> &[Self::TargetArtifactType] {
         &self.artifacts
+    }
+
+    fn override_compiler(&self) -> Option<&str> {
+        self.compiler.as_ref().map(|v| v.as_str())
     }
 
     fn settings(&self) -> &[Setting] {

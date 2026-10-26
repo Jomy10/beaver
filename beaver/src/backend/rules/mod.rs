@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
 
 use lazy_static::lazy_static;
 
@@ -5,6 +7,59 @@ use crate::tools;
 use crate::target::language;
 
 use super::{Pool, Rule};
+
+static mut NUM: u32 = 0;
+
+pub unsafe fn custom_cc_rule(name: &str) -> &'static Rule {
+    let path = utils::which(&name, utils::path().unwrap().iter(), utils::pathext().as_ref().map(|v| v.as_slice()))
+        .expect(&format!("No command named {}", name));
+    return CUSTOM_CC_RULES.with_borrow_mut(|rules| {
+        if let Some(rule) = rules.get(name) {
+            return *rule;
+        } else {
+            let rule_name = format!("custom_cc_rule_{}", unsafe { NUM });
+            unsafe { NUM += 1; }
+            rules.insert(name.to_string(), Box::leak(Box::new(Rule {
+                name: Box::leak(Box::new(rule_name.clone())),
+                options: vec![
+                    ("description", "custom cc $in > $out"),
+                    ("command", Box::leak(Box::new(format!("{:?} $cflags -MD -MF $out.d -c $in -o $out", path)))),
+                    ("deps", "gcc"),
+                    ("depfile", "$out.d")
+                ],
+                pool: None
+            })));
+            rules.get(name).unwrap()
+        }
+    });
+}
+
+pub unsafe fn custom_link_rule(name: &str) -> &'static Rule {
+    let path = utils::which(&name, utils::path().unwrap().iter(), utils::pathext().as_ref().map(|v| v.as_slice()))
+        .expect(&format!("No command named {}", name));
+    return CUSTOM_LINK_RULES.with_borrow_mut(|rules| {
+        if let Some(rule) = rules.get(name) {
+            return *rule;
+        } else {
+            let rule_name = format!("custom_link_rule_{}", unsafe { NUM });
+            unsafe { NUM += 1; }
+            rules.insert(name.to_string(), Box::leak(Box::new(Rule {
+                name: Box::leak(Box::new(rule_name.clone())),
+                options: vec![
+                    ("description", "custom linking $out"),
+                    ("command", Box::leak(Box::new(format!("{:?} $linkerFlags $in -o $out", path)))),
+                ],
+                pool: None
+            })));
+            rules.get(name).unwrap()
+        }
+    });
+}
+
+thread_local! {
+    static CUSTOM_CC_RULES: RefCell<HashMap<String, &'static Rule>> = RefCell::new(HashMap::new());
+    static CUSTOM_LINK_RULES: RefCell<HashMap<String, &'static Rule>> = RefCell::new(HashMap::new());
+}
 
 lazy_static! {
     static ref CC_CMD: String = format!("{} {} $cflags -MD -MF $out.d -c $in -o $out", tools::cc.display(), tools::cc_extra_args.map(|a| a.join(" ")).unwrap_or("".to_string()));
