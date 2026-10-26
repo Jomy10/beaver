@@ -33,6 +33,7 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
         let mut dependencies = Arg::<Vec<Dependency>>::new("dependencies");
         let mut settings = Arg::<Vec<c::Setting>>::new("settings");
         let mut compiler = Arg::<String>::new("compiler");
+        let mut linker = Arg::<String>::new("linker");
 
         args.foreach(|key: magnus::Symbol, value: magnus::Value| {
             match key.name()?.as_ref() {
@@ -96,6 +97,10 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
                     let value = String::from_string_or_sym(value)?;
                     compiler.set(value)?;
                 },
+                "linker" => {
+                    let value = String::from_string_or_sym(value)?;
+                    linker.set(value)?;
+                },
                 keyname => { return Err(BeaverRubyError::InvalidKey(keyname.to_string()).into()); }
             }
 
@@ -116,7 +121,8 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
             artifacts: artifacts.get_opt().unwrap_or(DefaultArgument::Default),
             dependencies: dependencies.get_opt().unwrap_or(Vec::new()),
             settings: settings.get_opt().unwrap_or(Vec::new()),
-            compiler: compiler.get_opt()
+            compiler: compiler.get_opt(),
+            linker: linker.get_opt(),
         })
     })
 }

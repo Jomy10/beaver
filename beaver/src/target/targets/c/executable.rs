@@ -36,8 +36,9 @@ pub struct Executable {
     artifacts: Vec<ExecutableArtifactType>,
     dependencies: Vec<Dependency>,
 
-    compiler: Option<String>,
     settings: Vec<Setting>,
+    compiler: Option<String>,
+    linker: Option<String>,
 }
 
 impl Executable {
@@ -56,7 +57,8 @@ impl Executable {
             desc.artifacts,
             desc.dependencies,
             desc.settings,
-            desc.compiler
+            desc.compiler,
+            desc.linker
         )
     }
 
@@ -74,7 +76,8 @@ impl Executable {
         artifacts: DefaultArgument<Vec<ExecutableArtifactType>>,
         dependencies: Vec<Dependency>,
         settings: Vec<Setting>,
-        compiler: Option<String>
+        compiler: Option<String>,
+        linker: Option<String>
     ) -> crate::Result<Executable> {
         target::utils::check_language(&[Language::C, Language::CXX, Language::OBJC, Language::OBJCXX], &language, "C")?;
 
@@ -97,8 +100,9 @@ impl Executable {
             linker_flags,
             artifacts,
             dependencies,
+            settings,
             compiler,
-            settings
+            linker
         })
     }
 }
@@ -237,6 +241,12 @@ impl CTarget for Executable {
 
     fn override_compiler(&self) -> Option<&str> {
         self.compiler.as_ref().map(|v| v.as_str())
+    }
+
+    fn override_linker(&self) -> Option<&str> {
+        self.linker.as_ref()
+            .map(|v| v.as_str())
+            .or(self.override_compiler())
     }
 
     /// All linker flags used by this executable when linking

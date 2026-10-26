@@ -24,7 +24,8 @@ pub struct TargetDescriptor<ArtifactType> {
     pub artifacts: DefaultArgument<Vec<ArtifactType>>,
     pub dependencies: Vec<Dependency>,
     pub settings: Vec<Setting>,
-    pub compiler: Option<String>
+    pub compiler: Option<String>,
+    pub linker: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -74,8 +75,8 @@ pub(crate) trait CTarget: traits::Target {
 
     fn target_artifacts(&self) -> &[Self::TargetArtifactType];
 
-
     fn override_compiler(&self) -> Option<&str>;
+    fn override_linker(&self) -> Option<&str>;
 
     // TODO: for libraries -> cache cflags and linker_flags
     /// Returns the cflags and files this target depends on
@@ -299,7 +300,10 @@ pub(crate) trait CTarget: traits::Target {
     }
 
     fn link_rule(&self) -> &'static Rule {
-        if let Some(compiler) = self.override_compiler() {
+        if let Some(linker) = self.override_linker() {
+            // not thread safe
+            return unsafe { rules::custom_link_rule(linker) };
+        } else if let Some(compiler) = self.override_compiler() {
             // not thread safe
             return unsafe { rules::custom_link_rule(compiler) };
         }
