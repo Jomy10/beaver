@@ -20,7 +20,7 @@ pub struct TargetDescriptor<ArtifactType> {
     pub sources: Files,
     pub cflags: Flags,
     pub headers: Headers,
-    pub linker_flags: Vec<String>,
+    pub linker_flags: Flags,
     pub artifacts: DefaultArgument<Vec<ArtifactType>>,
     pub dependencies: Vec<Dependency>,
     pub settings: Vec<Setting>,

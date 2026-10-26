@@ -31,7 +31,7 @@ pub struct Executable {
 
     cflags: Flags,
     headers: Headers,
-    linker_flags: Vec<String>,
+    linker_flags: Flags,
 
     artifacts: Vec<ExecutableArtifactType>,
     dependencies: Vec<Dependency>,
@@ -72,7 +72,7 @@ impl Executable {
         sources: Files,
         cflags: Flags,
         headers: Headers,
-        linker_flags: Vec<String>,
+        linker_flags: Flags,
         artifacts: DefaultArgument<Vec<ExecutableArtifactType>>,
         dependencies: Vec<Dependency>,
         settings: Vec<Setting>,
@@ -213,7 +213,7 @@ impl traits::Target for Executable {
             ("sources", format!("{:?}", self.sources.resolve().unwrap())),
             ("cflags", format!("{:?}", self.cflags)),
             ("headers", format!("{:?}", self.headers)),
-            ("linker_flags", self.linker_flags.join(", ")),
+            ("linker_flags", format!("{:?}", self.linker_flags)),
         ]
     }
 }
@@ -251,7 +251,8 @@ impl CTarget for Executable {
 
     /// All linker flags used by this executable when linking
     fn linker_flags<'a>(&self, dependencies: impl Iterator<Item = &'a Dependency>, languages: impl Iterator<Item = &'a Language>, triple: &Triple, context: &Beaver) -> crate::Result<(Vec<String>, Vec<PathBuf>)> {
-        let mut flags: Vec<String> = self.linker_flags.clone();
+        let mut flags: Vec<String> = self.linker_flags.public.clone();
+        flags.extend_from_slice(&self.linker_flags.private);
 
         let mut additional_files = Vec::new();
         for dependency in dependencies {

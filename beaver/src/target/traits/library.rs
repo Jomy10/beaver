@@ -48,6 +48,7 @@ pub trait Library: Target {
 
     fn library_artifacts(&self) -> Vec<LibraryArtifactType>;
 
+    /// These are passed to dependants. Does not include -L and -l for this library in particular
     fn additional_linker_flags(&self, project_build_dir: &Path, triple: &Triple, collect_into: &mut Vec<String>) -> crate::Result<()>;
 
     /// - Collects the public C flags of this target into `collect_into`.

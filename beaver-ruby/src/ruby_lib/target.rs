@@ -28,7 +28,7 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
         let mut sources = Arg::<Files>::new("sources");
         let mut cflags = Arg::<Flags>::new("cflags");
         let mut headers = Arg::<Headers>::new("headers");
-        let mut linker_flags = Arg::<Vec<String>>::new("linker_flags");
+        let mut linker_flags = Arg::<Flags>::new("linker_flags");
         let mut artifacts = Arg::<DefaultArgument<Vec<ArtifactType>>>::new("artifacts");
         let mut dependencies = Arg::<Vec<Dependency>>::new("dependencies");
         let mut settings = Arg::<Vec<c::Setting>>::new("settings");
@@ -78,7 +78,7 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
                     headers.set(value)?;
                 },
                 "linker_flags" | "ldflags" | "lflags" => {
-                    let flags = Vec::<String>::try_from_value(value)?;
+                    let flags = Flags::try_from_value(value)?;
                     linker_flags.set(flags)?;
                 },
                 "artifacts" => {
@@ -117,7 +117,7 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
             sources: sources.get()?,
             cflags: cflags.get_opt().unwrap_or(Flags::new(Vec::new(), Vec::new())),
             headers: headers.get_opt().unwrap_or(Headers::new(Vec::new(), Vec::new())),
-            linker_flags: linker_flags.get_opt().unwrap_or(Vec::new()),
+            linker_flags: linker_flags.get_opt().unwrap_or(Flags::new(Vec::new(), Vec::new())),
             artifacts: artifacts.get_opt().unwrap_or(DefaultArgument::Default),
             dependencies: dependencies.get_opt().unwrap_or(Vec::new()),
             settings: settings.get_opt().unwrap_or(Vec::new()),

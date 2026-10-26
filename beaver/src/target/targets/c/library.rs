@@ -35,7 +35,7 @@ pub struct Library {
 
     cflags: Flags,
     headers: Headers,
-    linker_flags: Vec<String>,
+    linker_flags: Flags,
 
     artifacts: Vec<LibraryArtifactType>,
     dependencies: Vec<Dependency>,
@@ -76,7 +76,7 @@ impl Library {
         sources: Files,
         cflags: Flags,
         headers: Headers,
-        linker_flags: Vec<String>,
+        linker_flags: Flags,
         artifacts: DefaultArgument<Vec<LibraryArtifactType>>,
         dependencies: Vec<Dependency>,
         settings: Vec<Setting>,
@@ -238,7 +238,7 @@ impl traits::Target for Library {
             ("sources", format!("{:?}", self.sources.resolve().unwrap())),
             ("cflags", format!("{:?}", self.cflags)),
             ("headers", format!("{:?}", self.headers)),
-            ("linker_flags", self.linker_flags.join(", ")),
+            ("linker_flags", format!("{:?}", self.linker_flags)),
         ]
     }
 }
@@ -278,7 +278,8 @@ impl CTarget for Library {
     fn linker_flags<'a>(&self, dependencies: impl Iterator<Item = &'a Dependency>, languages: impl Iterator<Item = &'a Language>, triple: &Triple, context: &Beaver) -> crate::Result<(Vec<String>, Vec<PathBuf>)> {
         let mut flags: Vec<String> = dynlib_linker_flags_for_os(&triple.operating_system)?.iter().map(|s| s.to_string()).collect();
 
-        flags.append(&mut self.linker_flags.clone());
+        flags.extend_from_slice(&self.linker_flags.public);
+        flags.extend_from_slice(&self.linker_flags.private);
 
         let mut additional_files = Vec::new();
         for dependency in dependencies {
@@ -421,7 +422,7 @@ impl traits::Library for Library {
     }
 
     fn additional_linker_flags<'a>(&'a self, _: &Path, _: &Triple, out: &mut Vec<String>) -> crate::Result<()> {
-        out.extend(self.linker_flags.iter().cloned()); // would like to have a Cow here, but that would require redesigning some parts, so maybe in another release
+        out.extend(self.linker_flags.public.iter().cloned()); // would like to have a Cow here, but that would require redesigning some parts, so maybe in another release
         Ok(())
     }
 
