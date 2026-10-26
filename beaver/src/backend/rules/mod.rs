@@ -110,7 +110,7 @@ lazy_static! {
         pool: None
     };
 
-    static ref LINK_CMD: String = format!("{} $linkerFlags $in -o $out", tools::cc.display());
+    static ref LINK_CMD: String = format!("{} {} $linkerFlags $in -o $out", tools::link.display(), tools::link_extra_args.map(|a| a.join(" ")).unwrap_or("".to_string()));
     pub static ref LINK: Rule = Rule {
         name: "link",
         options: vec![
@@ -120,7 +120,7 @@ lazy_static! {
         pool: None
     };
 
-    static ref LINKXX_CMD: String = format!("{} $linkerFlags $in -o $out", tools::cxx.display());
+    static ref LINKXX_CMD: String = format!("{} {} $linkerFlags $in -o $out", tools::linkxx.display(), tools::linkxx_extra_args.map(|a| a.join(" ")).unwrap_or("".to_string()));
     pub static ref LINKXX: Rule = Rule {
         name: "linkxx",
         options: vec![

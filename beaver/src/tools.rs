@@ -15,21 +15,29 @@ struct Tool<'a> {
 }
 
 impl<'a> Tool<'a> {
+    fn path_from_env_var(env_var: &str) -> Option<PathBuf> {
+        if let Some(path) = std::env::var_os(env_var) {
+            let pathbuf = PathBuf::from(&path);
+            if pathbuf.exists() {
+                return Some(pathbuf);
+            } else {
+                match path.to_str() {
+                    Some(path) => match utils::which(path, env_path.iter(), env_pathext.as_ref().map(|v| v.as_slice())) {
+                        Some(path) => return Some(path),
+                        None => warn!("Environment variable `{}` does not point to a valid path", env_var)
+                    },
+                    None => warn!("Environment variable `{}` contains an invalid UTF-8 string", env_var)
+                }
+            }
+        }
+
+        return None;
+    }
+
     fn find(&self) -> PathBuf {
         if let Some(env) = self.env {
-            if let Some(path) = std::env::var_os(env) {
-                let pathbuf = PathBuf::from(&path);
-                if pathbuf.exists() {
-                    return pathbuf;
-                } else {
-                    match path.to_str() {
-                        Some(path) => match utils::which(path, env_path.iter(), env_pathext.as_ref().map(|v| v.as_slice())) {
-                            Some(path) => return path,
-                            None => warn!("Environment variable `{}` does not point to a valid path", env)
-                        },
-                        None => warn!("Environment variable `{}` contains an invalid UTF-8 string", env)
-                    }
-                }
+            if let Some(path) = Self::path_from_env_var(env) {
+                return path;
             }
         }
 
@@ -86,11 +94,25 @@ lazy_static! {
     };
     pub static ref cc_extra_args: Option<&'static [&'static str]> = if cc.file_stem().unwrap() == "zig" { Some(&["cc"]) } else { None };
 
+    pub static ref link: PathBuf = if let Some(path) = Tool::path_from_env_var("LINKER") {
+        path
+    } else {
+        cc.to_path_buf()
+    };
+    pub static ref link_extra_args: Option<&'static [&'static str]> = if link.file_stem().unwrap() == "zig" { Some(&["cc"]) } else { None };
+
     pub static ref cxx: PathBuf = match target_triple().operating_system {
         OperatingSystem::Emscripten => Tool { name: "em++", ..Default::default() }.find(),
         _ => Tool { name: "cxx", aliases: Some(&["clang++", "g++", "zig", "icpx", "icpc"]), env: Some("CXX") }.find()
     };
     pub static ref cxx_extra_args: Option<&'static [&'static str]> = if cc.file_stem().unwrap() == "zig" { Some(&["c++"]) } else { None };
+
+    pub static ref linkxx: PathBuf = if let Some(path) = Tool::path_from_env_var("LINKER") {
+        path
+    } else {
+        cxx.to_path_buf()
+    };
+    pub static ref linkxx_extra_args: Option<&'static [&'static str]> = if link.file_stem().unwrap() == "zig" { Some(&["c++"]) } else { None };
 
     pub static ref objc: &'static Path = cc.as_path();
     pub static ref objcxx: &'static Path = cxx.as_path();
@@ -104,7 +126,7 @@ lazy_static! {
 
     pub static ref pkgconf: PathBuf = Tool { name: "pkgconf", aliases: Some(&["pkg-config", "pkgconfig", "pkg-conf"]), env: Some("PKG_CONFIG") }.find();
 
-    pub static ref sh: PathBuf = Tool { name: "sh", aliases: Some(&["zsh", "bash", "fish"]), env: None }.find();
+    pub static ref sh: PathBuf = Tool { name: "sh", aliases: Some(&["zsh", "bash", "fish", "csh"]), env: Some("SHELL") }.find();
 
     pub static ref cmake: PathBuf = Tool { name: "cmake", ..Default::default() }.find();
 
