@@ -139,12 +139,20 @@ fn import_meson(args: &[magnus::Value]) -> Result<(), magnus::Error> {
     Ok(())
 }
 
+fn set_current_project(proj: String) -> Result<(), magnus::Error> {
+    let context = &CTX.get().unwrap().context();
+    context.set_current_project(&proj)
+        .map_err(|err| BeaverRubyError::from(err).into())
+}
+
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     ruby.define_global_function("Project", magnus::function!(define_project, 1))?;
     ruby.define_global_function("import_cmake", magnus::function!(import_cmake, -1))?;
     ruby.define_global_function("import_cargo", magnus::function!(import_cargo, 1))?;
     ruby.define_global_function("import_spm", magnus::function!(import_spm, 1))?;
     ruby.define_global_function("import_meson", magnus::function!(import_meson, -1))?;
+
+    ruby.define_global_function("set_current_project", magnus::function!(set_current_project, 1))?;
 
     Ok(())
 }

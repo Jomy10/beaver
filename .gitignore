@@ -6,3 +6,4 @@ docs/_build
 docs/.venv
 
 llcheck.sh
+lloutput.md

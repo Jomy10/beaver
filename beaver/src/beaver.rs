@@ -150,6 +150,16 @@ impl Beaver {
         self.enable_color
     }
 
+    pub fn set_current_project(&self, projname: &str) -> crate::Result<()> {
+        let Some(id) = self.projects()?.iter()
+            .find_map(|proj| if proj.name() == projname { Some(proj.id().unwrap()) } else { None })
+        else {
+            return Err(BeaverError::NoProjectNamed(projname.to_string()));
+        };
+        self.set_current_project_index(id);
+        return Ok(());
+    }
+
     fn set_current_project_index(&self, idx: usize) {
         self.project_index.store(idx as isize, Ordering::SeqCst);
     }
