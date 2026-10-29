@@ -23,8 +23,9 @@ fn register_target<ArtifactType: TArtifactType>(
     cache_dir: &Arc<PathBuf>,
     objc_header_path: Option<&Path>,
     extra_dependencies: &Vec<Dependency>,
+    extra_swift_flags: &Vec<String>,
     ctx: &Beaver,
-    triple: &Triple
+    triple: &Triple,
 ) -> crate::Result<String> {
     let Some(package_dir) = project_base_dir.to_str() else {
         return Err(BeaverError::NonUTF8OsStr(project_base_dir.as_os_str().to_os_string()));
@@ -36,7 +37,7 @@ fn register_target<ArtifactType: TArtifactType>(
 
     let step_name = format!("{}$:{}", project_name, target_name);
 
-    let mut extra_flags: Vec<String> = Vec::new();
+    let mut extra_flags: Vec<String> = extra_swift_flags.clone();
     for dep in extra_dependencies {
         let mut linker_flags = Vec::new();
         let mut extra_files = Vec::new();

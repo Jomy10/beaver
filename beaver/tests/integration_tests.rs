@@ -32,12 +32,14 @@ fn adding() {
         sources: Files::from_pat("src/**/*.rs", project.base_dir()).unwrap(),
         cflags: Flags::new(vec![String::from("-DDEBUG")], Vec::new()),
         headers: Headers::new(vec![PathBuf::from_str("include").unwrap()], Vec::new()),
-        linker_flags: Vec::new(),
+        linker_flags: Flags::new(Vec::new(), Vec::new()),
         artifacts: DefaultArgument::Some(Vec::<LibraryArtifactType>::from([LibraryArtifactType::Staticlib])),
         dependencies: Vec::<Dependency>::new(),
-        settings: Vec::new()
+        settings: Vec::new(),
+        compiler: None,
+        linker: None
     }).unwrap();
-    project.add_target(AnyTarget::Library(target.into())).unwrap();
+    project.add_target(&beaver, AnyTarget::Library(target.into())).unwrap();
     beaver.add_project(project).unwrap();
 
     println!("{beaver}");

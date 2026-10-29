@@ -136,7 +136,7 @@ fn def_c_library(args: magnus::RHash) -> Result<TargetAccessor, magnus::Error> {
     context.with_current_project_mut(|project| {
         match project.as_mutable() {
             Some(mutproject) => {
-                let target_id = mutproject.add_target(AnyTarget::Library(library))?;
+                let target_id = mutproject.add_target(context, AnyTarget::Library(library))?;
                 let target_accessor = TargetAccessor {
                     projid: project.id().unwrap(),
                     id: target_id,
@@ -157,7 +157,7 @@ fn def_c_executable(args: magnus::RHash) -> Result<TargetAccessor, magnus::Error
     context.with_current_project_mut(|project| {
         match project.as_mutable() {
             Some(mutproject) => {
-                let target_id = mutproject.add_target(AnyTarget::Executable(exe))?;
+                let target_id = mutproject.add_target(context, AnyTarget::Executable(exe))?;
                 let target_accessor = TargetAccessor {
                     projid: project.id().unwrap(),
                     id: target_id
@@ -272,7 +272,7 @@ fn def_custom_library(args: magnus::RHash) -> Result<TargetAccessor, magnus::Err
         // context.with_current_project_mut(|project| {
         match project.as_mutable() {
             Some(mutproject) => {
-                let target_id = mutproject.add_target(AnyTarget::Library(library))?;
+                let target_id = mutproject.add_target(context, AnyTarget::Library(library))?;
                 let target_accessor = TargetAccessor {
                     projid: project.id().unwrap(),
                     id: target_id

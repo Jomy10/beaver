@@ -183,6 +183,14 @@ impl traits::Target for Executable {
     fn debug_attributes(&self) -> Vec<(&'static str, String)> {
         vec![]
     }
+
+    fn add_cflags(&mut self, _cflags: &[String]) -> crate::Result<()> {
+        unimplemented!()
+    }
+
+    fn add_linker_flags(&mut self, _linker_flags: &[String]) -> crate::Result<()> {
+        unimplemented!()
+    }
 }
 
 impl traits::Executable for Executable {

@@ -21,6 +21,8 @@ pub struct Executable {
     cache_dir: Arc<PathBuf>,
 
     extra_dependencies: Vec<Dependency>,
+
+    private_swift_flags: Vec<String>
 }
 
 impl Executable {
@@ -30,7 +32,8 @@ impl Executable {
             id: None,
             name,
             cache_dir,
-            extra_dependencies: Vec::new()
+            extra_dependencies: Vec::new(),
+            private_swift_flags: Vec::new()
         }
     }
 }
@@ -131,6 +134,7 @@ impl traits::Target for Executable {
             &self.cache_dir,
             None,
             &self.extra_dependencies,
+            &self.private_swift_flags,
             context,
             triple
         )
@@ -143,6 +147,28 @@ impl traits::Target for Executable {
 
     fn add_dependency(&mut self, dependency: Dependency) -> crate::Result<()> {
         self.extra_dependencies.push(dependency);
+        Ok(())
+    }
+
+    fn add_cflags(&mut self, cflags: &[String]) -> crate::Result<()> {
+        if cflags.len() > 0 {
+            self.private_swift_flags.push("-Xcc".to_string());
+            self.private_swift_flags.extend(cflags.into_iter()
+                .map(|str| str.clone())
+                .intersperse("-Xcc".to_string())
+            );
+        }
+        Ok(())
+    }
+
+    fn add_linker_flags(&mut self, linker_flags: &[String]) -> crate::Result<()> {
+        if linker_flags.len() > 0 {
+            self.private_swift_flags.push("-Xlinker".to_string());
+            self.private_swift_flags.extend(linker_flags.into_iter()
+                .map(|str| str.clone())
+                .intersperse("-Xlinker".to_string())
+            );
+        }
         Ok(())
     }
 }

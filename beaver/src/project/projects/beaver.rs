@@ -158,7 +158,7 @@ impl project::traits::Project for Project {
 }
 
 impl project::traits::MutableProject for Project {
-    fn add_target(&self, target: AnyTarget) -> crate::Result<usize> {
+    fn add_target_raw(&self, target: AnyTarget) -> crate::Result<usize> {
         let mut target = target;
         let mut targets = self.targets_mut()?;
         let target_id = targets.len();

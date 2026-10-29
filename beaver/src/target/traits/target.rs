@@ -116,6 +116,12 @@ pub trait Target: Send + Sync + std::fmt::Debug {
     fn add_dependency(&mut self, _: Dependency) -> crate::Result<()> {
         return Err(crate::BeaverError::TargetOperationNotSupported("add_dependency".to_string(), self.target_kind().to_string()));
     }
+
+    /// Adds cflags to the target's private cflags
+    fn add_cflags(&mut self, cflags: &[String]) -> crate::Result<()>;
+
+    /// Adds linker flags to the target's private linker flags
+    fn add_linker_flags(&mut self, linker_flags: &[String]) -> crate::Result<()>;
 }
 
 fn collect_dependency_and_languages(dep: &Dependency, into_set: &mut HashSet<u64>, deps: &mut Vec<Dependency>, into_language_set: &mut HashSet<Language>, context: &Beaver) -> crate::Result<()> {

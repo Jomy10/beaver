@@ -9,6 +9,7 @@ use crate::{BeaverRubyError, CTX};
 use super::project_accessor::ProjectAccessor;
 use super::Arg;
 
+// TODO: allow first argument to be string (name)
 fn define_project(ruby: &magnus::Ruby, args: magnus::RHash) -> Result<ProjectAccessor, magnus::Error> {
     let context = &CTX.get().unwrap().context();
 

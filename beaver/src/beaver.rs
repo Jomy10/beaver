@@ -96,6 +96,9 @@ pub struct Beaver {
     /// Indicates wether the symlink to the last built target has been created
     symlink_created: AtomicBool,
 
+    pub(crate) global_cflags: RwLock<Vec<String>>,
+    pub(crate) global_linker_flags: RwLock<Vec<String>>,
+
     pub(crate) comm_socket: CommunicationSocket,
 }
 
@@ -131,7 +134,9 @@ impl Beaver {
             post_phase_hooks_clean: Mutex::new(PhaseHooks(Vec::new())),
             commands: Mutex::new(Commands(HashMap::new())),
             symlink_created: AtomicBool::new(false),
-            comm_socket: CommunicationSocket(OnceLock::new())
+            global_cflags: RwLock::new(Vec::new()),
+            global_linker_flags: RwLock::new(Vec::new()),
+            comm_socket: CommunicationSocket(OnceLock::new()),
             // lock_builddir: AtomicBool::new(false),
             // build_file_create_result: OnceLock::new()
         })
@@ -1038,6 +1043,30 @@ impl Beaver {
         return Ok(guard.0.contains_key(name));
     }
 
+    pub fn add_global_cflags(&self, cflags: impl Iterator<Item = String>) -> crate::Result<()> {
+        self.global_cflags.write()
+            .map_err(|err| BeaverError::LockError(err.to_string()))?
+            .extend(cflags);
+        Ok(())
+    }
+
+    pub fn global_cflags(&self) -> crate::Result<RwLockReadGuard<'_, Vec<String>>> {
+        self.global_cflags.read()
+            .map_err(|err| BeaverError::LockError(err.to_string()))
+    }
+
+    pub fn add_global_linker_flags(&self, cflags: impl Iterator<Item = String>) -> crate::Result<()> {
+        self.global_linker_flags.write()
+            .map_err(|err| BeaverError::LockError(err.to_string()))?
+            .extend(cflags);
+        Ok(())
+    }
+
+    pub fn global_linker_flags(&self) -> crate::Result<RwLockReadGuard<'_, Vec<String>>> {
+        self.global_linker_flags.read()
+            .map_err(|err| BeaverError::LockError(err.to_string()))
+    }
+
     /// Used by the CLI
     pub fn fmt_debug(&self, str: &mut String) -> crate::Result<()> {
         let current_project_index = self.current_project_index();
@@ -1183,7 +1212,6 @@ impl Beaver {
 
         Ok(())
     }
-
 }
 
 impl std::fmt::Display for Beaver {

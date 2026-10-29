@@ -94,7 +94,13 @@ pub trait Project: Send + Sync + std::fmt::Debug {
 }
 
 pub trait MutableProject {
-    fn add_target(&self, target: AnyTarget) -> crate::Result<usize>;
+    fn add_target(&self, context: &Beaver, mut target: AnyTarget) -> crate::Result<usize> {
+        target.add_cflags(&context.global_cflags()?)?;
+        target.add_linker_flags(&context.global_linker_flags()?)?;
+        return self.add_target_raw(target)
+    }
+
+    fn add_target_raw(&self, target: AnyTarget) -> crate::Result<usize>;
 }
 
 #[enum_dispatch(Project)]

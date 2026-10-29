@@ -241,6 +241,16 @@ impl traits::Target for Library {
             ("linker_flags", format!("{:?}", self.linker_flags)),
         ]
     }
+
+    fn add_cflags(&mut self, cflags: &[String]) -> crate::Result<()> {
+        self.cflags.private.extend_from_slice(cflags);
+        Ok(())
+    }
+
+    fn add_linker_flags(&mut self, linker_flags: &[String]) -> crate::Result<()> {
+        self.linker_flags.private.extend_from_slice(linker_flags);
+        Ok(())
+    }
 }
 
 impl CTarget for Library {
