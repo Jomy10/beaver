@@ -7,6 +7,8 @@ use std::thread::ThreadId;
 
 use beaver::Beaver;
 use log::*;
+use magnus::Module;
+use magnus::value::ReprValue;
 
 use crate::{ruby_lib, BeaverRubyError};
 
@@ -159,4 +161,15 @@ pub unsafe fn execute_script<P: AsRef<Path>>(script_file: P, args: LinkedList<St
     }))?;
 
     return Ok(CTX.get().unwrap().clone());
+}
+
+pub fn flush(ctx: &BeaverRubyContext) -> crate::Result<()> {
+    ctx.block_execute_on(Box::new(move || {
+        let ruby = magnus::Ruby::get()?;
+        for name in ["STDOUT", "STDERR"] {
+            let io: magnus::Value = ruby.class_object().const_get(name)?;
+            let _: magnus::Value = io.funcall("flush", ())?;
+        }
+        Ok(())
+    }))
 }

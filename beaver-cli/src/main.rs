@@ -272,7 +272,25 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
     let beaver_weak = Arc::downgrade(&beaver);
     let ctx = unsafe { beaver_ruby::execute_script(script_file, script_args, &beaver_weak, subcommand)? };
 
-    if *debug {
+    let res = run_cli_comand(beaver, *debug, matches, subcommand_match, ctx.clone());
+
+    beaver_ruby::flush(ctx.as_ref())?;
+    drop(ctx);
+
+    let beaver = res?;
+    drop(beaver);
+
+    Ok(())
+}
+
+fn run_cli_comand(
+    beaver: Arc<Beaver>,
+    debug: bool,
+    matches: &ArgMatches,
+    subcommand_match: Option<(&str, &ArgMatches)>,
+    ctx: Arc<beaver_ruby::BeaverRubyContext<'static>>
+) -> Result<Beaver, MainError> {
+    if debug {
         let mut str = String::new();
         beaver.fmt_debug(&mut str)?;
         eprintln!("{}", str);
@@ -361,10 +379,8 @@ fn run_cli(matches: &ArgMatches) -> Result<(), MainError> {
         Ok(beaver) => beaver,
         Err(_) => panic!("Couldn't close beaver gracefully: more than one strong reference remains")
     };
-    drop(beaver);
-    drop(ctx);
 
-    Ok(())
+    Ok(beaver)
 }
 
 struct StdoutWrapper<'a>(std::io::StdoutLock<'a>);
