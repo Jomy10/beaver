@@ -4,11 +4,11 @@ use std::path::PathBuf;
 use beaver::target::c::{CLangStd, CStd, CxxStd};
 use beaver::target::custom::BuildCommand;
 use beaver::target::parameters::{DefaultArgument, Files, Flags, Headers};
-use beaver::target::{self, c, Dependency, ExecutableArtifactType, Language, LibraryArtifactType, TArtifactType, Version};
+use beaver::target::{self, Dependency, ExecutableArtifactType, Language, LibraryArtifactType, TArtifactType, Version};
 use beaver::traits::{AnyExecutable, AnyLibrary, AnyTarget, Project};
 use beaver::{Beaver, BeaverError};
-use log::warn;
 use magnus::Object;
+use magnus::value::ReprValue;
 use url::Url;
 
 use crate::ext::{MagnusArtifactConvertExt, MagnusConvertContextExt, MagnusConvertExt, MagnusFilesConvertExt, MagnusStringConvertExt};
@@ -33,10 +33,10 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
         let mut linker_flags = Arg::<Flags>::new("linker_flags");
         let mut artifacts = Arg::<DefaultArgument<Vec<ArtifactType>>>::new("artifacts");
         let mut dependencies = Arg::<Vec<Dependency>>::new("dependencies");
-        let mut settings = Arg::<Vec<c::Setting>>::new("settings");
         let mut compiler = Arg::<String>::new("compiler");
         let mut linker = Arg::<String>::new("linker");
         let mut cstd = Arg::<CLangStd>::new("std");
+        let mut objc_arc = Arg::<bool>::new("arc");
 
         args.foreach(|key: magnus::Symbol, value: magnus::Value| {
             match key.name()?.as_ref() {
@@ -92,11 +92,6 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
                     let value = Vec::<Dependency>::try_from_value(value, context)?;
                     dependencies.set(value)?;
                 },
-                "settings" => {
-                    warn!("Settings is deprected");
-                    let value = Vec::<c::Setting>::try_from_value(value)?;
-                    settings.set(value)?;
-                },
                 "compiler" => {
                     let value = String::from_string_or_sym(value)?;
                     compiler.set(value)?;
@@ -114,6 +109,10 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
                             None => return Err(BeaverRubyError::InvalidStandard(value, language.clone().get_opt()).into())
                     };
                     cstd.set(value)?;
+                },
+                "arc" => {
+                    let value = value.to_bool();
+                    objc_arc.set(value)?;
                 },
                 keyname => { return Err(BeaverRubyError::InvalidKey(keyname.to_string()).into()); }
             }
@@ -134,8 +133,8 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
             linker_flags: linker_flags.get_opt().unwrap_or(Flags::new(Vec::new(), Vec::new())),
             artifacts: artifacts.get_opt().unwrap_or(DefaultArgument::Default),
             dependencies: dependencies.get_opt().unwrap_or(Vec::new()),
-            settings: settings.get_opt().unwrap_or(Vec::new()),
             std: cstd.get_opt(),
+            objc_arc: objc_arc.get_opt().unwrap_or(false),
             compiler: compiler.get_opt(),
             linker: linker.get_opt(),
         })

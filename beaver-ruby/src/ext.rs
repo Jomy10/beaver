@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use beaver::target::custom::BuildCommand;
 use beaver::target::parameters::{Files, Flags, Headers};
-use beaver::target::{Dependency, Language, LazyLibraryArtifactType, LibraryArtifactType, LibraryTargetDependency, TArtifactType, Version, c};
+use beaver::target::{Dependency, Language, LazyLibraryArtifactType, LibraryArtifactType, LibraryTargetDependency, TArtifactType, Version};
 use beaver::{Beaver, BeaverError};
 use magnus::value::ReprValue;
 use utils::UnsafeSendable;
@@ -125,21 +125,6 @@ impl MagnusConvertExt for Language {
             return Err(BeaverRubyError::ArgumentError(format!("Invalid language {}", value)).into());
         };
         return Ok(langval);
-    }
-}
-
-impl MagnusConvertExt for c::Setting {
-    fn try_from_value(value: magnus::Value) -> Result<Self, magnus::Error> where Self: Sized {
-        let setval = if let Some(value) = magnus::RString::from_value(value) {
-            c::Setting::parse(unsafe { value.as_str()? })
-                .map_err(|err| BeaverError::CSettingParseError(value.to_string().unwrap(), err))
-        } else if let Some(sym) = magnus::Symbol::from_value(value) {
-            c::Setting::parse(sym.name()?.as_ref())
-                .map_err(|err| BeaverError::CSettingParseError(sym.name().unwrap().to_string(), err))
-        } else {
-            return Err(BeaverRubyError::IncompatibleType(value, "String or Symbol").into());
-        };
-        return setval.map_err(|err| BeaverRubyError::from(err).into());
     }
 }
 

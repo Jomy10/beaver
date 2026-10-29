@@ -14,7 +14,7 @@ use crate::target::{self, traits, ArtifactType, Dependency, ExecutableArtifactTy
 use crate::traits::TargetType;
 use crate::{Beaver, BeaverError};
 
-use super::{CTarget, Setting, TargetDescriptor};
+use super::{CTarget, TargetDescriptor};
 
 #[derive(Debug)]
 pub struct Executable {
@@ -37,8 +37,8 @@ pub struct Executable {
     artifacts: Vec<ExecutableArtifactType>,
     dependencies: Vec<Dependency>,
 
-    settings: Vec<Setting>,
     std: Option<CLangStd>,
+    objc_arc: bool,
     compiler: Option<String>,
     linker: Option<String>,
 }
@@ -58,8 +58,8 @@ impl Executable {
             desc.linker_flags,
             desc.artifacts,
             desc.dependencies,
-            desc.settings,
             desc.std,
+            desc.objc_arc,
             desc.compiler,
             desc.linker
         )
@@ -78,8 +78,8 @@ impl Executable {
         linker_flags: Flags,
         artifacts: DefaultArgument<Vec<ExecutableArtifactType>>,
         dependencies: Vec<Dependency>,
-        settings: Vec<Setting>,
         std: Option<CLangStd>,
+        objc_arc: bool,
         compiler: Option<String>,
         linker: Option<String>
     ) -> crate::Result<Executable> {
@@ -115,8 +115,8 @@ impl Executable {
             linker_flags,
             artifacts,
             dependencies,
-            settings,
             std,
+            objc_arc,
             compiler,
             linker
         })
@@ -261,8 +261,8 @@ impl CTarget for Executable {
         &self.artifacts
     }
 
-    fn settings(&self) -> &[Setting] {
-        &self.settings
+    fn objc_arc(&self) -> bool {
+        self.objc_arc && (self.language == Language::OBJC || self.language == Language::OBJCXX)
     }
 
     fn override_compiler(&self) -> Option<&str> {
@@ -291,7 +291,7 @@ impl CTarget for Executable {
 
         flags.extend(context.optimize_mode.linker_flags().iter().map(|str| str.to_string()));
 
-        if (self.language == Language::OBJC || self.language == Language::OBJCXX) && self.settings.contains(&Setting::ObjCArc) {
+        if self.objc_arc() {
             flags.push("-fobjc-arc".to_string());
         }
 

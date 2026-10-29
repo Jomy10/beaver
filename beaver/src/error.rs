@@ -12,7 +12,7 @@ use target_lexicon::OperatingSystem;
 use utils::str::OsStrConversionError;
 
 use crate::target::c::CLangStd;
-use crate::target::{self, ArtifactType, ExecutableArtifactType, Language, LibraryArtifactType};
+use crate::target::{ArtifactType, ExecutableArtifactType, Language, LibraryArtifactType};
 
 #[derive(thiserror::Error)]
 pub enum BeaverError {
@@ -150,9 +150,6 @@ pub enum BeaverError {
 
     #[error("Invalid standard {0:?} for {1:?} target")]
     InvalidStandard(CLangStd, Language),
-
-    #[error("Error while parsing C setting '{}': {:?}", .0, .1)]
-    CSettingParseError(String, target::c::SettingParseError),
 
     // Custom //
     #[error("Invalid pipe command {:x?}", .0)]

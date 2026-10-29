@@ -22,49 +22,10 @@ pub struct TargetDescriptor<ArtifactType> {
     pub linker_flags: Flags,
     pub artifacts: DefaultArgument<Vec<ArtifactType>>,
     pub dependencies: Vec<Dependency>,
-    #[deprecated]
-    pub settings: Vec<Setting>,
     pub std: Option<CLangStd>,
+    pub objc_arc: bool,
     pub compiler: Option<String>,
     pub linker: Option<String>,
-}
-
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum Setting {
-    ObjCArc,
-
-    CStd(CStd),
-    CXXStd(CxxStd),
-}
-
-#[derive(Debug)]
-pub enum SettingParseError {
-    NotParseable,
-    ExpectedValue,
-    InvalidStd
-}
-
-impl Setting {
-    pub fn parse(str: &str) -> Result<Setting, SettingParseError> {
-        match str.to_lowercase().as_str() {
-            "objcarc" | "objc-arc" | "objc_arc" | "arc" => Ok(Setting::ObjCArc),
-            str if str.starts_with("std") => {
-                let mut parts = str.split("=");
-                _ = parts.next();
-                let Some(std) = parts.next() else {
-                    return Err(SettingParseError::ExpectedValue);
-                };
-                if let Some(std) = CStd::parse(std) {
-                    Ok(Setting::CStd(std))
-                } else if let Some(std) = CxxStd::parse(std) {
-                    Ok(Setting::CXXStd(std))
-                } else {
-                    Err(SettingParseError::InvalidStd)
-                }
-            },
-            _ => Err(SettingParseError::NotParseable)
-        }
-    }
 }
 
 pub(crate) trait CTarget: traits::Target {
@@ -165,17 +126,7 @@ pub(crate) trait CTarget: traits::Target {
             cflags.push("-fdiagnostics-color=always".to_string());
         }
 
-        let mut objc_arc = false;
-        // let mut min_cstd = None;
-        // let mut min_cxxstd = None;
-        for setting in self.settings().iter() {
-            match setting {
-                Setting::ObjCArc => objc_arc = true,
-                _ => {} // deprecated
-            }
-        }
-
-        if (self.language() == Language::OBJC || self.language() == Language::OBJCXX) && objc_arc {
+        if self.objc_arc() {
             cflags.push("-fobjc-arc".to_string());
         }
 
@@ -191,7 +142,7 @@ pub(crate) trait CTarget: traits::Target {
         context: &Beaver
     ) -> crate::Result<(Vec<String>, Vec<PathBuf>)>;
 
-    fn settings(&self) -> &[Setting];
+    fn objc_arc(&self) -> bool;
 
     fn register_impl<Builder: BackendBuilder<'static>>(&self,
         project_name: &str,

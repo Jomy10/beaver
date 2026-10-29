@@ -16,7 +16,7 @@ use crate::target::{self, ArtifactType, Dependency, Language, LibraryArtifactTyp
 use crate::traits::Library as _;
 use crate::{Beaver, BeaverError};
 
-use super::{CTarget, Setting, TargetDescriptor};
+use super::{CTarget, TargetDescriptor};
 
 //TODO #[init_descriptor(super::TargetDescriptor, false)]
 #[derive(Debug)]
@@ -40,8 +40,8 @@ pub struct Library {
     artifacts: Vec<LibraryArtifactType>,
     dependencies: Vec<Dependency>,
 
-    settings: Vec<crate::target::c::Setting>,
     std: Option<CLangStd>,
+    objc_arc: bool,
     compiler: Option<String>,
     linker: Option<String>,
 }
@@ -61,8 +61,8 @@ impl Library {
             desc.linker_flags,
             desc.artifacts,
             desc.dependencies,
-            desc.settings,
             desc.std,
+            desc.objc_arc,
             desc.compiler,
             desc.linker
         )
@@ -81,8 +81,8 @@ impl Library {
         linker_flags: Flags,
         artifacts: DefaultArgument<Vec<LibraryArtifactType>>,
         dependencies: Vec<Dependency>,
-        settings: Vec<Setting>,
         std: Option<CLangStd>,
+        objc_arc: bool,
         compiler: Option<String>,
         linker: Option<String>
     ) -> crate::Result<Library> {
@@ -122,8 +122,8 @@ impl Library {
             linker_flags,
             artifacts,
             dependencies,
-            settings,
             std,
+            objc_arc,
             compiler,
             linker
         })
@@ -295,8 +295,8 @@ impl CTarget for Library {
             .or(self.override_compiler())
     }
 
-    fn settings(&self) -> &[Setting] {
-        &self.settings
+    fn objc_arc(&self) -> bool {
+        self.objc_arc && (self.language == Language::OBJC || self.language == Language::OBJCXX)
     }
 
     /// All linker flags used by this library when linking
@@ -317,7 +317,7 @@ impl CTarget for Library {
 
         flags.extend(context.optimize_mode.linker_flags().iter().map(|str| str.to_string()));
 
-        if (self.language == Language::OBJC || self.language == Language::OBJCXX) && self.settings.contains(&Setting::ObjCArc) {
+        if self.objc_arc() {
             flags.push("-fobjc-arc".to_string());
         }
 
