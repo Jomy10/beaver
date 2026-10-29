@@ -260,7 +260,10 @@ fn sh(args: &[magnus::Value]) -> Result<(), magnus::Error> {
         let splat = args.splat.into_iter();
         let args = splat.map(|v| v.to_string()).collect::<Vec<_>>();
 
-        let cmd_str = cmd.to_string_lossy().to_string() + " " + args.iter().map(|v| format!("\"{v}\"")).fold(String::new(), |acc, v| acc + " " + v.as_str()).as_str();
+        let cmd_str = cmd.to_string_lossy().to_string()
+            + args.iter()
+                .map(|v| format!("\"{v}\""))
+                .fold(String::new(), |acc, v| acc + " " + v.as_str()).as_str();
         eprintln!("{}", console_style.apply_to(cmd_str));
 
         Command::new(cmd)
