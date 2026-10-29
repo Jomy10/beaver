@@ -1,4 +1,10 @@
 #[derive(Debug, PartialEq, Clone, Copy)]
+pub enum CLangStd {
+    CStd(CStd),
+    CxxStd(CxxStd),
+}
+
+#[derive(Debug, PartialEq, Clone, Copy, strum::EnumIter)]
 pub enum CStd {
     C89,
     C90,
@@ -34,7 +40,7 @@ impl CStd {
     }
 
     pub fn parse(value: &str) -> Option<Self> {
-        Some(match value {
+        Some(match value.to_lowercase().as_str() {
             "c89" => Self::C89,
             "c90" | "iso9899:1990" => Self::C90,
             "iso9899:199409" => Self::C95,
@@ -106,7 +112,7 @@ impl CStd {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, strum::EnumIter)]
 pub enum CxxStd {
     Cxx98,
     Cxx03,
@@ -146,26 +152,26 @@ impl CxxStd {
     }
 
     pub fn parse(value: &str) -> Option<Self> {
-        Some(match value {
-            "c++98" => Self::Cxx98,
-            "c++03" => Self::Cxx03,
-            "c++11" => Self::Cxx11,
-            "c++14" => Self::Cxx14,
-            "c++17" => Self::Cxx17,
-            "c++20" => Self::Cxx20,
-            "c++23" => Self::Cxx23,
-            "c++2c" | "c++26" => Self::Cxx26,
-            "c++2d" | "c++29" => Self::Cxx29,
+        Some(match value.to_lowercase().as_str() {
+            "c++98" | "cxx98" => Self::Cxx98,
+            "c++03" | "cxx03" => Self::Cxx03,
+            "c++11" | "cxx11" => Self::Cxx11,
+            "c++14" | "cxx14" => Self::Cxx14,
+            "c++17" | "cxx17" => Self::Cxx17,
+            "c++20" | "cxx20" => Self::Cxx20,
+            "c++23" | "cxx23" => Self::Cxx23,
+            "c++2c" | "cxx2c" | "c++26" | "cxx26" => Self::Cxx26,
+            "c++2d" | "cxx2d" | "c++29" | "cxx29" => Self::Cxx29,
 
-            "gnu++98" => Self::Gnuxx98,
-            "gnu++03" => Self::Gnuxx03,
-            "gnu++11" => Self::Gnuxx11,
-            "gnu++14" => Self::Gnuxx14,
-            "gnu++17" => Self::Gnuxx17,
-            "gnu++20" => Self::Gnuxx20,
-            "gnu++23" => Self::Gnuxx23,
-            "gnu++2c" | "gnu++26" => Self::Gnuxx26,
-            "gnu++2d" | "gnu++29" => Self::Gnuxx29,
+            "gnu++98" | "gnuxx98" => Self::Gnuxx98,
+            "gnu++03" | "gnuxx03" => Self::Gnuxx03,
+            "gnu++11" | "gnuxx11" => Self::Gnuxx11,
+            "gnu++14" | "gnuxx14" => Self::Gnuxx14,
+            "gnu++17" | "gnuxx17" => Self::Gnuxx17,
+            "gnu++20" | "gnuxx20" => Self::Gnuxx20,
+            "gnu++23" | "gnuxx23" => Self::Gnuxx23,
+            "gnu++2c" | "gnuxx2c" | "gnu++26" | "gnuxx26" => Self::Gnuxx26,
+            "gnu++2d" | "gnuxx2d" | "gnu++29" | "gnuxx29" => Self::Gnuxx29,
 
             _ => return None,
         })

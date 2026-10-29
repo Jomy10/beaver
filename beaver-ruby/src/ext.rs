@@ -6,10 +6,8 @@ use std::sync::Arc;
 
 use beaver::target::custom::BuildCommand;
 use beaver::target::parameters::{Files, Flags, Headers};
-use beaver::target::{Dependency, Language, LazyLibraryArtifactType, LibraryArtifactType, LibraryTargetDependency, TArtifactType, TargetRef, Version, c};
-use beaver::traits::{AnyTarget, Library};
+use beaver::target::{Dependency, Language, LazyLibraryArtifactType, LibraryArtifactType, LibraryTargetDependency, TArtifactType, Version, c};
 use beaver::{Beaver, BeaverError};
-use log::{info, trace};
 use magnus::value::ReprValue;
 use utils::UnsafeSendable;
 
@@ -48,33 +46,14 @@ fn parse_dependency(value: magnus::Value, context: &Beaver) -> crate::Result<Dep
 
 /// When artifact is None, will select the default artifact
 fn parse_lib_dependency_from_str(dep: &str, artifact: Option<LibraryArtifactType>, context: &Beaver) -> crate::Result<LibraryTargetDependency> {
-    let target_ref = match context.parse_target_ref(dep) {
-        Ok(target_ref) => target_ref,
-        Err(err) => {
-            // TODO!
-            trace!("{} -> using lazy dependency", err);
-            info!("Assuming static library dependency for {} (not yet defined)", dep);
-            return Ok(LibraryTargetDependency::new_lazy(context.parse_target_ref_lazy(dep)?, LazyLibraryArtifactType::Default));
-        }
+    let target_ref = context.parse_target_ref_lazy(dep)?;
+    let artifact = match artifact {
+        Some(artifact) => LazyLibraryArtifactType::Init(artifact),
+        None => LazyLibraryArtifactType::Default,
     };
 
-    let artifact: Result<LibraryArtifactType, BeaverRubyError> = match artifact {
-        Some(artifact) => Ok(artifact),
-        None => context.with_project_and_target::<LibraryArtifactType, BeaverError>(&target_ref, |_, target| {
-            if let AnyTarget::Library(target) = target {
-                match target.default_library_artifact() {
-                    Some(artifact) => Ok(artifact),
-                    None => Err(BeaverError::AnyError(format!("Dependency {} has not artifacts to link against", dep)))
-                }
-            } else {
-                Err(BeaverError::AnyError(format!("Dependency {} should be a library, not an executable", dep)))
-            }
-        }).map_err(Into::into)
-    };
+    return Ok(LibraryTargetDependency::new_lazy(target_ref, artifact));
 
-    artifact.map(|artifact| {
-        LibraryTargetDependency::new_init(TargetRef { project: target_ref.project, target: target_ref.target }, artifact)
-    })
 }
 
 pub trait MagnusArtifactConvertExt {

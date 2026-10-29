@@ -542,7 +542,7 @@ impl Beaver {
                 self.with_project_named(project_name, |project| {
                     match project.find_target(target_name) {
                         Err(err) => Err(err),
-                        Ok(target_idx) => Ok(TargetRef { project: project.id().unwrap(), target: target_idx.expect("Target doesn't exist") })
+                        Ok(target_idx) => Ok(TargetRef { project: project.id().unwrap(), target: target_idx.expect("Target doesn't exist (bug)") })
                     }
                 })
             }

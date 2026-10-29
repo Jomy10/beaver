@@ -4,9 +4,11 @@ use std::process::ExitStatus;
 use std::str::ParseBoolError;
 use std::sync::{Arc, Mutex};
 
-use beaver::target::ArtifactType;
+use beaver::target::c::{CStd, CxxStd};
+use beaver::target::{ArtifactType, Language};
 use magnus::error::RubyUnavailableError;
 use magnus::value::ReprValue;
+use strum::IntoEnumIterator;
 use utils::UnsafeSendable;
 
 use crate::CTX;
@@ -124,6 +126,8 @@ pub enum BeaverRubyError {
     MethodNotFound(String, String),
     #[error("Cannot create dependency on artifact type `{0}`")]
     WrongArtifactType(ArtifactType),
+    #[error("Invalid standard {}. {}", .0, get_std_values(*.1))]
+    InvalidStandard(String, Option<Language>),
 
     #[error("{0:?}")]
     JoinError(Box<dyn Any + Send + 'static>),
@@ -184,3 +188,25 @@ impl From<BeaverRubyError> for magnus::Error {
 }
 
 pub type Result<T> = std::result::Result<T, BeaverRubyError>;
+
+fn get_std_values(lang: Option<Language>) -> String {
+    let Some(lang) = lang else {
+        return "".to_string();
+    };
+
+    match lang {
+        Language::C |
+        Language::OBJC => {
+            let mut vals = CStd::iter().map(|o| format!("{:?}", o));
+            let first = vals.next().unwrap();
+            format!("Valid values are:{}", vals.fold(first, |acc, str| acc + ", " + str.as_str()))
+        },
+        Language::CXX |
+        Language::OBJCXX => {
+            let mut vals = CxxStd::iter().map(|o| format!("{:?}", o));
+            let first = vals.next().unwrap();
+            format!("Valid values are:{}", vals.fold(first, |acc, str| acc + ", " + str.as_str()))
+        },
+        _ => "".to_string()
+    }
+}

@@ -8,10 +8,11 @@ use target_lexicon::Triple;
 
 use crate::backend::{BackendBuilder, BackendBuilderScope, BuildStep};
 use crate::platform::executable_extension_for_os;
+use crate::target::c::{CLangStd, CStd, CxxStd};
 use crate::target::parameters::{DefaultArgument, Files, Flags, Headers};
 use crate::target::{self, traits, ArtifactType, Dependency, ExecutableArtifactType, Language, Version};
 use crate::traits::TargetType;
-use crate::Beaver;
+use crate::{Beaver, BeaverError};
 
 use super::{CTarget, Setting, TargetDescriptor};
 
@@ -37,6 +38,7 @@ pub struct Executable {
     dependencies: Vec<Dependency>,
 
     settings: Vec<Setting>,
+    std: Option<CLangStd>,
     compiler: Option<String>,
     linker: Option<String>,
 }
@@ -57,6 +59,7 @@ impl Executable {
             desc.artifacts,
             desc.dependencies,
             desc.settings,
+            desc.std,
             desc.compiler,
             desc.linker
         )
@@ -76,6 +79,7 @@ impl Executable {
         artifacts: DefaultArgument<Vec<ExecutableArtifactType>>,
         dependencies: Vec<Dependency>,
         settings: Vec<Setting>,
+        std: Option<CLangStd>,
         compiler: Option<String>,
         linker: Option<String>
     ) -> crate::Result<Executable> {
@@ -84,6 +88,17 @@ impl Executable {
         let artifacts = artifacts.or_default(vec![ExecutableArtifactType::Executable]);
         let valid_artifacts = HashSet::from([ExecutableArtifactType::App, ExecutableArtifactType::Executable]);
         target::utils::check_artifacts(&valid_artifacts, &artifacts, "C")?;
+
+        if let Some(std) = std {
+            match std {
+                CLangStd::CStd(_) => if !(language == Language::C || language == Language::OBJC) {
+                    return Err(BeaverError::InvalidStandard(std, language))
+                },
+                CLangStd::CxxStd(_) => if !(language == Language::CXX || language == Language::OBJCXX) {
+                    return Err(BeaverError::InvalidStandard(std, language));
+                }
+            }
+        }
 
         Ok(Executable {
             id: None,
@@ -101,6 +116,7 @@ impl Executable {
             artifacts,
             dependencies,
             settings,
+            std,
             compiler,
             linker
         })
@@ -348,6 +364,20 @@ impl CTarget for Executable {
                 todo!("App have a dependency on executable and then construct app")
             }
         }
+    }
+
+    fn min_cstd(&self) -> Option<CStd> {
+        self.std.map(|v| match v {
+            CLangStd::CStd(v) => v,
+            CLangStd::CxxStd(_) => panic!("Shouldn't access min_cstd on CXX target")
+        })
+    }
+
+    fn min_cxxstd(&self) -> Option<CxxStd> {
+        self.std.map(|v| match v {
+            CLangStd::CxxStd(v) => v,
+            CLangStd::CStd(_) => panic!("Shouldn't access min_cxxstd on C target")
+        })
     }
 }
 

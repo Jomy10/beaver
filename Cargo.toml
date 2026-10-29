@@ -39,6 +39,7 @@ rb-sys = { version = "^0.9.85", default-features = false } # keep on par with ma
 enum_dispatch = "0.3"
 const-gen = "1.6"
 pathdiff = "0.2"
+strum = "0.21"
 serde = "1.0"
 serde_path_to_error = "0.1"
 toml = "1.1"

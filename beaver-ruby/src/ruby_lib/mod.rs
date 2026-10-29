@@ -26,6 +26,7 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     Ok(())
 }
 
+#[derive(Clone)]
 pub(crate) struct Arg<'a, T> {
     name: &'a str,
     value: Option<T>,

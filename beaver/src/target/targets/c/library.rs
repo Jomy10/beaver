@@ -9,7 +9,7 @@ use target_lexicon::{OperatingSystem, Triple};
 
 use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep};
 use crate::platform::{dynlib_extension_for_os, dynlib_linker_flags_for_os, staticlib_extension_for_os};
-use crate::target::c::{CStd, CxxStd};
+use crate::target::c::{CLangStd, CStd, CxxStd};
 use crate::target::parameters::{DefaultArgument, Files, Flags, Headers};
 use crate::target::traits::{self, TargetType};
 use crate::target::{self, ArtifactType, Dependency, Language, LibraryArtifactType, Version};
@@ -41,6 +41,7 @@ pub struct Library {
     dependencies: Vec<Dependency>,
 
     settings: Vec<crate::target::c::Setting>,
+    std: Option<CLangStd>,
     compiler: Option<String>,
     linker: Option<String>,
 }
@@ -61,6 +62,7 @@ impl Library {
             desc.artifacts,
             desc.dependencies,
             desc.settings,
+            desc.std,
             desc.compiler,
             desc.linker
         )
@@ -80,6 +82,7 @@ impl Library {
         artifacts: DefaultArgument<Vec<LibraryArtifactType>>,
         dependencies: Vec<Dependency>,
         settings: Vec<Setting>,
+        std: Option<CLangStd>,
         compiler: Option<String>,
         linker: Option<String>
     ) -> crate::Result<Library> {
@@ -92,6 +95,17 @@ impl Library {
         ]);
         let valid_artifacts = HashSet::from([LibraryArtifactType::Dynlib, LibraryArtifactType::Staticlib, LibraryArtifactType::Framework, LibraryArtifactType::XCFramework, LibraryArtifactType::PkgConfig, LibraryArtifactType::JSLib]);
         target::utils::check_artifacts(&valid_artifacts, &artifacts, "C")?;
+
+        if let Some(std) = std {
+            match std {
+                CLangStd::CStd(_) => if !(language == Language::C || language == Language::OBJC) {
+                    return Err(BeaverError::InvalidStandard(std, language))
+                },
+                CLangStd::CxxStd(_) => if !(language == Language::CXX || language == Language::OBJCXX) {
+                    return Err(BeaverError::InvalidStandard(std, language));
+                }
+            }
+        }
 
         Ok(Library {
             id: None,
@@ -109,6 +123,7 @@ impl Library {
             artifacts,
             dependencies,
             settings,
+            std,
             compiler,
             linker
         })
@@ -417,6 +432,14 @@ impl CTarget for Library {
             _ => unreachable!("Invalid artifact")
         }
     }
+
+    fn min_cstd(&self) -> Option<CStd> {
+        traits::Library::min_cstd(self)
+    }
+
+    fn min_cxxstd(&self) -> Option<CxxStd> {
+        traits::Library::min_cxxstd(self)
+    }
 }
 
 impl traits::Library for Library {
@@ -442,10 +465,18 @@ impl traits::Library for Library {
     }
 
     fn min_cstd(&self) -> Option<CStd> {
-        self.settings.iter().find_map(|v| if let Setting::CStd(v) = v { Some(*v) } else { None })
+        self.std.map(|v| match v {
+            CLangStd::CStd(v) => v,
+            CLangStd::CxxStd(_) => panic!("Shouldn't access min_cstd on CXX target")
+        })
+        // self.settings.iter().find_map(|v| if let Setting::CStd(v) = v { Some(*v) } else { None })
     }
 
     fn min_cxxstd(&self) -> Option<CxxStd> {
-        self.settings.iter().find_map(|v| if let Setting::CXXStd(v) = v { Some(*v) } else { None })
+        self.std.map(|v| match v {
+            CLangStd::CxxStd(v) => v,
+            CLangStd::CStd(_) => panic!("Shouldn't access min_cxxstd on C target")
+        })
+        // self.settings.iter().find_map(|v| if let Setting::CXXStd(v) = v { Some(*v) } else { None })
     }
 }

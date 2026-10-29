@@ -1,11 +1,13 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use beaver::target::c::{CLangStd, CStd, CxxStd};
 use beaver::target::custom::BuildCommand;
 use beaver::target::parameters::{DefaultArgument, Files, Flags, Headers};
 use beaver::target::{self, c, Dependency, ExecutableArtifactType, Language, LibraryArtifactType, TArtifactType, Version};
 use beaver::traits::{AnyExecutable, AnyLibrary, AnyTarget, Project};
 use beaver::{Beaver, BeaverError};
+use log::warn;
 use magnus::Object;
 use url::Url;
 
@@ -34,6 +36,7 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
         let mut settings = Arg::<Vec<c::Setting>>::new("settings");
         let mut compiler = Arg::<String>::new("compiler");
         let mut linker = Arg::<String>::new("linker");
+        let mut cstd = Arg::<CLangStd>::new("std");
 
         args.foreach(|key: magnus::Symbol, value: magnus::Value| {
             match key.name()?.as_ref() {
@@ -90,6 +93,7 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
                     dependencies.set(value)?;
                 },
                 "settings" => {
+                    warn!("Settings is deprected");
                     let value = Vec::<c::Setting>::try_from_value(value)?;
                     settings.set(value)?;
                 },
@@ -100,6 +104,16 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
                 "linker" => {
                     let value = String::from_string_or_sym(value)?;
                     linker.set(value)?;
+                },
+                "std" => {
+                    let value = String::from_string_or_sym(value)?;
+                    let value = match CStd::parse(&value).map(|v| CLangStd::CStd(v))
+                        .or_else(|| CxxStd::parse(&value).map(|v| CLangStd::CxxStd(v)))
+                    {
+                            Some(v) => v,
+                            None => return Err(BeaverRubyError::InvalidStandard(value, language.clone().get_opt()).into())
+                    };
+                    cstd.set(value)?;
                 },
                 keyname => { return Err(BeaverRubyError::InvalidKey(keyname.to_string()).into()); }
             }
@@ -121,6 +135,7 @@ fn c_target_parse_ruby_args<ArtifactType: TArtifactType>(args: magnus::RHash, co
             artifacts: artifacts.get_opt().unwrap_or(DefaultArgument::Default),
             dependencies: dependencies.get_opt().unwrap_or(Vec::new()),
             settings: settings.get_opt().unwrap_or(Vec::new()),
+            std: cstd.get_opt(),
             compiler: compiler.get_opt(),
             linker: linker.get_opt(),
         })

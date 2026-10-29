@@ -1,11 +1,10 @@
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
-use log::warn;
 use target_lexicon::Triple;
 
 use crate::backend::{rules, BackendBuilder, BackendBuilderScope, BuildStep, Rule};
-use crate::target::c::{CStd, CxxStd};
+use crate::target::c::{CLangStd, CStd, CxxStd};
 use crate::target::parameters::{DefaultArgument, Files, Flags, Headers};
 use crate::target::{Dependency, Language, TArtifactType, Version};
 use crate::{traits, Beaver, BeaverError};
@@ -23,7 +22,9 @@ pub struct TargetDescriptor<ArtifactType> {
     pub linker_flags: Flags,
     pub artifacts: DefaultArgument<Vec<ArtifactType>>,
     pub dependencies: Vec<Dependency>,
+    #[deprecated]
     pub settings: Vec<Setting>,
+    pub std: Option<CLangStd>,
     pub compiler: Option<String>,
     pub linker: Option<String>,
 }
@@ -78,6 +79,28 @@ pub(crate) trait CTarget: traits::Target {
     fn override_compiler(&self) -> Option<&str>;
     fn override_linker(&self) -> Option<&str>;
 
+    fn collect_dependency_cflags<'a>(
+        &self,
+        dependencies: impl Iterator<Item = &'a Dependency>,
+        cflags: &mut Vec<String>,
+        add_dependency_files: &mut Vec<PathBuf>,
+        dependency_languages: impl Iterator<Item = &'a Language>,
+        context: &Beaver,
+        mut cb: impl FnMut(&'a Dependency) -> crate::Result<()>
+    ) -> crate::Result<()> {
+        for dependency in dependencies {
+            dependency.public_cflags(context, cflags, add_dependency_files)?;
+            cb(dependency)?
+        }
+
+        for lang in dependency_languages {
+            let Some(lang_cflags) = Language::cflags(*lang, self.language()) else { continue };
+            cflags.extend(lang_cflags.iter().map(|str| str.to_string()));
+        }
+
+        Ok(())
+    }
+
     // TODO: for libraries -> cache cflags and linker_flags
     /// Returns the cflags and files this target depends on
     ///
@@ -98,77 +121,62 @@ pub(crate) trait CTarget: traits::Target {
         }
 
         let is_c = self.language() == Language::C || self.language() == Language::OBJC;
-        let mut dep_min_cstd = None;
-        let mut dep_min_cxxstd = None;
-        for dependency in dependencies {
-            dependency.public_cflags(context, &mut cflags, &mut add_dependency_files)?;
-            if is_c {
-                match (dependency.min_cstd(context)?, dep_min_cstd) {
-                    (Some(v), None) => dep_min_cstd = Some(v),
-                    (None, _) => {},
-                    (Some(s1), Some(s2)) => dep_min_cstd = Some(s1.max(&s2))
+        if is_c {
+            let mut min_cstd = self.min_cstd();
+            self.collect_dependency_cflags(
+                dependencies,
+                &mut cflags, &mut add_dependency_files,
+                dependency_languages,
+                context,
+                |dep| {
+                    match (min_cstd, dep.min_cstd(context)?) {
+                        (Some(v), None) => min_cstd = Some(v),
+                        (Some(s1), Some(s2)) => min_cstd = Some(s1.max(&s2)),
+                        (None, _) => {},
+                    }
+                    Ok(())
                 }
-            } else {
-                match (dependency.min_cxxstd(context)?, dep_min_cxxstd) {
-                    (Some(v), None) => dep_min_cxxstd = Some(v),
-                    (None, _) => {},
-                    (Some(s1), Some(s2)) => dep_min_cxxstd = Some(s1.max(&s2))
+            )?;
+            if let Some(std) = min_cstd {
+                cflags.push(format!("-std={}", std.as_str()));
+            }
+        } else {
+            let mut min_cxxstd = self.min_cxxstd();
+            self.collect_dependency_cflags(
+                dependencies,
+                &mut cflags, &mut add_dependency_files,
+                dependency_languages,
+                context,
+                |dep| {
+                    match (min_cxxstd, dep.min_cxxstd(context)?) {
+                        (Some(v), None) => min_cxxstd = Some(v),
+                        (Some(s1), Some(s2)) => min_cxxstd = Some(s1.max(&s2)),
+                        (None, _) => {},
+                    }
+                    Ok(())
                 }
+            )?;
+            if let Some(std) = min_cxxstd {
+                cflags.push(format!("-std={}", std.as_str()));
             }
         }
-        for lang in dependency_languages {
-            let Some(lang_cflags) = Language::cflags(*lang, self.language()) else { continue };
-            cflags.extend(lang_cflags.iter().map(|str| str.to_string()));
-        }
 
-        // TODO: isatty
         if context.color_enabled() {
             cflags.push("-fdiagnostics-color=always".to_string());
         }
 
         let mut objc_arc = false;
-        let mut min_cstd = None;
-        let mut min_cxxstd = None;
+        // let mut min_cstd = None;
+        // let mut min_cxxstd = None;
         for setting in self.settings().iter() {
             match setting {
                 Setting::ObjCArc => objc_arc = true,
-                Setting::CStd(v) => if is_c {
-                   min_cstd = Some(*v);
-                } else {
-                    warn!("c-std setting enabled for C++ target {}", self.name())
-                },
-                Setting::CXXStd(v) => if !is_c {
-                    min_cxxstd = Some(*v);
-                } else {
-                    warn!("cxx-std setting enabled for C target {}", self.name())
-                }
+                _ => {} // deprecated
             }
         }
 
         if (self.language() == Language::OBJC || self.language() == Language::OBJCXX) && objc_arc {
             cflags.push("-fobjc-arc".to_string());
-        }
-
-        if is_c {
-            let c_std = match (min_cstd, dep_min_cstd) {
-                (Some(v), None) => Some(v),
-                (None, Some(v)) => Some(v),
-                (Some(s1), Some(s2)) => Some(s1.max(&s2)),
-                (None, None) => None
-            };
-            if let Some(std) = c_std {
-                cflags.push(format!("-std={}", std.as_str()));
-            }
-        } else {
-            let cxx_std = match (min_cxxstd, dep_min_cxxstd) {
-                (Some(v), None) => Some(v),
-                (None, Some(v)) => Some(v),
-                (Some(s1), Some(s2)) => Some(s1.max(&s2)),
-                (None, None) => None
-            };
-            if let Some(std) = cxx_std {
-                cflags.push(format!("-std={}", std.as_str()));
-            }
         }
 
         return Ok((cflags, add_dependency_files));
@@ -324,4 +332,7 @@ pub(crate) trait CTarget: traits::Target {
             _ => return Err(BeaverError::InvalidLanguageForArtifact(self.language(), "jslib"))
         }
     }
+
+    fn min_cstd(&self) -> Option<CStd>;
+    fn min_cxxstd(&self) -> Option<CxxStd>;
 }
