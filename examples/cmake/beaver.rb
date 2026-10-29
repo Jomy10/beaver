@@ -3,9 +3,6 @@ build_dir "build"
 if !Dir.exist? "flatbuffers"
   puts "Cloning flatbuffers..."
   sh "git clone https://github.com/google/flatbuffers"
-  # if system("git clone https://github.com/google/flatbuffers") != true
-  #   exit(1)
-  # end
 end
 
 import_cmake "flatbuffers"

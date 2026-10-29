@@ -9,7 +9,7 @@ void _log(LogLevel level, FILE* f, const char* fmt, ...) {
 
   switch (level) {
     case TRACE: fprintf(f, "[TRACE] "); break;
-    case DEBUG: fprintf(f, "[DEBUG] "); break;
+    case DBG: fprintf(f, "[DEBUG] "); break;
     case INFO: fprintf(f, "[INFO] "); break;
     case WARNING: fprintf(f, "[WARN] "); break;
     case ERROR: fprintf(f, "[ERR] "); break;

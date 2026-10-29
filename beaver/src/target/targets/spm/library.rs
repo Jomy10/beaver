@@ -132,7 +132,7 @@ impl traits::Target for Library {
             &artifact_file,
             self.artifact,
             &self.cache_dir,
-            Some(&self.swift_objc_header_path(project_build_dir)),
+            Some(&self.swift_objc_header_path(&project_base_dir.join(".build"))),
             &self.extra_dependencies,
             &self.private_swift_flags,
             context,
@@ -186,11 +186,12 @@ impl traits::Library for Library {
         Ok(())
     }
 
-    fn public_cflags(&self, _project_base_dir: &Path, project_build_dir: &Path, collect_into: &mut Vec<String>, additional_file_dependencies: &mut Vec<PathBuf>) -> crate::Result<()> {
-        let include_path = self.swift_objc_header_search_path(project_build_dir);
+    fn public_cflags(&self, project_base_dir: &Path, _project_build_dir: &Path, collect_into: &mut Vec<String>, additional_file_dependencies: &mut Vec<PathBuf>) -> crate::Result<()> {
+        let project_build_base_dir = project_base_dir.join(".build");
+        let include_path = self.swift_objc_header_search_path(&project_build_base_dir);
         collect_into.push(format!("-I{}", include_path.display()));
 
-        additional_file_dependencies.push(self.swift_objc_header_path(project_build_dir));
+        additional_file_dependencies.push(self.swift_objc_header_path(&project_build_base_dir));
 
         Ok(())
     }
@@ -199,12 +200,20 @@ impl traits::Library for Library {
 // TODO: currently broken
 impl Library {
     /// include {product-name}-Swift.h path
-    fn swift_objc_header_search_path(&self, project_build_dir: &Path) -> PathBuf {
-        project_build_dir.join(format!("{}.build", self.name.replace("-", "_")))
+    ///
+    /// `project_base_build_dir` is the base build dir (.build), without the subpath
+    /// for the debug or release or for target
+    fn swift_objc_header_search_path(&self, project_base_build_dir: &Path) -> PathBuf {
+        project_base_build_dir
+            .join("out")
+            .join("Intermediates.noindex")
+            .join("GeneratedModuleMaps")
+        // In old build system ("native")
+        // project_build_dir.join(format!("{}.build", self.name.replace("-", "_")))
     }
 
-    fn swift_objc_header_path(&self, project_build_dir: &Path) -> PathBuf {
-        self.swift_objc_header_search_path(project_build_dir)
+    fn swift_objc_header_path(&self, project_base_build_dir: &Path) -> PathBuf {
+        self.swift_objc_header_search_path(project_base_build_dir)
             .join(format!("{}-Swift.h", self.name))
     }
 }

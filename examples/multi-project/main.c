@@ -27,4 +27,6 @@ int main(void) {
   vec_destroy(vec);
 
   fclose(f);
+
+  return 0;
 }

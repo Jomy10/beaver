@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 
-use log::trace;
+use log::*;
 use program_communicator::socket::SocketUnixExt;
 use target_lexicon::Triple;
 use url::Url;
@@ -244,11 +244,13 @@ impl traits::Target for Library {
     }
 
     fn add_cflags(&mut self, _cflags: &[String]) -> crate::Result<()> {
-        unimplemented!()
+        debug!("Adding cflags to custom targets is not supported and will be ignored");
+        Ok(())
     }
 
     fn add_linker_flags(&mut self, _linker_flags: &[String]) -> crate::Result<()> {
-        unimplemented!()
+        debug!("Adding linker to custom targets is not supported and will be ignored");
+        Ok(())
     }
 }
 
