@@ -50,6 +50,8 @@ impl Files {
         }
     }
 
+    // This is currently a bottleneck
+    // globwalk might not be optimized that well (e.g. src/**/*.c -> only visit src directory)
     pub(crate) fn resolve(&self) -> crate::Result<&Vec<PathBuf>> {
         self.files_storage.get_or_try_init(|| {
             let mut vec = Vec::new();

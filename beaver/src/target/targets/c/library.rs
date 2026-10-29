@@ -346,6 +346,7 @@ impl CTarget for Library {
                 let obj_ext = OsString::from(if *artifact == LibraryArtifactType::Dynlib { ".dyn.o" } else { ".o" });
 
                 let mut object_files: Vec<PathBuf> = Vec::new(); //additional_artifact_files.to_vec();
+
                 let sources = self.sources.resolve()?;
                 if sources.len() == 0 { warn!("No sources in C::Library {}", self.name); }
                 for source in sources {

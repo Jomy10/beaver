@@ -91,9 +91,10 @@ pub(crate) trait CTarget: traits::Target {
                 context,
                 |dep| {
                     match (min_cstd, dep.min_cstd(context)?) {
-                        (Some(v), None) => min_cstd = Some(v),
+                        // (Some(v), None) => min_cstd = Some(v),
+                        (None, Some(v)) => min_cstd = Some(v),
                         (Some(s1), Some(s2)) => min_cstd = Some(s1.max(&s2)),
-                        (None, _) => {},
+                        _ => {}
                     }
                     Ok(())
                 }
@@ -110,9 +111,10 @@ pub(crate) trait CTarget: traits::Target {
                 context,
                 |dep| {
                     match (min_cxxstd, dep.min_cxxstd(context)?) {
-                        (Some(v), None) => min_cxxstd = Some(v),
+                        (None, Some(v)) => min_cxxstd = Some(v),
                         (Some(s1), Some(s2)) => min_cxxstd = Some(s1.max(&s2)),
-                        (None, _) => {},
+                        _ => {}
+                        // (None, _) => {},
                     }
                     Ok(())
                 }
