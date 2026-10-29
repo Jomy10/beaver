@@ -198,10 +198,10 @@ impl TargetAccessor {
         let artifact_type = ArtifactType::parse(&artifact_type).map_err(|err| BeaverRubyError::from(err))?;
         let artifact_type = artifact_type.as_library().ok_or_else(|| BeaverRubyError::WrongArtifactType(artifact_type))?;
 
-        let dep = Dependency::Library(LibraryTargetDependency {
-            target: TargetRef { target: self.id, project: self.projid },
-            artifact: artifact_type,
-        });
+        let dep = Dependency::Library(LibraryTargetDependency::new_init(
+            TargetRef { target: self.id, project: self.projid },
+            artifact_type
+        ));
 
         return Ok(DependencyWrapper(dep));
     }

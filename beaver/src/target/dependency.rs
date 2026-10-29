@@ -1,7 +1,9 @@
 use std::ffi::OsString;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::OnceLock;
 
 use log::*;
 use target_lexicon::Triple;
@@ -12,9 +14,10 @@ use crate::traits::{Project, Target};
 use super::traits::Library;
 use super::LibraryArtifactType;
 
-#[derive(Eq, PartialEq, Hash, Clone, Debug)]
+#[derive(Debug, Clone)]
 pub enum Dependency {
     Library(LibraryTargetDependency),
+
     Flags {
         cflags: Option<Vec<String>>,
         linker_flags: Option<Vec<String>>,
@@ -25,6 +28,70 @@ pub enum Dependency {
     Multi(Vec<Dependency>),
     /// A file dependency, this can refer to any file (that isn't a source file)
     File(PathBuf),
+}
+
+impl Dependency {
+    pub fn hash(&self, context: &Beaver) -> crate::Result<u64> {
+        let mut h = DefaultHasher::new();
+        self.hash_into(context, &mut h)?;
+        return Ok(h.finish());
+    }
+
+    pub fn hash_into<H: Hasher>(&self, context: &Beaver, h: &mut H) -> crate::Result<()> {
+        match self {
+            Dependency::Library(lib) => {
+                h.write_u8(0);
+                let target = lib.target(context)?;
+                h.write_usize(target.project);
+                h.write_usize(target.target);
+                lib.artifact(context)?.hash(h);
+            },
+            Dependency::Flags { cflags, linker_flags, headers } => {
+                h.write_u8(1);
+                if let Some(cflags) = cflags {
+                    h.write_length_prefix(cflags.len());
+                    for cflag in cflags {
+                        h.write_str(cflag);
+                    }
+                } else {
+                    h.write_length_prefix(0);
+                }
+                if let Some(linker_flags) = linker_flags {
+                    h.write_length_prefix(linker_flags.len());
+                    for linker_flag in linker_flags {
+                        h.write_str(linker_flag);
+                    }
+                } else {
+                    h.write_length_prefix(0);
+                }
+                if let Some(headers) = headers {
+                    h.write_length_prefix(headers.len());
+                    for header in headers {
+                        h.write_str(&header.to_string_lossy());
+                    }
+                } else {
+                    h.write_length_prefix(0);
+                }
+            },
+            Dependency::CMakeId(id) => {
+                h.write_u8(2);
+                h.write_str(id);
+            },
+            Dependency::Multi(items) => {
+                h.write_u8(3);
+                h.write_length_prefix(items.len());
+                for item in items {
+                    item.hash_into(context, h)?;
+                }
+            },
+            Dependency::File(path_buf) => {
+                h.write_u8(4);
+                h.write_str(&path_buf.to_string_lossy());
+            },
+        }
+
+        Ok(())
+    }
 }
 
 // Initializers //
@@ -188,10 +255,99 @@ pub struct TargetRef {
     pub project: usize,
 }
 
-#[derive(Eq, PartialEq, Hash, Clone, Copy, Debug)]
+#[derive(Debug, Hash, PartialEq, Clone)]
+pub enum LazyRef {
+    Id(usize),
+    Name(String),
+}
+
+#[derive(Debug, Hash, PartialEq, Clone)]
+pub enum LazyLibraryArtifactType {
+    Init(LibraryArtifactType),
+    Default
+}
+
+#[derive(Debug, Hash, PartialEq, Clone)]
+pub struct LazyTargetRef {
+    pub project: LazyRef,
+    pub target: LazyRef
+}
+
+#[derive(Debug, Clone)]
 pub struct LibraryTargetDependency {
-    pub target: TargetRef,
-    pub artifact: LibraryArtifactType,
+    dependency: OnceLock<(TargetRef, LibraryArtifactType)>,
+    target_ref: Option<LazyTargetRef>,
+    artifact: Option<LazyLibraryArtifactType>,
+}
+
+impl LibraryTargetDependency {
+    pub fn new_init(tref: TargetRef, artifact: LibraryArtifactType) -> Self {
+        LibraryTargetDependency { dependency: OnceLock::new_init((
+            TargetRef {
+                project: tref.project,
+                target: tref.target
+            },
+            artifact
+        )), target_ref: None, artifact: None }
+    }
+
+    pub fn new_lazy(tref: LazyTargetRef, artifact: LazyLibraryArtifactType) -> Self {
+        LibraryTargetDependency {
+            dependency: OnceLock::new(),
+            target_ref: Some(tref),
+            artifact: Some(artifact)
+        }
+    }
+
+    fn get_init(&self, context: &Beaver) -> crate::Result<(TargetRef, LibraryArtifactType)> {
+        let lazy_target_ref = self.target_ref.as_ref().unwrap();
+        let target_ref = match (&lazy_target_ref.project, &lazy_target_ref.target) {
+            (LazyRef::Id(projid), LazyRef::Id(targetid)) => TargetRef {
+                target: *targetid,
+                project: *projid
+            },
+            (LazyRef::Id(projid), LazyRef::Name(target)) => TargetRef {
+                target: context.with_project(*projid, |proj| {
+                    proj.find_target(&target)?
+                        .ok_or_else(|| BeaverError::NoTargetNamed(target.clone(), proj.name().to_string()))
+                })?,
+                project: *projid
+            },
+            (LazyRef::Name(proj), LazyRef::Id(targetid)) => TargetRef {
+                target: *targetid,
+                project: context.find_project(&proj)?.ok_or_else(|| BeaverError::NoProjectNamed(proj.clone()))?
+            },
+            (LazyRef::Name(proj), LazyRef::Name(target)) => context.with_project_named(&proj, |proj| {
+                Ok(TargetRef {
+                    project: proj.id().unwrap(),
+                    target: proj.find_target(&target)?
+                        .ok_or_else(|| BeaverError::NoTargetNamed(target.clone(), proj.name().to_string()))?
+                })
+            })?
+        };
+
+        let lazy_artifact = self.artifact.as_ref().unwrap();
+        let artifact = match lazy_artifact {
+            LazyLibraryArtifactType::Init(lib_art) => lib_art.clone(),
+            LazyLibraryArtifactType::Default => context.with_project_and_library::<LibraryArtifactType, BeaverError>(&target_ref, |_, lib| {
+                    lib.default_library_artifact().or_else(|| lib.library_artifacts().first().cloned())
+                        .ok_or_else(|| BeaverError::NoArtifacts(lib.name().to_string()))
+                        .map(Ok)?
+                })?
+        };
+
+        let dependency = (target_ref, artifact);
+
+        Ok(dependency)
+    }
+
+    pub fn target(&self, context: &Beaver) -> crate::Result<&TargetRef> {
+        return Ok(&self.dependency.get_or_try_init(|| self.get_init(context))?.0);
+    }
+
+    pub fn artifact(&self, context: &Beaver) -> crate::Result<&LibraryArtifactType> {
+        return Ok(&self.dependency.get_or_try_init(|| self.get_init(context))?.1);
+    }
 }
 
 // fns //
@@ -200,8 +356,8 @@ impl Dependency {
     pub(crate) fn ninja_name(&self, context: &Beaver) -> crate::Result<Option<String>> {
         match self {
             Dependency::Library(dep) => {
-                return context.with_project_and_target::<Option<String>, BeaverError>(&dep.target, |project, target| {
-                    Ok(Some(format!("{}$:{}$:{}", project.name(), target.name(), dep.artifact)))
+                return context.with_project_and_target::<Option<String>, BeaverError>(dep.target(context)?, |project, target| {
+                    Ok(Some(format!("{}$:{}$:{}", project.name(), target.name(), dep.artifact(context)?)))
                 });
             },
             Dependency::Flags { cflags: _, linker_flags: _, headers: _ } => {
@@ -226,8 +382,8 @@ impl Dependency {
     pub(crate) fn ninja_name_not_escaped(&self, context: &Beaver) -> crate::Result<Option<String>> {
         match self {
             Dependency::Library(dep) => {
-                return context.with_project_and_target::<Option<String>, BeaverError>(&dep.target, |project, target| {
-                    Ok(Some(format!("{}:{}:{}", project.name(), target.name(), dep.artifact)))
+                return context.with_project_and_target::<Option<String>, BeaverError>(dep.target(context)?, |project, target| {
+                    Ok(Some(format!("{}:{}:{}", project.name(), target.name(), dep.artifact(context)?)))
                 });
             },
             Dependency::Flags { cflags: _, linker_flags: _, headers: _ } => {
@@ -252,7 +408,7 @@ impl Dependency {
     pub(crate) fn public_cflags(&self, context: &Beaver, out: &mut Vec<String>, additional_file_dependencies: &mut Vec<PathBuf>) -> crate::Result<()> {
         match self {
             Dependency::Library(dep) => {
-                context.with_project_and_target::<(), BeaverError>(&dep.target, |proj, target| {
+                context.with_project_and_target::<(), BeaverError>(dep.target(context)?, |proj, target| {
                     target.as_library().unwrap().public_cflags(proj.base_dir(), proj.build_dir(), out, additional_file_dependencies)
                 })
             },
@@ -291,8 +447,8 @@ impl Dependency {
     pub(crate) fn linker_flags(&self, triple: &Triple, context: &Beaver, out: &mut Vec<String>, additional_files: &mut Vec<PathBuf>) -> crate::Result<()> {
         match self {
             Dependency::Library(dep) => {
-                context.with_project_and_target::<(), BeaverError>(&dep.target, |proj, target| {
-                    target.as_library().unwrap().link_against_library(proj.build_dir(), dep.artifact, &triple, out, additional_files)
+                context.with_project_and_target::<(), BeaverError>(dep.target(context)?, |proj, target| {
+                    target.as_library().unwrap().link_against_library(proj.build_dir(), *dep.artifact(context)?, &triple, out, additional_files)
                     // out.append(&mut target.as_library().unwrap().link_against_library(proj.build_dir(), dep.artifact, &triple)?);
                 })
             },
@@ -320,21 +476,21 @@ impl Dependency {
         }
     }
 
-    pub(crate) fn min_cstd(&self, context: &Beaver) -> Option<CStd> {
-        match self {
-            Dependency::Library(lib) => context.with_project_and_library::<_, BeaverError>(&lib.target, |_, lib| {
+    pub(crate) fn min_cstd(&self, context: &Beaver) -> crate::Result<Option<CStd>> {
+        Ok(match self {
+            Dependency::Library(lib) => context.with_project_and_library::<_, BeaverError>(lib.target(context)?, |_, lib| {
                 Ok(lib.min_cstd())
             }).unwrap(),
             _ => None, // TODO: support in flags()
-        }
+        })
     }
 
-    pub(crate) fn min_cxxstd(&self, context: &Beaver) -> Option<CxxStd> {
-        match self {
-            Dependency::Library(lib) => context.with_project_and_library::<_, BeaverError>(&lib.target, |_, lib| {
+    pub(crate) fn min_cxxstd(&self, context: &Beaver) -> crate::Result<Option<CxxStd>> {
+        Ok(match self {
+            Dependency::Library(lib) => context.with_project_and_library::<_, BeaverError>(lib.target(context)?, |_, lib| {
                 Ok(lib.min_cxxstd())
             }).unwrap(),
             _ => None, // TODO: support in flags()
-        }
+        })
     }
 }

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use beaver::target::{Dependency, LibraryArtifactType, LibraryTargetDependency, PkgconfigFlagOption, PkgconfigOption};
+use beaver::target::{Dependency, LazyLibraryArtifactType, LibraryArtifactType, LibraryTargetDependency, PkgconfigFlagOption, PkgconfigOption};
 use magnus::value::ReprValue;
 
 use crate::ext::parse_to_string_vec;
@@ -25,11 +25,8 @@ impl DependencyWrapper {
         let context = &CTX.get().unwrap().context();
 
         let name = Self::get_name(obj)?;
-        let target_ref = context.parse_target_ref(&name).map_err(|err| BeaverRubyError::from(err))?;
-        let dependency = Dependency::Library(LibraryTargetDependency {
-            target: target_ref,
-            artifact: LibraryArtifactType::Staticlib
-        });
+        let target_ref = context.parse_target_ref_lazy(&name).map_err(|err| BeaverRubyError::from(err))?;
+        let dependency = Dependency::Library(LibraryTargetDependency::new_lazy(target_ref, LazyLibraryArtifactType::Init(LibraryArtifactType::Staticlib)));
 
         return Ok(DependencyWrapper(dependency));
     }
@@ -38,11 +35,8 @@ impl DependencyWrapper {
         let context = &CTX.get().unwrap().context();
 
         let name = Self::get_name(obj)?;
-        let target_ref = context.parse_target_ref(&name).map_err(|err| BeaverRubyError::from(err))?;
-        let dependency = Dependency::Library(LibraryTargetDependency {
-            target: target_ref,
-            artifact: LibraryArtifactType::Dynlib
-        });
+        let target_ref = context.parse_target_ref_lazy(&name).map_err(|err| BeaverRubyError::from(err))?;
+        let dependency = Dependency::Library(LibraryTargetDependency::new_lazy(target_ref, LazyLibraryArtifactType::Init(LibraryArtifactType::Dynlib)));
 
         return Ok(DependencyWrapper(dependency));
     }

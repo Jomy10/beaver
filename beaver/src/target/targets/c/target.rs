@@ -103,13 +103,13 @@ pub(crate) trait CTarget: traits::Target {
         for dependency in dependencies {
             dependency.public_cflags(context, &mut cflags, &mut add_dependency_files)?;
             if is_c {
-                match (dependency.min_cstd(context), dep_min_cstd) {
+                match (dependency.min_cstd(context)?, dep_min_cstd) {
                     (Some(v), None) => dep_min_cstd = Some(v),
                     (None, _) => {},
                     (Some(s1), Some(s2)) => dep_min_cstd = Some(s1.max(&s2))
                 }
             } else {
-                match (dependency.min_cxxstd(context), dep_min_cxxstd) {
+                match (dependency.min_cxxstd(context)?, dep_min_cxxstd) {
                     (Some(v), None) => dep_min_cxxstd = Some(v),
                     (None, _) => {},
                     (Some(s1), Some(s2)) => dep_min_cxxstd = Some(s1.max(&s2))
@@ -218,7 +218,7 @@ pub(crate) trait CTarget: traits::Target {
             .map(|str| str.as_str())
             .collect::<Vec<&str>>();
 
-        let (dependencies, languages) = self.unique_dependencies_and_languages_set(context)?;
+        let (_, dependencies, languages) = self.unique_dependencies_and_languages_set(context)?;
 
         let (cflags, additional_dependency_files) = self.cflags(project_base_dir, dependencies.iter(), languages.iter(), context)?;
         let cflags_str = utils::flags::concat_quoted(cflags.into_iter());

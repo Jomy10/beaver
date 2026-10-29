@@ -65,7 +65,7 @@ pub trait Target: Send + Sync + std::fmt::Debug {
     }
 
     fn artifacts(&self) -> Vec<ArtifactType>;
-    fn dependencies(&self) -> crate::Result<Cow<'_, [Dependency]>>;
+    fn dependencies<'a>(&'a self) -> crate::Result<Cow<'a, [Dependency]>>;
 
     fn r#type(&self) -> TargetType;
 
@@ -82,27 +82,29 @@ pub trait Target: Send + Sync + std::fmt::Debug {
         context: &Arc<Beaver>
     ) -> crate::Result<String>;
 
-    fn unique_dependencies_and_languages(&self, context: &Beaver) -> crate::Result<(std::collections::hash_set::IntoIter<Dependency>, std::collections::hash_set::IntoIter<Language>)> {
-        let (set, lang) = self.unique_dependencies_and_languages_set(context)?;
-        return Ok((set.into_iter(), lang.into_iter()));
+    fn unique_dependencies_and_languages<'a>(&'a self, context: &Beaver) -> crate::Result<(std::vec::IntoIter<Dependency>, std::collections::hash_set::IntoIter<Language>)> {
+        let (_, deps, lang) = self.unique_dependencies_and_languages_set(context)?;
+        return Ok((deps.into_iter(), lang.into_iter()));
     }
 
     /// Collect dependencies recursively into a set
-    fn unique_dependencies_and_languages_set(&self, context: &Beaver) -> crate::Result<(HashSet<Dependency>, HashSet<Language>)> {
-        let mut set = HashSet::<Dependency>::new();
+    fn unique_dependencies_and_languages_set<'a>(&'a self, context: &Beaver) -> crate::Result<(HashSet<u64>, Vec<Dependency>, HashSet<Language>)> {
+        let mut set = HashSet::<u64>::new(); // Set of dependencies visited
+        let mut deps = Vec::new();
         let mut languages = HashSet::<Language>::new();
-        self.collect_unique_dependencies_and_languages(&mut set, &mut languages, context)?;
-        return Ok((set, languages));
+        self.collect_unique_dependencies_and_languages(&mut set, &mut deps, &mut languages, context)?;
+        return Ok((set, deps, languages));
     }
 
-    fn collect_unique_dependencies_and_languages<'a>(
-        &'a self,
-        into_set: &mut HashSet<Dependency>,
+    fn collect_unique_dependencies_and_languages(
+        &self,
+        into_set: &mut HashSet<u64>,
+        deps: &mut Vec<Dependency>,
         into_language_set: &mut HashSet<Language>,
         context: &Beaver
     ) -> crate::Result<()> {
         for dep in self.dependencies()?.iter() {
-            collect_dependency_and_languages(dep, into_set, into_language_set, context)?;
+            collect_dependency_and_languages(dep, into_set, deps, into_language_set, context)?;
         }
 
         return Ok(());
@@ -116,17 +118,19 @@ pub trait Target: Send + Sync + std::fmt::Debug {
     }
 }
 
-fn collect_dependency_and_languages(dep: &Dependency, into_set: &mut HashSet<Dependency>, into_language_set: &mut HashSet<Language>, context: &Beaver) -> crate::Result<()> {
+fn collect_dependency_and_languages(dep: &Dependency, into_set: &mut HashSet<u64>, deps: &mut Vec<Dependency>, into_language_set: &mut HashSet<Language>, context: &Beaver) -> crate::Result<()> {
     // insert dep
-    if into_set.contains(dep) { return Ok(()); }
-    into_set.insert(dep.clone());
+    let dep_hash = dep.hash(context)?;
+    if into_set.contains(&dep_hash) { return Ok(()); }
+    into_set.insert(dep_hash);
+    deps.push(dep.clone());
 
     // collect dep's dependencies
     match dep {
         Dependency::Library(target_dep) => {
-            context.with_project_and_target::<(), BeaverError>(&target_dep.target, |_, target| {
+            context.with_project_and_target::<(), BeaverError>(target_dep.target(context)?, |_, target| {
                 into_language_set.insert(target.language());
-                target.collect_unique_dependencies_and_languages(into_set, into_language_set, context)
+                target.collect_unique_dependencies_and_languages(into_set, deps, into_language_set, context)
             })?;
         },
         Dependency::Flags { cflags: _, linker_flags: _, headers: _ } => {},
@@ -134,20 +138,20 @@ fn collect_dependency_and_languages(dep: &Dependency, into_set: &mut HashSet<Dep
             context.with_cmake_project_and_library(&cmake_id, |_, target| {
                 if let Some(target) = target {
                     into_language_set.insert(target.language());
-                    target.collect_unique_dependencies_and_languages(into_set, into_language_set, context)
+                    target.collect_unique_dependencies_and_languages(into_set, deps, into_language_set, context)
                 } else {
                     debug!("Unmapped dependency {}", cmake_id);
                     Ok(())
                 }
             })?;
         },
-        Dependency::Multi(deps) => {
-            for dep in deps {
-                collect_dependency_and_languages(dep, into_set, into_language_set, context)?;
+        Dependency::Multi(multi_deps) => {
+            for dep in multi_deps {
+                collect_dependency_and_languages(dep, into_set, deps, into_language_set, context)?;
             }
         },
         Dependency::File(_) => {
-            into_set.insert(dep.clone());
+            // into_set.insert(dep);
         }
     }
 

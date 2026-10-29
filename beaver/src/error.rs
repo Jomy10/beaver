@@ -141,6 +141,8 @@ pub enum BeaverError {
     InvalidArtifact(ArtifactType, &'static str),
     #[error("Target {1} does not have an artifact of type {0:?}")]
     NoArtifact(ArtifactType, String),
+    #[error("Target {0} has no artifacts")]
+    NoArtifacts(String),
     /// Custom targets have build commands
     #[error("Target {0} has no build command")]
     TargetHasNoBuildCommand(String),

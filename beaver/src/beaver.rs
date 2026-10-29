@@ -25,7 +25,7 @@ use crate::phase_hook::{Phase, PhaseHook, PhaseHookTrigger, PhaseHooks};
 use crate::error::BeaverError;
 use crate::project::traits::Project;
 use crate::target::traits::{AnyTarget, Target};
-use crate::target::{ArtifactType, Dependency, ExecutableArtifactType, TargetRef};
+use crate::target::{ArtifactType, Dependency, ExecutableArtifactType, LazyRef, LazyTargetRef, TargetRef};
 use crate::target::cmake::Library as CMakeLibrary;
 use crate::project::cmake::Project as CMakeProject;
 
@@ -498,6 +498,33 @@ impl Beaver {
         return cb(&projects[idx]);
     }
 
+    pub fn parse_target_ref_lazy(&self, dep: &str) -> crate::Result<LazyTargetRef> {
+        if dep.contains(":") {
+            if dep.starts_with(":") {
+                todo!("Allow :{{project_name}} syntax for building a whole project");
+            } else {
+                let mut components = dep.splitn(2, ":");
+                let project_name = components.next().unwrap();
+                let target_name = components.next().unwrap();
+
+                Ok(LazyTargetRef {
+                    project: LazyRef::Name(project_name.to_string()),
+                    target: LazyRef::Name(target_name.to_string()),
+                })
+            }
+        } else {
+            let idx = match self.current_project_index() {
+                None => Err(BeaverError::NoProjects),
+                Some(idx) => Ok(idx)
+            }?;
+
+            Ok(LazyTargetRef {
+                project: LazyRef::Id(idx),
+                target: LazyRef::Name(dep.to_string())
+            })
+        }
+    }
+
     pub fn parse_target_ref(&self, dep: &str) -> crate::Result<TargetRef> {
         if dep.contains(":") {
             if dep.starts_with(":") {
@@ -786,30 +813,38 @@ impl Beaver {
                     .filter_map(|dep| if let Dependency::Library(libdep) = dep {
                         use crate::target::LibraryArtifactType;
 
-                        let is_dyn = match libdep.artifact {
-                            LibraryArtifactType::Dynlib | LibraryArtifactType::RustDynlib => true,
-                            LibraryArtifactType::Staticlib |
-                            LibraryArtifactType::PkgConfig |
-                            LibraryArtifactType::Framework |
-                            LibraryArtifactType::XCFramework |
-                            LibraryArtifactType::RustLib |
-                            LibraryArtifactType::JSLib => false
+                        let is_dyn = match libdep.artifact(&self) {
+                            Ok(artifact) => match artifact {
+                                LibraryArtifactType::Dynlib | LibraryArtifactType::RustDynlib => true,
+                                LibraryArtifactType::Staticlib |
+                                LibraryArtifactType::PkgConfig |
+                                LibraryArtifactType::Framework |
+                                LibraryArtifactType::XCFramework |
+                                LibraryArtifactType::RustLib |
+                                LibraryArtifactType::JSLib => false
+                            },
+                            Err(err) => return Some(Err(err))
                         };
 
-                        if is_dyn {
-                            let path = self.with_project_and_library::<_, BeaverError>(&libdep.target, |project, target| {
-                                std::path::absolute(target.artifact_file(project.build_dir(), ArtifactType::Library(libdep.artifact), &self.target_triple)
-                                    .unwrap()
-                                    .parent().unwrap()
-                                ).map_err(|err| err.into())
-                            }).unwrap();
-                            Some(path)
-                        } else {
-                            None
+                        match libdep.target(&self) {
+                            Ok(libdep_target) => if is_dyn {
+                                let path = self.with_project_and_library::<_, BeaverError>(libdep_target, |project, target| {
+                                    std::path::absolute(target.artifact_file(project.build_dir(), ArtifactType::Library(*libdep.artifact(&self)?), &self.target_triple)
+                                        .unwrap()
+                                        .parent().unwrap()
+                                    ).map_err(|err| err.into())
+                                }).unwrap();
+                                Some(Ok(path))
+                            } else {
+                                None
+                            },
+                            Err(err) => Some(Err(err))
                         }
                     } else { None })
+                    .collect::<crate::Result<Vec<PathBuf>>>()?
+                    .into_iter()
                     .unique()
-                    .collect::<Vec<_>>()
+                    .collect::<Vec<PathBuf>>()
             };
 
             #[cfg(not(target_os = "macos"))]
@@ -1112,12 +1147,12 @@ impl Beaver {
     fn print_fmt_dependency(&self, f: &mut std::fmt::Formatter<'_>, dependency: &Dependency, options: &PrintOptions) -> std::fmt::Result {
         match dependency {
             Dependency::Library(library_target_dependency) => {
-                let target_name = self.with_project_and_target::<String, BeaverError>(&library_target_dependency.target, |_, target| {
+                let target_name = self.with_project_and_target::<String, BeaverError>(library_target_dependency.target(&self).unwrap()/* should handle this properly */, |_, target| {
                     Ok(target.name().to_string())
                 }).unwrap();
                 f.write_fmt(format_args!("      - {}", target_name))?;
                 if options.artifacts {
-                    f.write_fmt(format_args!(" ({})", library_target_dependency.artifact))?;
+                    f.write_fmt(format_args!(" ({})", library_target_dependency.artifact(&self).unwrap()))?;
                 }
                 f.write_char('\n')?;
             },
