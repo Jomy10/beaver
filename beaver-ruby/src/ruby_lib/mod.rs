@@ -10,6 +10,7 @@ mod phase_hooks;
 mod command;
 mod target_triple;
 mod cache;
+mod compiler_constants;
 
 pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     project_accessor::register(ruby)?;
@@ -22,6 +23,7 @@ pub fn register(ruby: &magnus::Ruby) -> crate::Result<()> {
     command::register(ruby)?;
     target_triple::register(ruby)?;
     cache::register(ruby)?;
+    compiler_constants::register(ruby)?;
 
     Ok(())
 }
