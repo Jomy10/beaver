@@ -113,6 +113,7 @@ impl traits::Project for Project {
         _ = scope; // TODO
 
         let (mut guard, _) = self.register_targets(triple, &builder, context)?;
+        guard.add_rule_if_not_exists(&rules::NINJA);
 
         let Some(project_build_dir_str) = self.build_dir.as_os_str().to_str() else {
             return Err(BeaverError::NonUTF8OsStr(self.build_dir.as_os_str().to_os_string()));

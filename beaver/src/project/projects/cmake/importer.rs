@@ -77,9 +77,17 @@ pub fn import(
         trace!("Reconfiguring CMake project {:?}", base_dir);
 
         let build_type_arg = format!("-DCMAKE_BUILD_TYPE={}", context.optimize_mode.cmake_name());
+        let c_compiler = format!("-DCMAKE_C_COMPILER={}", tools::cc.to_str().ok_or_else(|| BeaverError::NonUTF8OsStr(tools::cc.as_os_str().into()))?);
+        let cxx_compiler = format!("-DCMAKE_CXX_COMPILER={}", tools::cxx.to_str().ok_or_else(|| BeaverError::NonUTF8OsStr(tools::cc.as_os_str().into()))?);
+        let swift_compiler = format!("-DCMAKE_Swift_COMPILER={}", tools::swift.to_str().ok_or_else(|| BeaverError::NonUTF8OsStr(tools::cc.as_os_str().into()))?);
+        let ar = format!("-DCMAKE_AR={}", tools::ar.to_str().ok_or_else(|| BeaverError::NonUTF8OsStr(tools::cc.as_os_str().into()))?);
         let mut args = vec![
             base_dir_str.as_ref(),
             &build_type_arg,
+            &c_compiler,
+            &cxx_compiler,
+            &swift_compiler,
+            &ar,
             "-G", "Ninja"
         ];
         args.extend_from_slice(cmake_flags);

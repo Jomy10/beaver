@@ -42,6 +42,9 @@ impl<'a> BackendBuilder<'a> for NinjaBuilder<'a> {
         for (name, val) in &rule.options {
             self.buffer.push_str(&format!("    {} = {}\n", name, val));
         }
+        if let Some(pool) = rule.pool {
+            self.buffer.push_str(&format!("    pool = {}\n", pool.name));
+        }
     }
 
     fn get_rule(&self, name: &str) -> Option<&Rule> {
